@@ -11,13 +11,14 @@ import rosservice
 from speech_utilities_msgs.srv import q_a_speech_srv, q_a_speech_srvRequest, talk_speech_srv, talk_speech_srvRequest
 from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest
 from manipulation_msgs.srv import go_to_pose_srv, go_to_pose_srvRequest, execute_trajectory_srv, execute_trajectory_srvRequest
+from navigation_utilities.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correctPosition_srv, correctPosition_srvRequest
 from std_msgs.msg import Int32, String, Bool
 from std_srvs.srv import Trigger, TriggerRequest
 
 
 class Task_module:
 
-    def __init__(self, perception: bool, speech: bool, manipulation:bool, navegation: bool):
+    def __init__(self, perception: bool, speech: bool, manipulation:bool, navigation: bool):
         
         self.perception= perception
         
@@ -43,7 +44,45 @@ class Task_module:
             self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_speech_srv)
 
         self.object_found = 0
-        
+
+        if navigation:
+            rospy.wait_for_service('/navigation_utilities/set_current_place_srv')
+            self.set_current_place_proxy = rospy.ServiceProxy('/navigation_utilities/set_current_place_srv', set_current_place_srv)
+            
+            rospy.wait_for_service('navigation_utilities/go_to_relative_point_srv')
+            self.go_to_relative_point_proxy = rospy.ServiceProxy('/navigation_utilities/go_to_relative_point_srv', go_to_relative_point_srv)
+            
+            rospy.wait_for_service('navigation_utilities/go_to_place_srv')
+            self.go_to_place_proxy = rospy.ServiceProxy('/navigation_utilities/go_to_place_srv', go_to_place_srv)
+            
+            rospy.wait_for_service('navigation_utilities/start_random_navigation_srv')
+            self.start_random_navigation_proxy = rospy.ServiceProxy('/navigation_utilities/start_random_navigation_srv', start_random_navigation_srv)
+            
+            rospy.wait_for_service('navigation_utilities/add_place_srv')
+            self.add_place_proxy = rospy.ServiceProxy('/navigation_utilities/add_place_srv', add_place_srv)
+            
+            rospy.wait_for_service('navigation_utilities/follow_you_srv')
+            self.follow_you_proxy = rospy.ServiceProxy('/navigation_utilities/follow_you_srv', follow_you_srv)
+            
+            rospy.wait_for_service('navigation_utilities/robot_stop_srv')
+            self.robot_stop_proxy = rospy.ServiceProxy('/navigation_utilities/robot_stop_srv', robot_stop_srv)
+            
+            rospy.wait_for_service('navigation_utilities/spin_srv')
+            self.spin_proxy = rospy.ServiceProxy('/navigation_utilities/spin_srv', spin_srv)
+
+            rospy.wait_for_service('navigation_utilities/go_to_defined_angle_srv')
+            self.go_to_defined_angle_proxy = rospy.ServiceProxy('/navigation_utilities/go_to_defined_angle_srv', go_to_defined_angle_srv)
+
+            rospy.wait_for_service('navigation_utilities/get_absolute_position_srv')
+            self.get_absolute_position_proxy = rospy.ServiceProxy('/navigation_utilities/get_absolute_position_srv', get_absolute_position_srv)
+
+            rospy.wait_for_service('navigation_utilities/get_route_guidance_srv')
+            self.get_route_guidance_proxy = rospy.ServiceProxy('/navigation_utilities/get_route_guidance_srv', get_route_guidance_srv)
+
+            rospy.wait_for_service('navigation_utilities/correctPosition_srv')
+            self.correctPosition_proxy = rospy.ServiceProxy('/navigation_utilities/correctPosition_srv', correctPosition_srv)
+
+
     def initialize_node(self):
         rospy.init_node('task_module_node') 
 
@@ -223,6 +262,257 @@ class Task_module:
         else: 
             print("speech as false")
             return False
+        
+    ################### NAVIGATION SERVICES ###################
+
+    def set_current_place(self,place_name:str)->bool:
+        """
+        Input: place_name
+        Output: True if the service was called correctly, False if not
+        ----------
+        Sets the pose of the robot to the coordinates of the place specified in
+        the request message, then it clears the global costmap.
+        """
+        if self.navigation:
+            try:
+                approved = self.set_current_place_proxy(place_name)
+                if approved=="approved":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else: 
+            print("navigation as false")
+            return False
+        
+    def go_to_relative_point(self,x:float,y:float,theta:float)->bool:
+        """
+        Input: x, y, theta
+        Output: True if the service was called correctly, False if not
+        ----------
+        Sends the robot to the coordinates (in meters and relative to the robot)
+        specified in the request message.
+        """
+        if self.navigation:
+            try:
+                approved = self.go_to_relative_point_proxy(x,y,theta)
+                if approved=="approved":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else: 
+            print("navigation as false")
+            return False
+        
+    def go_to_place(self,place_name:str, graph:int)->bool:
+        """
+        Input: place_name
+        Output: True if the service was called correctly, False if not
+        ----------
+        Goes to place_name
+        """
+        if self.navigation:
+            try:
+                approved = self.go_to_place_proxy(place_name, graph)
+                if approved=="approved":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else: 
+            print("navigation as false")
+            return False
+        
+    def start_random_navigation_srv(self)->bool:
+        """
+        Input: None
+        Output: True if the service was called correctly, False if not
+        ----------
+        Starts random navigation
+        """
+        if self.navigation:
+            try:
+                approved = self.start_random_navigation_proxy()
+                if approved=="approved":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else: 
+            print("navigation as false")
+            return False
+        
+    def add_place_srv(self, place_name:str, persist:int, edges:list)->bool:
+        """
+        Input: place_name, persist, edges
+        Output: True if the service was called correctly, False if not
+        ----------
+        Adds place_name to the graph
+        """
+        if self.navigation:
+            try:
+                approved = self.add_place_proxy(place_name, persist, edges)
+                if approved=="approved":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else: 
+            print("navigation as false")
+            return False
+        
+    def follow_you_srv(self, place_name: str)->bool:
+        """
+        Input: None
+        Output: True if the service was called correctly, False if not
+        ----------
+        Starts following you
+        """
+        if self.navigation:
+            try:
+                approved = self.follow_you_proxy(place_name)
+                if approved=="approved":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else: 
+            print("navigation as false")
+            return False
+
+    def robot_stop_srv(self)->bool:
+        """
+        Input: None
+        Output: True if the service was called correctly, False if not
+        ----------
+        Stops the robot
+        """
+        if self.navigation:
+            try:
+                approved = self.robot_stop_proxy()
+                if approved=="approved":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else: 
+            print("navigation as false")
+            return False
+        
+    def spin_srv(self, degrees:float):
+        """
+        Input: degrees
+        Output: True if the service was called correctly, False if not
+        ----------
+        Spins the robot
+        """
+        if self.navigation:
+            try:
+                approved = self.spin_proxy(degrees)
+                if approved=="approved":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else: 
+            print("navigation as false")
+            return False
+        
+    def go_to_defined_angle_srv(self, degrees:float):
+        """
+        Input: degrees
+        Output: True if the service was called correctly, False if not
+        ----------
+        Goes to defined angle
+        """
+        if self.navigation:
+            try:
+                approved = self.go_to_defined_angle_proxy(degrees)
+                if approved=="approved":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("navigation as false")
+            return False
+
+    def get_absolute_position_srv(self):
+        """
+        Input: None
+        Output: get_absolute_position_srv response message. {x(float64),y(float64),theta(float64)}.
+        ----------
+        Gets absolute position
+        """
+        if self.navigation:
+            try:
+                absolute_position = self.get_absolute_position_proxy()
+                return absolute_position.x, absolute_position.y, absolute_position.theta
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("navigation as false")
+            return False
+
+    def get_route_guidance_srv(self, place_name: str):
+        """
+        Input: place_name
+        Output: True if the service was called correctly, False if not
+        ----------
+        Gets route guidance
+        """
+        if self.navigation:
+            try:
+                instructions = self.get_route_guidance_proxy(place_name)
+                return instructions
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("navigation as false")
+            return False
+        
+    def correctPosition_srv(self, degrees: float):
+        """
+        Input: place_name
+        Output: True if the service was called correctly, False if not
+        ----------
+        Corrects position
+        """
+        if self.navigation:
+            try:
+                approved = self.correctPosition_proxy(degrees)
+                if approved == "approved":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("navigation as false")
+            return False
+        
             
     ################ CALLBACKS ################
     def callback_look_for_object(self,data):
