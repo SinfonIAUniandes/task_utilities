@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 import rospy
 import time 
@@ -10,8 +11,8 @@ import rosservice
 # from navigation_msgs.srv import go_to_place_srv, go_to_place_srvRequest, spin_srv, spin_srvRequest,correct_position_srv, correct_position_srvRequest
 from speech_utilities_msgs.srv import q_a_speech_srv, q_a_speech_srvRequest, talk_speech_srv, talk_speech_srvRequest
 from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest
-from manipulation_msgs.srv import go_to_pose_srv, go_to_pose_srvRequest, execute_trajectory_srv, execute_trajectory_srvRequest
-from navigation_utilities.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correctPosition_srv, correctPosition_srvRequest
+# from manipulation_msgs.srv import go_to_pose_srv, go_to_pose_srvRequest, execute_trajectory_srv, execute_trajectory_srvRequest
+from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest
 from std_msgs.msg import Int32, String, Bool
 from std_srvs.srv import Trigger, TriggerRequest
 
@@ -35,7 +36,8 @@ class Task_module:
             self.recognize_face_proxy = rospy.ServiceProxy('/perception_utilities/recognize_face_srv', recognize_face_srv)
             rospy.wait_for_service('perception_utilities/read_qr_srv')
             self.qr_read_proxy = rospy.ServiceProxy('/perception_utilities/read_qr_srv', read_qr_srv)
-            
+
+            self.object_found = False
             
         self.speech=speech
         
@@ -43,7 +45,7 @@ class Task_module:
             rospy.wait_for_service('/speech_utilities/talk_speech_srv')
             self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_speech_srv)
 
-        self.object_found = 0
+        
 
         if navigation:
             rospy.wait_for_service('/navigation_utilities/set_current_place_srv')
@@ -79,12 +81,17 @@ class Task_module:
             rospy.wait_for_service('navigation_utilities/get_route_guidance_srv')
             self.get_route_guidance_proxy = rospy.ServiceProxy('/navigation_utilities/get_route_guidance_srv', get_route_guidance_srv)
 
-            rospy.wait_for_service('navigation_utilities/correctPosition_srv')
-            self.correctPosition_proxy = rospy.ServiceProxy('/navigation_utilities/correctPosition_srv', correctPosition_srv)
+            rospy.wait_for_service('navigation_utilities/correct_position_srv')
+            self.correct_position_proxy = rospy.ServiceProxy('/navigation_utilities/correct_position_srv', correct_position_srv)
 
+
+ 
+
+    #################################### SERVICES #######################################
 
     def initialize_node(self):
         rospy.init_node('task_module_node') 
+
 
     ################### PERCEPTION SERVICES ###################
 
@@ -102,7 +109,6 @@ class Task_module:
         if self.perception: 
             try:
                 approved = self.turn_camera_proxy(camera_name,command,resolution,fps)
-                print("TODO approved",approved)
                 if approved=="approved":
                     return True
                 else:
@@ -171,15 +177,14 @@ class Task_module:
                 t_start = time.time()
                 finish=False
                 response = False
-                rospy.Subscriber("/perception_utilities/look_for_object_publisher", Bool, self.callback_look_for_object)
+                subscriber = rospy.Subscriber("/perception_utilities/look_for_object_publisher", Bool, self.callback_look_for_object)
                 while not finish:
-                    print("El object found es: ", self.object_found)
                     rospy.sleep(0.05) 
                     t_now = time.time()
                     if self.object_found:
                         finish=True
                         response = True
-                    elif t_now-t_start>timeout:
+                    elif t_now-t_start>timeout or rospy.is_shutdown():
                         finish=True
                         response = False
                 return response                
@@ -492,7 +497,7 @@ class Task_module:
             print("navigation as false")
             return False
         
-    def correctPosition_srv(self, degrees: float):
+    def correct_position_srv(self, degrees: float):
         """
         Input: place_name
         Output: True if the service was called correctly, False if not
@@ -501,7 +506,7 @@ class Task_module:
         """
         if self.navigation:
             try:
-                approved = self.correctPosition_proxy(degrees)
+                approved = self.correct_position_proxy(degrees)
                 if approved == "approved":
                     return True
                 else:
@@ -513,10 +518,8 @@ class Task_module:
             print("navigation as false")
             return False
         
-            
-    ################ CALLBACKS ################
+   ################ SUBSCRIBER CALLBACKS ################
     def callback_look_for_object(self,data):
         self.object_found=data.data
         return data
-
 

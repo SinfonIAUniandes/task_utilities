@@ -6,7 +6,7 @@ from std_srvs.srv import Trigger, TriggerRequest
 from std_msgs.msg import Int32, String
 
 
-tm = tm.Task_module()
+tm = tm.Task_module(perception = True,speech=False,manipulation=False, navigation=False)
 #Esperar 2 segunods
 
 tm.initialize_node()
@@ -21,14 +21,16 @@ while True:
     rospy.sleep(2)
     tm.turn_camera("front_camera","enable")
 
-    tm.talk("Esperando persona",2,"Spanish")
+    # tm.talk("Esperando persona",2,"Spanish")
+    print("Esperando persona")
 
     tm.look_for_object("person")
     tm.wait_for_object(10)
 
-    tm.talk("Hola invitado, presentame tu QR",3,"Spanish")
+    # tm.talk("Hola invitado, presentame tu QR",3,"Spanish")
 
     print("Hola invitado, presentame tu QR")
     texto_qr = tm.qr_read(10)
 
-    tm.talk("Bienvenido al evento "+texto_qr,3,"Spanish")
+    # tm.talk("Bienvenido al evento "+texto_qr,3,"Spanish")
+    print("Bienvenido al evento "+texto_qr)
