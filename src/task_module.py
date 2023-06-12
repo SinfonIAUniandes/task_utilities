@@ -4,50 +4,67 @@ import rospy
 import time 
 import rospkg
 import rosservice
+import ConsoleFormatter
 
-#All imports from tools
-# from robot_toolkit_msgs.msg import speech_msg
-# from navigation_msgs.msg import simple_feedback_msg
-# from navigation_msgs.srv import go_to_place_srv, go_to_place_srvRequest, spin_srv, spin_srvRequest,correct_position_srv, correct_position_srvRequest
-from speech_utilities_msgs.srv import q_a_speech_srv, q_a_speech_srvRequest, talk_speech_srv, talk_speech_srvRequest
-from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest
-# from manipulation_msgs.srv import go_to_pose_srv, go_to_pose_srvRequest, execute_trajectory_srv, execute_trajectory_srvRequest
-from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest
+
 from std_msgs.msg import Int32, String, Bool
 from std_srvs.srv import Trigger, TriggerRequest
 
+# All imports from tools
+
+# from robot_toolkit_msgs.msg import speech_msg
+
+from speech_utilities_msgs.srv import q_a_speech_srv, q_a_speech_srvRequest, talk_speech_srv, talk_speech_srvRequest
+
+from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest
+
+# from manipulation_msgs.srv import go_to_pose_srv, go_to_pose_srvRequest, execute_trajectory_srv, execute_trajectory_srvRequest
+
+from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest
+from navigation_msgs.msg import simple_feedback_msg
 
 class Task_module:
 
     def __init__(self, perception: bool, speech: bool, manipulation:bool, navigation: bool):
-        
+
+        self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         self.perception= perception
         
         if perception: 
+            print(self.consoleFormatter.format("Waiting for PERCEPTION services...","WARNING"))
             rospy.wait_for_service('/perception_utilities/turn_camera_srv')
             self.turn_camera_proxy = rospy.ServiceProxy('/perception_utilities/turn_camera_srv', turn_camera_srv)
+
             rospy.wait_for_service('/perception_utilities/start_recognition_srv')
             self.start_recognition_proxy = rospy.ServiceProxy('/perception_utilities/start_recognition_srv', start_recognition_srv)
+
             rospy.wait_for_service('/perception_utilities/look_for_object_srv')
             self.look_for_object_proxy = rospy.ServiceProxy('/perception_utilities/look_for_object_srv', look_for_object_srv)
+
             rospy.wait_for_service('/perception_utilities/save_face_srv')
             self.save_face_proxy = rospy.ServiceProxy('/perception_utilities/save_face_srv', save_face_srv)
+
             rospy.wait_for_service('/perception_utilities/recognize_face_srv')
             self.recognize_face_proxy = rospy.ServiceProxy('/perception_utilities/recognize_face_srv', recognize_face_srv)
+
             rospy.wait_for_service('perception_utilities/read_qr_srv')
             self.qr_read_proxy = rospy.ServiceProxy('/perception_utilities/read_qr_srv', read_qr_srv)
 
             self.object_found = False
+            print(self.consoleFormatter.format("PERCEPTION services enabled","OKGREEN"))
             
         self.speech=speech
         
         if speech: 
+            print(self.consoleFormatter.format("Waiting for SPEECH services...","WARNING"))
             rospy.wait_for_service('/speech_utilities/talk_speech_srv')
             self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_speech_srv)
+            print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
 
-        
+        self.navigation = navigation
 
         if navigation:
+            print(self.consoleFormatter.format("Waiting for NAVIGATION services...","WARNING"))
             rospy.wait_for_service('/navigation_utilities/set_current_place_srv')
             self.set_current_place_proxy = rospy.ServiceProxy('/navigation_utilities/set_current_place_srv', set_current_place_srv)
             
@@ -75,22 +92,21 @@ class Task_module:
             rospy.wait_for_service('navigation_utilities/go_to_defined_angle_srv')
             self.go_to_defined_angle_proxy = rospy.ServiceProxy('/navigation_utilities/go_to_defined_angle_srv', go_to_defined_angle_srv)
 
-            rospy.wait_for_service('navigation_utilities/get_absolute_position_srv')
-            self.get_absolute_position_proxy = rospy.ServiceProxy('/navigation_utilities/get_absolute_position_srv', get_absolute_position_srv)
-
             rospy.wait_for_service('navigation_utilities/get_route_guidance_srv')
             self.get_route_guidance_proxy = rospy.ServiceProxy('/navigation_utilities/get_route_guidance_srv', get_route_guidance_srv)
 
-            rospy.wait_for_service('navigation_utilities/correct_position_srv')
-            self.correct_position_proxy = rospy.ServiceProxy('/navigation_utilities/correct_position_srv', correct_position_srv)
+            self.navigation_status =0
+            print(self.consoleFormatter.format("NAVIGATION services enabled","OKGREEN"))
 
+        if manipulation:
+            print(self.consoleFormatter.format("Waiting for MANIPULATION services...","WARNING"))
 
- 
+            print(self.consoleFormatter.format("MANIPULATION services enabled","OKGREEN"))
 
     #################################### SERVICES #######################################
 
-    def initialize_node(self):
-        rospy.init_node('task_module_node') 
+    def initialize_node(self,task_name):
+        rospy.init_node('task_'+task_name+'_node') 
 
 
     ################### PERCEPTION SERVICES ###################
@@ -171,7 +187,7 @@ class Task_module:
         ----------
         Waits for object to be found for a max of <timeout> seconds
         """
-        if self.perception:
+        if self.perception:                
             try:
                 print("Waiting for object")
                 t_start = time.time()
@@ -184,7 +200,7 @@ class Task_module:
                     if self.object_found:
                         finish=True
                         response = True
-                    elif t_now-t_start>timeout or rospy.is_shutdown():
+                    elif (t_now-t_start>timeout or rospy.is_shutdown()) and timeout>0:
                         finish=True
                         response = False
                 return response                
@@ -461,24 +477,6 @@ class Task_module:
             print("navigation as false")
             return False
 
-    def get_absolute_position_srv(self):
-        """
-        Input: None
-        Output: get_absolute_position_srv response message. {x(float64),y(float64),theta(float64)}.
-        ----------
-        Gets absolute position
-        """
-        if self.navigation:
-            try:
-                absolute_position = self.get_absolute_position_proxy()
-                return absolute_position.x, absolute_position.y, absolute_position.theta
-            except rospy.ServiceException as e:
-                print("Service call failed: %s" % e)
-                return False
-        else:
-            print("navigation as false")
-            return False
-
     def get_route_guidance_srv(self, place_name: str):
         """
         Input: place_name
@@ -497,29 +495,43 @@ class Task_module:
             print("navigation as false")
             return False
         
-    def correct_position_srv(self, degrees: float):
+    def wait_go_to_place(self)->bool:
         """
-        Input: place_name
+        Input: None
         Output: True if the service was called correctly, False if not
         ----------
-        Corrects position
+        Waits for the robot to reach the place
         """
-        if self.navigation:
+        if self.navigation:                
             try:
-                approved = self.correct_position_proxy(degrees)
-                if approved == "approved":
-                    return True
-                else:
-                    return False
+                print("Waiting for object")
+                finish=False
+                response = False
+                subscriber = self.simpleFeedbackSubscriber = rospy.Subscriber('/navigation_utilities/simple_feedback', simple_feedback_msg, self.callback_simple_feedback_subscriber)
+                while not finish:
+                    rospy.sleep(0.05) 
+                    if self.navigation_status == 2:
+                        finish=True
+                        response = True
+                    elif rospy.is_shutdown():
+                        finish=True
+                        response = False
+                return response                
             except rospy.ServiceException as e:
-                print("Service call failed: %s" % e)
+                print("Service call failed: %s"%e)
                 return False
-        else:
-            print("navigation as false")
-            return False
+        else: 
+            print("perception as false") 
+            return False            
+        
+
         
    ################ SUBSCRIBER CALLBACKS ################
+
     def callback_look_for_object(self,data):
         self.object_found=data.data
         return data
+    
+    def callback_simple_feedback_subscriber(self, msg):
+        self.navigation_status = msg.navigation_status
 

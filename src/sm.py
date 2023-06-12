@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from transitions import Machine
 from task_module import Task_module as tm
+from std_msgs.msg import Bool
 import time
 import random
 import threading
@@ -9,7 +10,9 @@ import rospy
 
 class SM(object):
     def __init__(self):
+        # Inicializar el nodo de ROS  
         # Definir los estados posibles del semáforo
+        self.task_name = "sisandes"
         states = ['INIT', 'WAIT4GUEST', 'TALK', 'Finish']
         self.tm = tm(perception = True,speech=False,manipulation=False, navigation=False)
         
@@ -25,10 +28,10 @@ class SM(object):
         
         # Crear la máquina de estados
         self.machine = Machine(model=self, states=states, transitions=transitions, initial='SM')
-    
+
     def on_enter_INIT(self):
         print("INIT")
-        self.tm.initialize_node()
+        self.tm.initialize_node(self.task_name)
         # self.tm.talk_speech("Spanish","Voy a hacer el task de sisandes",2)
         print("Voy a hacer el task de sisandes")
         self.tm.turn_camera("front_camera","enable",0,0)
@@ -69,6 +72,8 @@ class SM(object):
             #     sys.exit()
 
     
-# Crear una instancia del semáforo
-sm = SM()
-sm.run()
+# Crear una instancia de la maquina de estados
+if __name__ == "__main__":
+    sm = SM()
+    sm.run()
+    rospy.spin()
