@@ -22,7 +22,7 @@ class RECEPTIONIST(object):
         
         # Definir los estados posibles del semáforo
         self.task_name = "receptionist"
-        states = ['INIT', 'WAIT4GUEST', 'QA', 'SAVE_FACE','RECOG_PERSON','INTRODUCE_NEW','INTRODUCE_OLD','GO2LIVING','GO2DOOR','LOOK4PERSON','LOOK4CHAIR','SIGNAL_SOMETHING', 'FINISH']
+        states = ['INIT', 'WAIT4GUEST', 'QA', 'SAVE_FACE','INTRODUCE_NEW','INTRODUCE_OLD','GO2LIVING','GO2DOOR','LOOK4PERSON','LOOK4CHAIR','SIGNAL_SOMETHING']
         self.tm = tm(perception = False,speech=False,manipulation=False, navigation=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
@@ -73,7 +73,7 @@ class RECEPTIONIST(object):
         return data
     
     def on_enter_INIT(self):
-        self.tm.talk("English","I am going to do the  "+self.task_name+"task",2)
+        self.tm.talk("I am going to do the  "+self.task_name+"task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.turn_camera("front_camera","enable",0,0)  
         self.tm.start_recognition("front_camera")
@@ -81,7 +81,7 @@ class RECEPTIONIST(object):
                 
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
-        self.tm.talk("English","Waiting for guests",2)
+        self.tm.talk("Waiting for guests","English")
         self.tm.look_for_object("person")
         self.tm.wait_for_object(-1)
         self.tm.look_for_object("")
@@ -91,13 +91,14 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("QA", "HEADER"))
         questions = ["name","age","drink"]
         #TODO
-        # person=self.tm.q_a(questions)
-        # self.actual_person = {"name":person[0],"age":person[1],"drink":person[2]}
+        person=self.tm.q_a(questions)
+        self.actual_person = {"name":person[0],"age":person[1],"drink":person[2]}
+        self.all_persons[person[0]] = {"name":person[0],"age":person[1],"drink":person[2]}
         self.person_met()
 
     def on_enter_SAVE_FACE(self):
         print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
-        self.tm.talk("English","Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),8)
+        self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
         succed = self.tm.save_face(self.actual_person["name"])
         if succed:
             self.save_face_succeded()
@@ -106,14 +107,14 @@ class RECEPTIONIST(object):
     
     def on_enter_GO2LIVING(self):
         print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
-        self.tm.talk("English","Please {}, follow me to the living room".format(self.actual_person["name"]),6)
+        self.tm.talk("Please {}, follow me to the living room".format(self.actual_person["name"]),"English")
         self.tm.go_to_place("living_room")
         self.tm.wait_go_to_place()
         self.arrived_to_point()
 
     def on_enter_INTRODUCE_NEW(self):
         print(self.consoleFormatter.format("INTRODUCE_NEW", "HEADER"))
-        self.tm.talk("English","Hello everyone, this is {}, he is {} years old and he likes to drink {}".format(self.actual_person["name"],self.actual_person["age"],self.actual_person["drink"]),8)
+        self.tm.talk("Hello everyone, this is {}, he is {} years old and he likes to drink {}".format(self.actual_person["name"],self.actual_person["age"],self.actual_person["drink"]),"English")
         self.introduced_new_person()
     
     def on_enter_LOOK4PERSON(self):
@@ -132,7 +133,9 @@ class RECEPTIONIST(object):
         
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
-        self.tm.talk("English","Hello {}, this is {}, he is {} years old and he likes to drink {}".format(self.actual_person["name"],self.actual_person["name"],self.actual_person["age"],self.actual_person["drink"]),8)
+        person_name = self.tm.recognize_face(3)
+        person_introduce = self.all_persons[person_name]
+        self.tm.talk(" {} I introduce to you {} he is {} years old and he likes to drink {}".format(self.actual_person["name"],person_name,person_introduce["age"],person_introduce["drink"]),"English")
         self.introduced_old_person()
     
     def on_enter_LOOK4CHAIR(self):
@@ -147,14 +150,14 @@ class RECEPTIONIST(object):
 
     def on_enter_SIGNAL_SOMETHING(self):
         print(self.consoleFormatter.format("SIGNAL_SOMETHING", "HEADER"))
-        self.tm.talk("English","Please, take a seat",3)
+        self.tm.talk("Please, take a seat","English")
         #TODO
         #self.tm.go_to_pose("signal")
         self.person_accomodated()
 
     def on_enter_GO2DOOR(self):
         print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
-        self.tm.talk("English","Waiting for other guests to come",3)
+        self.tm.talk("Waiting for other guests to come","English")
         self.tm.go_to_place("door")
         self.tm.wait_go_to_place()
         self.wait_new_guest()

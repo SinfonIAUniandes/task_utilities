@@ -282,7 +282,7 @@ class Task_module:
             return ""
     ################### SPEECH SERVICES ###################
         
-    def talk(self,text:str,time:float,language:str):
+    def talk(self,text:str,language:str):
         """
         Input: text, time, language
         Output: 'answer' that indicates what Pepper said.
@@ -291,7 +291,7 @@ class Task_module:
         """
         if self.speech:
             try:
-                answer = self.talk_proxy(text, time,language)
+                answer = self.talk_proxy(text,language)
                 return answer
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
