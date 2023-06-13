@@ -14,7 +14,7 @@ from std_srvs.srv import Trigger, TriggerRequest
 
 # from robot_toolkit_msgs.msg import speech_msg
 
-from speech_utilities_msgs.srv import q_a_speech_srv, q_a_speech_srvRequest, talk_speech_srv, talk_speech_srvRequest
+from speech_utilities_msgs.srv import q_a_speech_srv, talk_speech_srv, saveAudio_srv, q_a_speech_srvRequest, talk_speech_srvRequest, saveAudio_srvRequest
 
 from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest
 
@@ -59,6 +59,13 @@ class Task_module:
             print(self.consoleFormatter.format("Waiting for SPEECH services...","WARNING"))
             rospy.wait_for_service('/speech_utilities/talk_speech_srv')
             self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_speech_srv)
+
+            rospy.wait_for_service('/speech_utilities/saveAudio_srv')
+            self.save_audio_proxy = rospy.ServiceProxy('/speech_utilities/saveAudio_srv', saveAudio_srv)
+
+            rospy.wait_for_service('/speech_utilities_msgs/q_a_speech_srv')
+            self.q_a_proxy = rospy.ServiceProxy('/speech_utilities_msgs/q_a_speech_srv', q_a_speech_srv)
+
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
 
         self.navigation = navigation
@@ -248,7 +255,7 @@ class Task_module:
                 return ""
         else:
             print("perception as false") 
-            return False
+            return ""
 
     def qr_read(self,timeout:float)->str:
         """
@@ -272,10 +279,34 @@ class Task_module:
             return ""
     ################### SPEECH SERVICES ###################
         
-    def talk(self,text:str,time:float,language:str)->bool:
+    def talk(self,text:str,time:float,language:str):
+        """
+        Input: text, time, language
+        Output: 'answer' that indicates what Pepper said.
+        ----------
+        Allows the robot to say the input of the service.
+        """
         if self.speech:
             try:
-                self.talk_proxy(text, time,language)
+                answer = self.talk_proxy(text, time,language)
+                return answer
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return ""
+        else: 
+            print("speech as false")
+            return ""
+        
+    def save_audio(self, seconds:int, file_name:str)->bool:
+        """
+        Input: seconds, file_name
+        Output: 'Audio Saved' that indicates that Pepper already saved the audio.
+        ----------
+        Allows the robot to save audio.
+        """
+        if self.speech:
+            try:
+                self.save_audio_proxy(seconds, file_name)
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
@@ -283,6 +314,24 @@ class Task_module:
         else: 
             print("speech as false")
             return False
+    
+    def q_a_speech(self, tags:list):
+        """
+        Input: tag in lowercase
+        Output: Indicates what Pepper ask for (specific word or phrase).
+        ----------
+        Return a specific answer for predefined questions.
+        """
+        if self.speech:
+            try:
+                answer = self.q_a_proxy(tags)
+                return answer
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return []
+        else: 
+            print("speech as false")
+            return []
         
     ################### NAVIGATION SERVICES ###################
 
