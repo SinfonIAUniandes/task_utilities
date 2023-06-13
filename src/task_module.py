@@ -20,7 +20,7 @@ from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequ
 
 # from manipulation_msgs.srv import go_to_pose_srv, go_to_pose_srvRequest, execute_trajectory_srv, execute_trajectory_srvRequest
 
-from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest
+from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
 
 class Task_module:
@@ -94,6 +94,9 @@ class Task_module:
 
             rospy.wait_for_service('navigation_utilities/get_route_guidance_srv')
             self.get_route_guidance_proxy = rospy.ServiceProxy('/navigation_utilities/get_route_guidance_srv', get_route_guidance_srv)
+
+            rospy.wait_for_service('/navigation_utilities/constant_spin_srv')
+            self.constant_spin_proxy = rospy.ServiceProxy('/navigation_utilities/constant_spin_srv', constant_spin_srv)
 
             self.navigation_status =0
             print(self.consoleFormatter.format("NAVIGATION services enabled","OKGREEN"))
@@ -488,6 +491,27 @@ class Task_module:
             try:
                 instructions = self.get_route_guidance_proxy(place_name)
                 return instructions
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("navigation as false")
+            return False
+        
+    def constant_spin_srv(self,velocity:float)->bool:
+        """
+        Input: None
+        Output: True if the service was called correctly, False if not
+        ----------
+        Starts constant spin
+        """
+        if self.navigation:
+            try:
+                approved = self.constant_spin_proxy(velocity)
+                if approved=="approved":
+                    return True
+                else:
+                    return False
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return False
