@@ -57,14 +57,15 @@ class Task_module:
         
         if speech: 
             print(self.consoleFormatter.format("Waiting for SPEECH services...","WARNING"))
+            print("hola1")
             rospy.wait_for_service('/speech_utilities/talk_speech_srv')
             self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_speech_srv)
-
-            rospy.wait_for_service('/speech_utilities/saveAudio_srv')
-            self.save_audio_proxy = rospy.ServiceProxy('/speech_utilities/saveAudio_srv', saveAudio_srv)
-
-            rospy.wait_for_service('/speech_utilities_msgs/q_a_speech_srv')
-            self.q_a_proxy = rospy.ServiceProxy('/speech_utilities_msgs/q_a_speech_srv', q_a_speech_srv)
+            print("hola2")
+            rospy.wait_for_service('speech_utilities/save_audio_srv')
+            self.save_audio_proxy = rospy.ServiceProxy('speech_utilities/save_audio_srv', saveAudio_srv)
+            print("hola3")
+            rospy.wait_for_service('/speech_utilities/q_a_speech_srv')
+            self.q_a_proxy = rospy.ServiceProxy('/speech_utilities/q_a_speech_srv', q_a_speech_srv)
 
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
 
@@ -168,7 +169,7 @@ class Task_module:
             return False        
 
 
-    def look_for_object(self,object_name:str)->bool:
+    def look_for_object(self,object_name:str,ignore_already_seen:bool)->bool:
         """
         Input: object_name
         Output: True if the service was called correctly, False if not
@@ -177,7 +178,7 @@ class Task_module:
         """
         if self.perception:
             try:
-                approved = self.look_for_object_proxy(object_name)
+                approved = self.look_for_object_proxy(object_name,ignore_already_seen)
                 if approved=="approved":
                     return True
                 else:
@@ -205,6 +206,7 @@ class Task_module:
                 response = False
                 subscriber = rospy.Subscriber("/perception_utilities/look_for_object_publisher", Bool, self.callback_look_for_object)
                 while not finish:
+                    print(self.object_found)
                     rospy.sleep(0.05) 
                     t_now = time.time()
                     if self.object_found:
@@ -231,10 +233,7 @@ class Task_module:
         if self.perception:
             try:
                 approved = self.save_face_proxy(name,num_pics)
-                if approved=="approved":
-                    return True
-                else:
-                    return False
+                return approved
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
                 return False
@@ -318,7 +317,7 @@ class Task_module:
             print("speech as false")
             return False
     
-    def q_a_speech(self, tags:list):
+    def q_a_speech(self, tag:str):
         """
         Input: tag in lowercase
         Output: Indicates what Pepper ask for (specific word or phrase).
@@ -327,14 +326,14 @@ class Task_module:
         """
         if self.speech:
             try:
-                answer = self.q_a_proxy(tags)
-                return answer
+                answer = self.q_a_proxy(tag)
+                return answer.answer
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
-                return []
+                return ""
         else: 
             print("speech as false")
-            return []
+            return ""
         
     ################### NAVIGATION SERVICES ###################
 

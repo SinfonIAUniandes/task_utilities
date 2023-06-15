@@ -23,7 +23,7 @@ class RECEPTIONIST(object):
         # Definir los estados posibles del semáforo
         self.task_name = "receptionist"
         states = ['INIT', 'WAIT4GUEST', 'QA', 'SAVE_FACE','INTRODUCE_NEW','INTRODUCE_OLD','GO2LIVING','GO2DOOR','LOOK4PERSON','LOOK4CHAIR','SIGNAL_SOMETHING']
-        self.tm = tm(perception = False,speech=False,manipulation=False, navigation=True)
+        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=False)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
@@ -82,16 +82,19 @@ class RECEPTIONIST(object):
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
         self.tm.talk("Waiting for guests","English")
-        self.tm.look_for_object("person",True)
+        self.tm.look_for_object("person",False)
         self.tm.wait_for_object(-1)
-        self.tm.look_for_object("",True)
+        self.tm.look_for_object("",False)
         self.person_arrived()
         
     def on_enter_QA(self):
         print(self.consoleFormatter.format("QA", "HEADER"))
         name=self.tm.q_a_speech("name")
+        print(name)
         age=self.tm.q_a_speech("age")
+        print(age)
         drink=self.tm.q_a_speech("drink")
+        print(drink)
         self.actual_person = {"name":name,"age":age,"drink":drink}
         self.all_persons[name] = {"name":name,"age":age,"drink":drink}
         self.person_met()
@@ -99,7 +102,7 @@ class RECEPTIONIST(object):
     def on_enter_SAVE_FACE(self):
         print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
         self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
-        succed = self.tm.save_face(self.actual_person["name"])
+        succed = self.tm.save_face(self.actual_person["name"],5)
         if succed:
             self.save_face_succeded()
         else:
@@ -110,8 +113,10 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
         self.tm.talk("Please {}, follow me to the living room".format(self.actual_person["name"]),"English")
         self.tm.go_to_place("living_room")
-        self.tm.wait_go_to_place()
-        self.arrived_to_point()
+        # self.tm.wait_go_to_place()
+        # self.arrived_to_point()
+        print("going to place")
+        time.sleep(5)
 
     def on_enter_INTRODUCE_NEW(self):
         print(self.consoleFormatter.format("INTRODUCE_NEW", "HEADER"))
@@ -125,7 +130,7 @@ class RECEPTIONIST(object):
         while self.angle<270 and not self.stop_rotation:
             time.sleep(0.1)
         self.tm.robot_stop_srv()
-        self.tm.look_for_object("",True)
+        self.tm.look_for_object("",False)
         self.stop_rotation=False
         if self.angle>=270:
             self.introduced_everyone()
@@ -150,7 +155,7 @@ class RECEPTIONIST(object):
         while self.angle<270 and not self.stop_rotation:
             time.sleep(0.1)
         self.tm.robot_stop_srv()
-        self.tm.look_for_object("",True)
+        self.tm.look_for_object("",False)
         self.chair_found()
 
     def on_enter_SIGNAL_SOMETHING(self):
