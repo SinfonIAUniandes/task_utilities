@@ -206,7 +206,6 @@ class Task_module:
                 response = False
                 subscriber = rospy.Subscriber("/perception_utilities/look_for_object_publisher", Bool, self.callback_look_for_object)
                 while not finish:
-                    print(self.object_found)
                     rospy.sleep(0.05) 
                     t_now = time.time()
                     if self.object_found:
@@ -381,7 +380,7 @@ class Task_module:
             print("navigation as false")
             return False
         
-    def go_to_place(self,place_name:str, graph:int)->bool:
+    def go_to_place(self,place_name:str, graph=1)->bool:
         """
         Input: place_name
         Output: True if the service was called correctly, False if not

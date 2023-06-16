@@ -102,7 +102,7 @@ class RECEPTIONIST(object):
     def on_enter_SAVE_FACE(self):
         print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
         self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
-        succed = self.tm.save_face(self.actual_person["name"],5)
+        succed = self.tm.save_face(self.actual_person["name"],7)
         if succed:
             self.save_face_succeded()
         else:
