@@ -122,7 +122,7 @@ class Task_module:
 
     ################### PERCEPTION SERVICES ###################
 
-    def turn_camera(self,camera_name:str,command:str,resolution=2,fps=10)->bool:
+    def turn_camera(self,camera_name:str,command:str,resolution=1,fps=10)->bool:
         """
         Input: 
         camera_name: "front_camera" || "bottom_camera" || "depth_camera"
@@ -149,10 +149,11 @@ class Task_module:
 
     def start_recognition(self,camera_name:str)->bool:
         """
-        Input: camera_name
+        Input: 
+        camera_name: "front_camera" || "bottom_camera"
         Output: True if the service was called correctly, False if not
         ----------
-        Starts recognition for camera_name, if camera_name is empty, it shuts down all recognition
+        Starts recognition for <camera_name>, if <camera_name> is empty, it shuts down all recognition
         """
         if self.perception:
             try:
@@ -171,7 +172,9 @@ class Task_module:
 
     def look_for_object(self,object_name:str,ignore_already_seen:bool)->bool:
         """
-        Input: object_name
+        Input: 
+        object_name: label of the object to look for
+        ignore_already_seen: True->ignore objects already seen || False->don't ignore objects already seen
         Output: True if the service was called correctly, False if not
         ----------
         Looks for object_name in the current get_labels topic, publishes T/F in look_for_object_publisher
@@ -227,7 +230,7 @@ class Task_module:
         Input: name, num_pics
         Output: True if the service was called correctly, False if not
         ----------
-        Saves num_pics of the face of the person with name
+        Saves num_pics of the face of the person with name and it's encodings
         """
         if self.perception:
             try:
@@ -280,16 +283,16 @@ class Task_module:
             return ""
     ################### SPEECH SERVICES ###################
         
-    def talk(self,text:str,language:str):
+    def talk(self,text:str,language:str,wait=True)->str:
         """
-        Input: text, time, language
+        Input: text, language, wait(wait until the robot finishes talking)
         Output: 'answer' that indicates what Pepper said.
         ----------
         Allows the robot to say the input of the service.
         """
         if self.speech:
             try:
-                answer = self.talk_proxy(text,language)
+                answer = self.talk_proxy(text,language,wait)
                 return answer
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
@@ -303,7 +306,7 @@ class Task_module:
         Input: seconds, file_name
         Output: 'Audio Saved' that indicates that Pepper already saved the audio.
         ----------
-        Allows the robot to save audio.
+        Allows the robot to save audio and saves it in a file.
         """
         if self.speech:
             try:
@@ -316,10 +319,10 @@ class Task_module:
             print("speech as false")
             return False
     
-    def q_a_speech(self, tag:str):
+    def q_a_speech(self, tag:str)->str:
         """
         Input: tag in lowercase
-        Output: Indicates what Pepper ask for (specific word or phrase).
+        Output: answer
         ----------
         Return a specific answer for predefined questions.
         """
@@ -382,7 +385,7 @@ class Task_module:
         
     def go_to_place(self,place_name:str, graph=1)->bool:
         """
-        Input: place_name
+        Input: place_name, graph
         Output: True if the service was called correctly, False if not
         ----------
         Goes to place_name
@@ -490,7 +493,7 @@ class Task_module:
         Input: degrees
         Output: True if the service was called correctly, False if not
         ----------
-        Spins the robot
+        Spins the robot a number of degrees
         """
         if self.navigation:
             try:
@@ -532,7 +535,7 @@ class Task_module:
         Input: place_name
         Output: True if the service was called correctly, False if not
         ----------
-        Gets route guidance
+        Gives instructions in steps to get to the <place_name>
         """
         if self.navigation:
             try:
@@ -550,7 +553,7 @@ class Task_module:
         Input: None
         Output: True if the service was called correctly, False if not
         ----------
-        Starts constant spin
+        Starts constant spin at a <velocity>
         """
         if self.navigation:
             try:
@@ -571,7 +574,7 @@ class Task_module:
         Input: None
         Output: True if the service was called correctly, False if not
         ----------
-        Waits for the robot to reach the place
+        Waits for the robot to reach the place when navigating
         """
         if self.navigation:                
             try:
