@@ -9,6 +9,7 @@ import threading
 import sys
 import rospy
 import math
+import os
 import numpy as np
 
 from navigation_msgs.srv import constant_spin_srv
@@ -23,7 +24,7 @@ class RECEPTIONIST(object):
         # Definir los estados posibles del semáforo
         self.task_name = "receptionist"
         states = ['INIT', 'WAIT4GUEST', 'QA', 'SAVE_FACE','INTRODUCE_NEW','INTRODUCE_OLD','GO2LIVING','GO2DOOR','LOOK4PERSON','LOOK4CHAIR','SIGNAL_SOMETHING']
-        self.tm = tm(perception = False,speech=False,manipulation=False, navigation=True)
+        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
@@ -46,24 +47,34 @@ class RECEPTIONIST(object):
         # Crear la máquina de estados
         self.machine = Machine(model=self, states=states, transitions=transitions, initial='RECEPTIONIST')
 
+        rospy_check = threading.Thread(target=self.check_rospy)
+        rospy_check.start()
+
         # ROS Callbacks
         subscriber_odom = rospy.Subscriber("/odom", Odometry, self.callback_spin_until)
         subscriber_look_for_object = rospy.Subscriber("/perception_utilities/look_for_object_publisher", Bool, self.callback_look_for_object)
 
         ##################### ROS CALLBACK VARIABLES #####################
         self.angle = 0
+        self.angle_offset =0
         self.object_found = False
         self.stop_rotation = False
         ##################### GLOBAL VARIABLES #####################
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
-        self.all_persons = {"charlie":{"name":"charlie","age":"20","drink":"beer"}}
+        self.all_persons = {"Charlie":{"name":"Charlie","age":"20","drink":"beer"}}
         self.actual_person={}
         self.old_person = ""
 
+    def calculate_angle(self,angle,offset):
+        if offset>angle:
+            return 360-(offset-angle)
+        else:
+            return angle-offset
 
     def callback_spin_until(self,data):
-        self.angle = int(np.degrees(euler_from_quaternion([data.pose.pose.orientation.x, data.pose.pose.orientation.y, data.pose.pose.orientation.z, data.pose.pose.orientation.w])[2] % (2 * math.pi)))
+        angle = int(np.degrees(euler_from_quaternion([data.pose.pose.orientation.x, data.pose.pose.orientation.y, data.pose.pose.orientation.z, data.pose.pose.orientation.w])[2] % (2 * math.pi)))
+        self.angle = self.calculate_angle(angle,self.angle_offset)
         return self.angle
     
     def callback_look_for_object(self,data):
@@ -73,17 +84,24 @@ class RECEPTIONIST(object):
         return data
     
     def on_enter_INIT(self):
+        #Check if it works
+        print(self.angle)
+        self.angle_offset = 180
+        print(self.angle)
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        self.tm.turn_camera("front_camera","enable",0,0)  
-        self.tm.start_recognition("front_camera")
+        self.tm.go_to_place("door")
+        self.tm.wait_go_to_place()
         self.beggining()
                 
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
+        self.tm.turn_camera("front_camera","custom",1,15)  
+        self.tm.start_recognition("front_camera")
         self.tm.talk("Waiting for guests","English")
         self.tm.look_for_object("person",True)
         self.tm.wait_for_object(-1)
+        self.tm.start_recognition("")
         self.tm.look_for_object("",True)
         self.person_arrived()
         
@@ -120,12 +138,15 @@ class RECEPTIONIST(object):
     
     def on_enter_LOOK4PERSON(self):
         print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
+        print("Angle: ",self.angle)
+        self.tm.start_recognition("front_camera")
         self.tm.look_for_object("person",True)
         self.tm.constant_spin_proxy(10.0)
         while self.angle<270 and not self.stop_rotation:
             time.sleep(0.1)
         self.tm.robot_stop_srv()
         self.tm.look_for_object("",True)
+        self.tm.start_recognition("")
         self.stop_rotation=False
         if self.angle>=270:
             self.introduced_everyone()
@@ -134,7 +155,10 @@ class RECEPTIONIST(object):
         
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
-        person_name = self.tm.recognize_face(3)
+        person_name = ""
+        while person_name == "":
+            person_name = self.tm.recognize_face(3)
+            print("saw: "+person_name)
         person_introduce = self.all_persons[person_name]
         self.tm.talk(" {} I introduce to you {} he is {} years old and he likes to drink {}".format(self.actual_person["name"],person_name,person_introduce["age"],person_introduce["drink"]),"English")
         self.introduced_old_person()
@@ -149,6 +173,7 @@ class RECEPTIONIST(object):
         self.tm.constant_spin_proxy(10.0)
         while self.angle<270 and not self.stop_rotation:
             time.sleep(0.1)
+        self.tm.start_recognition("")
         self.tm.robot_stop_srv()
         self.tm.look_for_object("",True)
         self.chair_found()
@@ -166,6 +191,12 @@ class RECEPTIONIST(object):
         self.tm.go_to_place("door")
         self.tm.wait_go_to_place()
         self.wait_new_guest()
+
+    def check_rospy(self):
+        while not rospy.is_shutdown():
+            time.sleep(0.1)
+        print(self.consoleFormatter.format("Shutting down", "FAIL"))
+        os._exit(os.EX_OK)
 
     def run(self):
         while not rospy.is_shutdown():

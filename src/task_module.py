@@ -260,8 +260,11 @@ class Task_module:
         """
         if self.perception:
             try:
-                name = self.recognize_face_proxy(num_pics)
-                return name
+                response = self.recognize_face_proxy(num_pics)
+                if response.approved:
+                    return response.person
+                else:
+                    return ""
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
                 return ""
@@ -586,7 +589,7 @@ class Task_module:
         """
         if self.navigation:
             try:
-                print("Waiting for object")
+                print("Waiting to reach the place")
                 finish=False
                 response = False
                 subscriber = self.simpleFeedbackSubscriber = rospy.Subscriber('/navigation_utilities/simple_feedback', simple_feedback_msg, self.callback_simple_feedback_subscriber)
