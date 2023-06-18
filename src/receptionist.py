@@ -149,21 +149,20 @@ class RECEPTIONIST(object):
     def on_enter_INTRODUCE_NEW(self):
         print(self.consoleFormatter.format("INTRODUCE_NEW", "HEADER"))
         self.tm.talk("Hello everyone, this is {}, he is {} years old and he likes to drink {}".format(self.actual_person["name"],self.actual_person["age"],self.actual_person["drink"]),"English")
+        #Turns on recognition and looks for  person
+        self.tm.start_recognition("front_camera")
+        rospy.sleep(0.5)
+        self.tm.look_for_object("person",True)
         self.introduced_new_person()
     
     def on_enter_LOOK4PERSON(self):
         #TODO revisar el alguno del robot y la velocidad de giro, igual que el punto de parada del robot
         print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
         print("Angle: ",self.angle)
-        self.tm.start_recognition("front_camera")
-        rospy.sleep(0.5)
-        self.tm.look_for_object("person",True)
         self.tm.constant_spin_proxy(10.0)
         while self.angle<270 and not self.stop_rotation:
             time.sleep(0.1)
         self.tm.robot_stop_srv()
-        self.tm.look_for_object("",True)
-        self.tm.start_recognition("")
         self.stop_rotation=False
         if self.angle>=270:
             self.introduced_everyone()
@@ -185,8 +184,10 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("LOOK4CHAIR", "HEADER"))
         self.tm.go_to_place("living_room")
         self.tm.turn_camera("bottom_camera","custom",1,15)
+        self.tm.start_recognition("")
         self.tm.start_recognition("bottom_camera")
         #TODO Revisar como hacer para silla sin/con persona
+        rospy.sleep(0.5)
         self.tm.look_for_object("chair",True)
         self.tm.constant_spin_proxy(10.0)
         while self.angle<270 and not self.stop_rotation:
