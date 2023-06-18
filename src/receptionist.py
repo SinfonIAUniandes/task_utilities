@@ -19,8 +19,17 @@ from tf.transformations import euler_from_quaternion
 
 class RECEPTIONIST(object):
     def __init__(self):
-
         
+        # TODO
+        """
+        - Revisar si se meten los servicios de interface o del pytoolkit directamente (ojala nodo de interface)
+        - Falta meter todos los servicios del pytoolkit al modulo para que se puedan llamar facilmente desde la maquina de estados.
+        - Falta crear behaviours como el spin_until_object que es usado varias veces en varios tasks.
+        - Falta revisar todos los angulos de navegacion al hacer look_4_something y la velocidad de giro 
+        - Poner una redundancia para cuando el robot asigna un nuevo a id a una misma persona para que no la presente (lista con los nombres de los que ya presento, incluyendo el actual)
+        """
+
+
         # Definir los estados posibles del semáforo
         self.task_name = "receptionist"
         states = ['INIT', 'WAIT4GUEST', 'QA', 'SAVE_FACE','INTRODUCE_NEW','INTRODUCE_OLD','GO2LIVING','GO2DOOR','LOOK4PERSON','LOOK4CHAIR','SIGNAL_SOMETHING']
@@ -84,7 +93,6 @@ class RECEPTIONIST(object):
         return data
     
     def on_enter_INIT(self):
-        #Check if it works
         print(self.angle)
         self.angle_offset = 180
         print(self.angle)
@@ -98,9 +106,11 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
         self.tm.turn_camera("front_camera","custom",1,15)  
         self.tm.start_recognition("front_camera")
+        #TODO mostrar el topico de yolo en la pantalla
         self.tm.talk("Waiting for guests","English")
         self.tm.look_for_object("person",True)
         self.tm.wait_for_object(-1)
+        #TODO apagar el topico de yolo en la pantalla
         self.tm.start_recognition("")
         self.tm.look_for_object("",True)
         self.person_arrived()
@@ -116,9 +126,13 @@ class RECEPTIONIST(object):
 
     def on_enter_SAVE_FACE(self):
         print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
+        #TODO mostrar el topico con el filtro para meter la cara en la pantalla
+        #TODO encender el awareness para que siga la cara de la persona
         self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
         succed = self.tm.save_face(self.actual_person["name"],7)
+        #TODO apagar el topico con el filtro para meter la cara en la pantalla
         if succed:
+            #TODO apagar el awareness y fijar la posicion de la cabeza para que mire al frente
             self.save_face_succeded()
         else:
             self.tm.talk("I am sorry {}, I was not able to save your face, can you please see my tablet and fit your face".format(self.actual_person["name"]),"English")
@@ -126,9 +140,10 @@ class RECEPTIONIST(object):
     
     def on_enter_GO2LIVING(self):
         print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
-        self.tm.talk("Please {}, follow me to the living room".format(self.actual_person["name"]),"English")
+        self.tm.talk("Please {}, follow me to the living room".format(self.actual_person["name"]),"English",wait=False)
         self.tm.go_to_place("living_room")
         self.tm.wait_go_to_place()
+        #TODO revisar el angulo de llegada del robot
         self.arrived_to_point()
 
     def on_enter_INTRODUCE_NEW(self):
@@ -137,9 +152,11 @@ class RECEPTIONIST(object):
         self.introduced_new_person()
     
     def on_enter_LOOK4PERSON(self):
+        #TODO revisar el alguno del robot y la velocidad de giro, igual que el punto de parada del robot
         print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
         print("Angle: ",self.angle)
         self.tm.start_recognition("front_camera")
+        rospy.sleep(0.5)
         self.tm.look_for_object("person",True)
         self.tm.constant_spin_proxy(10.0)
         while self.angle<270 and not self.stop_rotation:
@@ -160,6 +177,7 @@ class RECEPTIONIST(object):
             person_name = self.tm.recognize_face(3)
             print("saw: "+person_name)
         person_introduce = self.all_persons[person_name]
+        #TODO manipulacion animations/poses
         self.tm.talk(" {} I introduce to you {} he is {} years old and he likes to drink {}".format(self.actual_person["name"],person_name,person_introduce["age"],person_introduce["drink"]),"English")
         self.introduced_old_person()
     
@@ -168,7 +186,7 @@ class RECEPTIONIST(object):
         self.tm.go_to_place("living_room")
         self.tm.turn_camera("bottom_camera","custom",1,15)
         self.tm.start_recognition("bottom_camera")
-        #TODO Chair without person
+        #TODO Revisar como hacer para silla sin/con persona
         self.tm.look_for_object("chair",True)
         self.tm.constant_spin_proxy(10.0)
         while self.angle<270 and not self.stop_rotation:
@@ -181,7 +199,7 @@ class RECEPTIONIST(object):
     def on_enter_SIGNAL_SOMETHING(self):
         print(self.consoleFormatter.format("SIGNAL_SOMETHING", "HEADER"))
         self.tm.talk("Please, take a seat {}".format(self.actual_person["name"]),"English")
-        #TODO
+        #TODO manipulacion animations/poses
         #self.tm.go_to_pose("signal")
         self.person_accomodated()
 
@@ -193,6 +211,7 @@ class RECEPTIONIST(object):
         self.wait_new_guest()
 
     def check_rospy(self):
+        #Termina todos los procesos al cerrar el nodo
         while not rospy.is_shutdown():
             time.sleep(0.1)
         print(self.consoleFormatter.format("Shutting down", "FAIL"))

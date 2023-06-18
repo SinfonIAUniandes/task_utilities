@@ -204,7 +204,7 @@ class Task_module:
 
     def wait_for_object(self,timeout:float)->bool:
         """
-        Input: timeout in seconds
+        Input: timeout in seconds || -1 for infinite
         Output: True->Found || False->Timeout/Fail
         ----------
         Waits for object to be found for a max of <timeout> seconds
