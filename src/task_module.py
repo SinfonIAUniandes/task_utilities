@@ -241,7 +241,7 @@ class Task_module:
             print("perception as false")
             return False
 
-    def save_face(self,name:str,num_pics:int)->bool:
+    def save_face(self,name:str,num_pics=5)->bool:
         """
         Input: name, num_pics
         Output: True if the service was called correctly, False if not
@@ -259,7 +259,7 @@ class Task_module:
             print("perception as false")
             return False
 
-    def recognize_face(self, num_pics:int)->str:
+    def recognize_face(self, num_pics=3)->str:
         """
         Input: num_pics of the face to recognize
         Output: name of the recognized person
@@ -340,7 +340,7 @@ class Task_module:
 
     def q_a_speech(self, tag:str)->str:
         """
-        Input: tag in lowercase
+        Input: tag in lowercase ("age", "name", "drink")
         Output: answer
         ----------
         Returns a specific answer for predefined questions.
@@ -360,7 +360,7 @@ class Task_module:
 
     def set_current_place(self,place_name:str)->bool:
         """
-        Input: place_name
+        Input: place_name 
         Output: True if the service was called correctly, False if not
         ----------
         Sets the pose of the robot to the coordinates of the place specified in
@@ -404,7 +404,7 @@ class Task_module:
 
     def go_to_place(self,place_name:str, graph=1)->bool:
         """
-        Input: place_name, graph
+        Input: place_name ("door","living_room"), graph
         Output: True if the service was called correctly, False if not
         ----------
         Goes to place_name
