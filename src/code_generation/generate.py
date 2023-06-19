@@ -32,9 +32,8 @@ def get_task_module_code()-> str:
     return codebase
 
 
-def generate_code(task_input: str)-> str:
+def generate_code(task_input: str, model="gpt-3.5-turbo")-> str:
 
-    ## TODO: Get the codebase from the task module
     task_module_code = get_task_module_code()
 
     system_message = """You are a code generation AI model for a robot called Pepper."""
@@ -63,7 +62,7 @@ def generate_code(task_input: str)-> str:
     # Code to generate:
     """
 
-    return generate_text(text_prompt, system_message=system_message)
+    return generate_text(text_prompt, system_message=system_message, model=model)
 
 if __name__ == "__main__":
     openai.api_key = os.environ["OPENAI_API_KEY"]

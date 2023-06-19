@@ -223,18 +223,18 @@ class Task_module:
 
     ################### MANIPULATION SERVICES ###################
 
-    def saveState(self, name:str)->bool: 
+    def saveState(self, name:str)->bool:
         """
-        Input: robot_joints as name 
+        Input: robot_joints as name
         Output: True if the file is created or False if is not
         ---------
-        Saves the current state of the robot's joints to a CSV file 
+        Saves the current state of the robot's joints to a CSV file
         """
-        
-    def goToState(self, joint_group_positions: list)->bool: 
+
+    def goToState(self, joint_group_positions: list)->bool:
         """
-        Input: joint_group_position actions for the robot's arms 
+        Input: joint_group_position actions for the robot's arms
         Output: True after the robot moves
         ---------
-        Performs a series of actions to move the robot's arms to a desired configuration defined by joint_group_positions.        
+        Performs a series of actions to move the robot's arms to a desired configuration defined by joint_group_positions.
         """
