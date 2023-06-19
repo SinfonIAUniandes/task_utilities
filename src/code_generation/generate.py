@@ -67,4 +67,4 @@ def generate_code(task_input: str)-> str:
 
 if __name__ == "__main__":
     openai.api_key = os.environ["OPENAI_API_KEY"]
-    print(generate_code("Hi pepper can you please tell me if there's somebody in the kitchen"))
+    print(generate_code("Go to the living room and ask the person his name"))

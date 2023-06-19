@@ -99,7 +99,7 @@ class Task_module:
     def talk(self,text:str,language:str,wait=True)->str:
         """
         Input: text, language, wait(wait until the robot finishes talking)
-        Output: 'answer' that indicates what Pepper said.
+        Output: text that indicates what Pepper said.
         ----------
         Allows the robot to say the input of the service.
         """
@@ -123,13 +123,20 @@ class Task_module:
 
     ################### NAVIGATION SERVICES ###################
 
+    def go_to_place(self,place_name:str, graph=1)->bool:
+        """
+        Input: place_name ("door","living_room"), graph
+        Output: True if the service was called correctly, False if not
+        ----------
+        Goes to place_name
+        """
+
     def set_current_place(self,place_name:str)->bool:
         """
         Input: place_name
         Output: True if the service was called correctly, False if not
         ----------
-        Sets the pose of the robot to the coordinates of the place specified in
-        the request message, then it clears the global costmap.
+        Sets the current place name to <place_name>
         """
 
     def go_to_relative_point(self,x:float,y:float,theta:float)->bool:
@@ -139,14 +146,6 @@ class Task_module:
         ----------
         Sends the robot to the coordinates (in meters and relative to the robot)
         specified in the request message.
-        """
-
-    def go_to_place(self,place_name:str, graph=1)->bool:
-        """
-        Input: place_name ("door","living_room"), graph
-        Output: True if the service was called correctly, False if not
-        ----------
-        Goes to place_name
         """
 
     def start_random_navigation_srv(self)->bool:
