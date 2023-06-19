@@ -32,24 +32,26 @@ def get_task_module_code()-> str:
     return codebase
 
 
-def generate_code(task_input: str, model="gpt-3.5-turbo")-> str:
+def generate_code(task_input: str)-> str:
 
+    ## TODO: Get the codebase from the task module
     task_module_code = get_task_module_code()
 
     system_message = """You are a code generation AI model for a robot called Pepper."""
 
     text_prompt = f"""
-    You are given a task description and an interface of the codebase (it only describes what each function does). You must generate the code that completes the task using the codebase interface.
+    You are a Pepper robot, given a task description and an interface of the codebase (it only describes what each function does). You must generate the code that completes the task using the codebase interface.
 
     # Details about the code to generate:
-    - The code must be written in python
+    - The code must be written in python and the output will be executed directly
     - The code utilizes the rospy library to communicate with the robot
-    - The Task_module class must be instantiated in order to use the codebase interface only once
-    - The interface is already given as an importable python module, the import sentence is: `import task_module as tm`
-    - The code cannot include the original codebase interface, it is given that the codebase interface is already imported as `tm`
+    - The interface is already given as an importable python module, the import sentence is: `import task_module`
+    - The Task_module class must be instantiated in order to use the codebase interface only once `tm = task_module.Task_module(perception = True,speech=True,manipulation=True, navigation=True)`
+    - The initialize_node function must be called before any other function in the codebase interface, this turns on a ros node
+    - The code cannot include the original codebase interface, it is given that the codebase interface is instantiated as the `tm` instance
     - No calls to rospy are allowed with the exception of rospy.sleep() calls, everything must be called through the codebase interface
     - Do not use the time library to sleep, use rospy.sleep() instead
-    - Remember to initialize and dispose of every sensor that you use
+    - Remember to initialize and dispose of every sensor in case you need them
 
     # Task Description:
 
@@ -62,8 +64,8 @@ def generate_code(task_input: str, model="gpt-3.5-turbo")-> str:
     # Code to generate:
     """
 
-    return generate_text(text_prompt, system_message=system_message, model=model)
+    return generate_text(text_prompt, system_message=system_message)
 
 if __name__ == "__main__":
     openai.api_key = os.environ["OPENAI_API_KEY"]
-    print(generate_code("Go to the living room and ask the person his name"))
+    print(generate_code("Go to the living room and ask the person his name, then go to the door and say something funny of the person name"))

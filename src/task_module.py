@@ -133,6 +133,9 @@ class Task_module:
     #################################### SERVICES #######################################
 
     def initialize_node(self,task_name):
+        """
+        Initialized the node with the name of the task
+        """
         rospy.init_node('task_'+task_name+'_node')
 
 
@@ -304,7 +307,10 @@ class Task_module:
 
     def talk(self,text:str,language:str,wait=True)->str:
         """
-        Input: text, language, wait(wait until the robot finishes talking)
+        Input: 
+        text
+        language: English || Spanish
+        wait(wait until the robot finishes talking)
         Output: 'answer' that indicates what Pepper said.
         ----------
         Allows the robot to say the input of the service.
