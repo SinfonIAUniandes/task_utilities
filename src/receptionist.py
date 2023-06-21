@@ -171,6 +171,7 @@ class RECEPTIONIST(object):
         self.tm.constant_spin_proxy(10.0)
         while self.angle<self.angle_stop_looking_person and not self.stop_rotation:
             time.sleep(0.1)
+        print("El angulo es de: "+str(self.angle)+" y stop rotation es: "+str(self.stop_rotation))
         self.tm.robot_stop_srv()
         self.stop_rotation=False
         if self.angle>=self.angle_stop_looking_person or len(self.introduced_persons)==len(self.all_persons):
