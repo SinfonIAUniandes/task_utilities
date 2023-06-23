@@ -95,6 +95,7 @@ class RECEPTIONIST(object):
         self.introduced_persons = []
         self.actual_person={}
         self.old_person = ""
+        self.failed_saving_face=False
 
 
 
@@ -109,9 +110,9 @@ class RECEPTIONIST(object):
         return data
     
     def on_enter_INIT(self):
-        print(self.angle)
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
+        self.show_topic_srv("/robot_toolkit_node/camera/front/image_raw")
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.turn_camera("bottom_camera","custom",1,15)
         self.tm.go_to_place("door")
@@ -119,7 +120,9 @@ class RECEPTIONIST(object):
                 
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
+        self.show_topic_srv("/robot_toolkit_node/camera/front/image_raw")
         self.tm.start_recognition("front_camera")
+        time.sleep(0.2)
         #TODO mostrar el topico de yolo en la pantalla
         self.tm.talk("Waiting for guests","English")
         self.tm.look_for_object("person",True)
@@ -130,7 +133,6 @@ class RECEPTIONIST(object):
         self.person_arrived()
         
     def on_enter_QA(self):
-        self.show_topic_srv("/perception_utilities/yolo_publisher")
         print(self.consoleFormatter.format("QA", "HEADER"))
         name=self.tm.q_a_speech("name")
         age=self.tm.q_a_speech("age")
@@ -146,16 +148,20 @@ class RECEPTIONIST(object):
         self.awareness_srv(False)
         time.sleep(0.5)
         self.animations_publisher.publish("animations","Gestures/Look_1")
-        self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
+        if not self.failed_saving_face:
+            self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
         succed = self.tm.save_face(self.actual_person["name"],5)
+        print("succed ",succed)
         #TODO apagar el topico con el filtro para meter la cara en la pantalla
         if succed:
             #TODO apagar el awareness y fijar la posicion de la cabeza para que mire al frente
             self.awareness_srv(False)
             time.sleep(0.5)
             self.animations_publisher.publish("animations","Gestures/Maybe_1")
+            self.failed_saving_face=False
             self.save_face_succeded()
         else:
+            self.failed_saving_face=True
             self.tm.talk("I am sorry {}, I was not able to save your face, can you please see my tablet and fit your face".format(self.actual_person["name"]),"English")
             self.save_face_failed()
     
@@ -174,6 +180,7 @@ class RECEPTIONIST(object):
         self.tm.go_to_defined_angle_srv(0)
         #Turns on recognition and looks for  person
         self.tm.start_recognition("front_camera")
+        #Start bottom camera for the chair
         rospy.sleep(0.5)
         self.tm.look_for_object("person",True)
         self.stop_rotation=False
@@ -188,6 +195,7 @@ class RECEPTIONIST(object):
             time.sleep(0.1)
         print("El angulo es de: "+str(self.angle)+" y stop rotation es: "+str(self.stop_rotation))
         self.tm.robot_stop_srv()
+        print(self.consoleFormatter.format("STOP LOOKING", "WARNING"))
         self.stop_rotation=False
         if self.angle>=self.angle_stop_looking_person or len(self.introduced_persons)==len(self.all_persons):
             self.tm.go_to_defined_angle_srv(self.angle_stop_looking_person)
@@ -197,7 +205,7 @@ class RECEPTIONIST(object):
         
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
-        self.tm.spin_srv(20)
+        # self.tm.spin_srv(20)
         person_name = ""
         while person_name == "" and self.recognize_person_counter<2:
             person_name = self.tm.recognize_face(3)

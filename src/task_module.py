@@ -251,7 +251,8 @@ class Task_module:
         if self.perception:
             try:
                 approved = self.save_face_proxy(name,num_pics)
-                return approved
+                print("approved",approved)
+                return approved.approved
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
                 return False
