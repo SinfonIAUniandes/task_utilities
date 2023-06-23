@@ -15,6 +15,7 @@ from std_srvs.srv import SetBool
 
 from navigation_msgs.srv import constant_spin_srv
 from navigation_msgs.msg import simple_feedback_msg
+from robot_toolkit_msgs.srv import tablet_service_srv
 from robot_toolkit_msgs.msg import animation_msg
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion
@@ -70,10 +71,12 @@ class RECEPTIONIST(object):
 
         # ROS Services (PyToolkit)
         print(self.consoleFormatter.format("Waiting for pytoolkit/awareness...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
         self.awareness_srv = rospy.ServiceProxy("/pytoolkit/ALBasicAwareness/set_awareness_srv",SetBool)
 
         print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
-        self.show_topic_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_topic_srv",SetBool)
+        rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
+        self.show_topic_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_topic_srv",tablet_service_srv)
 
         # ROS Publishers
         print(self.consoleFormatter.format("Waiting for /animations", "WARNING"))
@@ -127,7 +130,7 @@ class RECEPTIONIST(object):
         self.person_arrived()
         
     def on_enter_QA(self):
-        # self.show_topic_srv("/robot_toolkit_node/camera/bottom/image_raw")
+        self.show_topic_srv("/perception_utilities/yolo_publisher")
         print(self.consoleFormatter.format("QA", "HEADER"))
         name=self.tm.q_a_speech("name")
         age=self.tm.q_a_speech("age")
@@ -140,14 +143,16 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
         #TODO mostrar el topico con el filtro para meter la cara en la pantalla
         #TODO encender el awareness para que siga la cara de la persona
-        self.awareness_srv(True)
-        self.animations_publisher.publish("animations","Gestures/Maybe_1")
+        self.awareness_srv(False)
+        time.sleep(0.5)
+        self.animations_publisher.publish("animations","Gestures/Look_1")
         self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
         succed = self.tm.save_face(self.actual_person["name"],5)
         #TODO apagar el topico con el filtro para meter la cara en la pantalla
         if succed:
             #TODO apagar el awareness y fijar la posicion de la cabeza para que mire al frente
             self.awareness_srv(False)
+            time.sleep(0.5)
             self.animations_publisher.publish("animations","Gestures/Maybe_1")
             self.save_face_succeded()
         else:
@@ -202,7 +207,9 @@ class RECEPTIONIST(object):
         if person_name not in self.introduced_persons and person_name in self.all_persons:
             person_introduce = self.all_persons[person_name]
             #TODO manipulacion animations/poses
+            self.animations_publisher.publish("animations","Gestures/You_2")
             self.tm.talk(" {} I introduce to you {} he is {} years old and he likes to drink {}".format(self.actual_person["name"],person_name,person_introduce["age"],person_introduce["drink"]),"English")
+            self.animations_publisher.publish("animations","Gestures/Maybe_1")
             self.introduced_persons.append(person_name)
         self.introduced_old_person()
     
@@ -224,6 +231,9 @@ class RECEPTIONIST(object):
     def on_enter_SIGNAL_SOMETHING(self):
         print(self.consoleFormatter.format("SIGNAL_SOMETHING", "HEADER"))
         self.tm.talk("Please, take a seat {}".format(self.actual_person["name"]),"English")
+        self.animations_publisher.publish("animations","Gestures/You_2")
+        time.sleep(0.5)
+        self.animations_publisher.publish("animations","Gestures/Maybe_1")
         #TODO manipulacion animations/poses
         #self.tm.go_to_pose("signal")
         self.person_accomodated()

@@ -405,7 +405,7 @@ class Task_module:
             print("navigation as false")
             return False
 
-    def go_to_place(self,place_name:str, graph=1,wait = True)->bool:
+    def go_to_place(self,place_name:str, graph=1, wait=True)->bool:
         """
         Input: place_name ("door","living_room"), graph
         Output: True if the service was called correctly, False if not

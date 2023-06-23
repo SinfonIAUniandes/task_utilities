@@ -87,13 +87,6 @@ class GPSR(object):
         self.stop_rotation = False
         ##################### GLOBAL VARIABLES #####################
 
-        
-        self.all_persons = {"Charlie":{"name":"Charlie","age":"20","drink":"beer"}}
-        self.introduced_persons = []
-        self.actual_person={}
-        self.old_person = ""
-
-
 
     def callback_spin_until(self,data):
         self.angle = int(np.degrees(euler_from_quaternion([data.pose.pose.orientation.x, data.pose.pose.orientation.y, data.pose.pose.orientation.z, data.pose.pose.orientation.w])[2] % (2 * math.pi)))
@@ -137,98 +130,6 @@ class GPSR(object):
         self.all_persons[name] = {"name":name,"age":age,"drink":drink}
         self.person_met()
 
-    def on_enter_SAVE_FACE(self):
-        print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
-        #TODO mostrar el topico con el filtro para meter la cara en la pantalla
-        #TODO encender el awareness para que siga la cara de la persona
-        self.awareness_srv(True)
-        self.animations_publisher.publish("animations","Gestures/Maybe_1")
-        self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
-        succed = self.tm.save_face(self.actual_person["name"],5)
-        #TODO apagar el topico con el filtro para meter la cara en la pantalla
-        if succed:
-            #TODO apagar el awareness y fijar la posicion de la cabeza para que mire al frente
-            self.awareness_srv(False)
-            self.animations_publisher.publish("animations","Gestures/Maybe_1")
-            self.save_face_succeded()
-        else:
-            self.tm.talk("I am sorry {}, I was not able to save your face, can you please see my tablet and fit your face".format(self.actual_person["name"]),"English")
-            self.save_face_failed()
-    
-    def on_enter_GO2LIVING(self):
-        print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
-        self.tm.talk("Please {}, follow me to the living room".format(self.actual_person["name"]),"English",wait=False)
-        self.tm.go_to_place("living_room")
-        self.tm.wait_go_to_place()
-        #TODO revisar el angulo de llegada del robot
-        self.arrived_to_point()
-
-    def on_enter_INTRODUCE_NEW(self):
-        print(self.consoleFormatter.format("INTRODUCE_NEW", "HEADER"))
-        self.introduced_persons=[]
-        self.introduced_persons.append(self.actual_person["name"])
-        self.tm.talk("Hello everyone, this is {}, he is {} years old and he likes to drink {}".format(self.actual_person["name"],self.actual_person["age"],self.actual_person["drink"]),"English")
-        self.tm.go_to_defined_angle_srv(0)
-        #Turns on recognition and looks for  person
-        self.tm.start_recognition("front_camera")
-        rospy.sleep(0.5)
-        self.tm.look_for_object("person",True)
-        self.stop_rotation=False
-        self.introduced_new_person()
-    
-    def on_enter_LOOK4PERSON(self):
-        #TODO revisar el alguno del robot y la velocidad de giro, igual que el punto de parada del robot
-        print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
-        print("Angle: ",self.angle)
-        self.tm.constant_spin_proxy(10.0)
-        while self.angle<self.angle_stop_looking_person and not self.stop_rotation:
-            time.sleep(0.1)
-        print("El angulo es de: "+str(self.angle)+" y stop rotation es: "+str(self.stop_rotation))
-        self.tm.robot_stop_srv()
-        self.stop_rotation=False
-        if self.angle>=self.angle_stop_looking_person or len(self.introduced_persons)==len(self.all_persons):
-            self.tm.go_to_defined_angle_srv(self.angle_stop_looking_person)
-            self.introduced_everyone()
-        else:
-            self.person_found()
-        
-    def on_enter_INTRODUCE_OLD(self):
-        print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
-        self.tm.spin_srv(20)
-        person_name = ""
-        while person_name == "" and self.recognize_person_counter<2:
-            person_name = self.tm.recognize_face(3)
-            print("saw: "+person_name)
-            self.recognize_person_counter+=1
-        self.recognize_person_counter=0
-        if person_name not in self.introduced_persons and person_name in self.all_persons:
-            person_introduce = self.all_persons[person_name]
-            #TODO manipulacion animations/poses
-            self.tm.talk(" {} I introduce to you {} he is {} years old and he likes to drink {}".format(self.actual_person["name"],person_name,person_introduce["age"],person_introduce["drink"]),"English")
-            self.introduced_persons.append(person_name)
-        self.introduced_old_person()
-    
-    def on_enter_LOOK4CHAIR(self):
-        print(self.consoleFormatter.format("LOOK4CHAIR", "HEADER"))
-        self.tm.start_recognition("")
-        self.tm.start_recognition("bottom_camera")
-        #TODO Revisar como hacer para silla sin/con persona
-        rospy.sleep(0.5)
-        self.tm.look_for_object("chair",True)
-        self.tm.constant_spin_proxy(-20.0)
-        while self.angle>10 and not self.stop_rotation:
-            time.sleep(0.1)
-        self.tm.start_recognition("")
-        self.tm.robot_stop_srv()
-        self.tm.look_for_object("",True)
-        self.chair_found()
-
-    def on_enter_SIGNAL_SOMETHING(self):
-        print(self.consoleFormatter.format("SIGNAL_SOMETHING", "HEADER"))
-        self.tm.talk("Please, take a seat {}".format(self.actual_person["name"]),"English")
-        #TODO manipulacion animations/poses
-        #self.tm.go_to_pose("signal")
-        self.person_accomodated()
 
     def on_enter_GO2DOOR(self):
         print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
