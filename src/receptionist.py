@@ -31,7 +31,7 @@ class RECEPTIONIST(object):
         - Poner una redundancia para cuando el robot asigna un nuevo a id a una misma persona para que no la presente (lista con los nombres de los que ya presento, incluyendo el actual)
         """
 
-
+        self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
         self.task_name = "receptionist"
         states = ['INIT', 'WAIT4GUEST', 'QA', 'SAVE_FACE','INTRODUCE_NEW','INTRODUCE_OLD','GO2LIVING','GO2DOOR','LOOK4PERSON','LOOK4CHAIR','SIGNAL_SOMETHING']
@@ -62,13 +62,22 @@ class RECEPTIONIST(object):
         rospy_check.start()
 
         # ROS Callbacks
+        print(self.consoleFormatter.format("Waiting for /amcl_pose", "WARNING"))
         subscriber_odom = rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.callback_spin_until)
+
+        print(self.consoleFormatter.format("Waiting for /look_for_object_publisher", "WARNING"))
         subscriber_look_for_object = rospy.Subscriber("/perception_utilities/look_for_object_publisher", Bool, self.callback_look_for_object)
+
         # ROS Services (PyToolkit)
-        rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
+        print(self.consoleFormatter.format("Waiting for pytoolkit/awareness...", "WARNING"))
         self.awareness_srv = rospy.ServiceProxy("/pytoolkit/ALBasicAwareness/set_awareness_srv",SetBool)
+
+        print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
+        self.show_topic_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_topic_srv",SetBool)
+
         # ROS Publishers
-        self.animations_publisher = rospy.Publisher("animations", animation_msg, queue_size = 1)
+        print(self.consoleFormatter.format("Waiting for /animations", "WARNING"))
+        self.animations_publisher = rospy.Publisher("/animations", animation_msg, queue_size = 1)
 
         ##################### ROS CALLBACK VARIABLES #####################
         self.angle = 0
@@ -78,7 +87,7 @@ class RECEPTIONIST(object):
         self.stop_rotation = False
         ##################### GLOBAL VARIABLES #####################
 
-        self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
+        
         self.all_persons = {"Charlie":{"name":"Charlie","age":"20","drink":"beer"}}
         self.introduced_persons = []
         self.actual_person={}
@@ -100,13 +109,14 @@ class RECEPTIONIST(object):
         print(self.angle)
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
+        self.tm.turn_camera("front_camera","custom",1,15) 
+        self.tm.turn_camera("bottom_camera","custom",1,15)
         self.tm.go_to_place("door")
         self.tm.wait_go_to_place()
         self.beggining()
                 
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
-        self.tm.turn_camera("front_camera","custom",1,15)  
         self.tm.start_recognition("front_camera")
         #TODO mostrar el topico de yolo en la pantalla
         self.tm.talk("Waiting for guests","English")
@@ -118,6 +128,7 @@ class RECEPTIONIST(object):
         self.person_arrived()
         
     def on_enter_QA(self):
+        # self.show_topic_srv("/robot_toolkit_node/camera/bottom/image_raw")
         print(self.consoleFormatter.format("QA", "HEADER"))
         name=self.tm.q_a_speech("name")
         age=self.tm.q_a_speech("age")
@@ -131,8 +142,9 @@ class RECEPTIONIST(object):
         #TODO mostrar el topico con el filtro para meter la cara en la pantalla
         #TODO encender el awareness para que siga la cara de la persona
         self.awareness_srv(True)
+        self.animations_publisher.publish("animations","Gestures/Maybe_1")
         self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
-        succed = self.tm.save_face(self.actual_person["name"],7)
+        succed = self.tm.save_face(self.actual_person["name"],5)
         #TODO apagar el topico con el filtro para meter la cara en la pantalla
         if succed:
             #TODO apagar el awareness y fijar la posicion de la cabeza para que mire al frente
@@ -182,6 +194,7 @@ class RECEPTIONIST(object):
         
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
+        self.tm.spin_srv(20)
         person_name = ""
         while person_name == "" and self.recognize_person_counter<2:
             person_name = self.tm.recognize_face(3)
@@ -197,7 +210,6 @@ class RECEPTIONIST(object):
     
     def on_enter_LOOK4CHAIR(self):
         print(self.consoleFormatter.format("LOOK4CHAIR", "HEADER"))
-        self.tm.turn_camera("bottom_camera","custom",1,15)
         self.tm.start_recognition("")
         self.tm.start_recognition("bottom_camera")
         #TODO Revisar como hacer para silla sin/con persona
