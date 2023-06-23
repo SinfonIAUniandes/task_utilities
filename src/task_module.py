@@ -405,7 +405,7 @@ class Task_module:
             print("navigation as false")
             return False
 
-    def go_to_place(self,place_name:str, graph=1)->bool:
+    def go_to_place(self,place_name:str, graph=1,wait = True)->bool:
         """
         Input: place_name ("door","living_room"), graph
         Output: True if the service was called correctly, False if not
@@ -415,6 +415,8 @@ class Task_module:
         if self.navigation:
             try:
                 approved = self.go_to_place_proxy(place_name, graph)
+                if wait:
+                    self.wait_go_to_place()
                 if approved=="approved":
                     return True
                 else:
@@ -612,6 +614,7 @@ class Task_module:
                     elif rospy.is_shutdown():
                         finish=True
                         response = False
+                
                 return response
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)

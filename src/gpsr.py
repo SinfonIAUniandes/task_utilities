@@ -19,7 +19,7 @@ from robot_toolkit_msgs.msg import animation_msg
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion
 
-class RECEPTIONIST(object):
+class GPSR(object):
     def __init__(self):
         
         # TODO
@@ -33,7 +33,7 @@ class RECEPTIONIST(object):
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
-        self.task_name = "receptionist"
+        self.task_name = "GPSR"
         states = ['INIT', 'WAIT4GUEST', 'QA', 'SAVE_FACE','INTRODUCE_NEW','INTRODUCE_OLD','GO2LIVING','GO2DOOR','LOOK4PERSON','LOOK4CHAIR','SIGNAL_SOMETHING']
         self.tm = tm(perception = True,speech=True,manipulation=False, navigation=True)
         self.tm.initialize_node(self.task_name)
@@ -112,6 +112,7 @@ class RECEPTIONIST(object):
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.turn_camera("bottom_camera","custom",1,15)
         self.tm.go_to_place("door")
+        self.tm.wait_go_to_place()
         self.beggining()
                 
     def on_enter_WAIT4GUEST(self):
@@ -158,6 +159,7 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
         self.tm.talk("Please {}, follow me to the living room".format(self.actual_person["name"]),"English",wait=False)
         self.tm.go_to_place("living_room")
+        self.tm.wait_go_to_place()
         #TODO revisar el angulo de llegada del robot
         self.arrived_to_point()
 
@@ -232,6 +234,7 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
         self.tm.talk("Waiting for guests to come","English")
         self.tm.go_to_place("door")
+        self.tm.wait_go_to_place()
         self.wait_new_guest()
 
     def check_rospy(self):
@@ -248,6 +251,6 @@ class RECEPTIONIST(object):
     
 # Crear una instancia de la maquina de estados
 if __name__ == "__main__":
-    sm = RECEPTIONIST()
+    sm = GPSR()
     sm.run()
     rospy.spin()
