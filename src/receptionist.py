@@ -15,6 +15,7 @@ from std_srvs.srv import SetBool
 
 from navigation_msgs.srv import constant_spin_srv
 from navigation_msgs.msg import simple_feedback_msg
+from robot_toolkit_msgs.srv import tablet_service_srv
 from robot_toolkit_msgs.msg import animation_msg
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion
@@ -31,7 +32,7 @@ class RECEPTIONIST(object):
         - Poner una redundancia para cuando el robot asigna un nuevo a id a una misma persona para que no la presente (lista con los nombres de los que ya presento, incluyendo el actual)
         """
 
-
+        self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
         self.task_name = "receptionist"
         states = ['INIT', 'WAIT4GUEST', 'QA', 'SAVE_FACE','INTRODUCE_NEW','INTRODUCE_OLD','GO2LIVING','GO2DOOR','LOOK4PERSON','LOOK4CHAIR','SIGNAL_SOMETHING']
@@ -62,13 +63,24 @@ class RECEPTIONIST(object):
         rospy_check.start()
 
         # ROS Callbacks
+        print(self.consoleFormatter.format("Waiting for /amcl_pose", "WARNING"))
         subscriber_odom = rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.callback_spin_until)
+
+        print(self.consoleFormatter.format("Waiting for /look_for_object_publisher", "WARNING"))
         subscriber_look_for_object = rospy.Subscriber("/perception_utilities/look_for_object_publisher", Bool, self.callback_look_for_object)
+
         # ROS Services (PyToolkit)
+        print(self.consoleFormatter.format("Waiting for pytoolkit/awareness...", "WARNING"))
         rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
         self.awareness_srv = rospy.ServiceProxy("/pytoolkit/ALBasicAwareness/set_awareness_srv",SetBool)
+
+        print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
+        self.show_topic_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_topic_srv",tablet_service_srv)
+
         # ROS Publishers
-        self.animations_publisher = rospy.Publisher("animations", animation_msg, queue_size = 1)
+        print(self.consoleFormatter.format("Waiting for /animations", "WARNING"))
+        self.animations_publisher = rospy.Publisher("/animations", animation_msg, queue_size = 1)
 
         ##################### ROS CALLBACK VARIABLES #####################
         self.angle = 0
@@ -78,11 +90,12 @@ class RECEPTIONIST(object):
         self.stop_rotation = False
         ##################### GLOBAL VARIABLES #####################
 
-        self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
+        
         self.all_persons = {"Charlie":{"name":"Charlie","age":"20","drink":"beer"}}
         self.introduced_persons = []
         self.actual_person={}
         self.old_person = ""
+        self.failed_saving_face=False
 
 
 
@@ -97,20 +110,22 @@ class RECEPTIONIST(object):
         return data
     
     def on_enter_INIT(self):
-        print(self.angle)
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
+        self.show_topic_srv("/robot_toolkit_node/camera/front/image_raw")
+        self.tm.turn_camera("front_camera","custom",1,15) 
+        self.tm.turn_camera("bottom_camera","custom",1,15)
         self.tm.go_to_place("door")
-        self.tm.wait_go_to_place()
         self.beggining()
                 
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
-        self.tm.turn_camera("front_camera","custom",1,15)  
+        self.show_topic_srv("/robot_toolkit_node/camera/front/image_raw")
         self.tm.start_recognition("front_camera")
+        time.sleep(0.2)
         #TODO mostrar el topico de yolo en la pantalla
         self.tm.talk("Waiting for guests","English")
-        self.tm.look_for_object("person",True)
+        self.tm.look_for_object("person",False)
         self.tm.wait_for_object(-1)
         #TODO apagar el topico de yolo en la pantalla
         self.tm.start_recognition("")
@@ -130,16 +145,23 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
         #TODO mostrar el topico con el filtro para meter la cara en la pantalla
         #TODO encender el awareness para que siga la cara de la persona
-        self.awareness_srv(True)
-        self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
-        succed = self.tm.save_face(self.actual_person["name"],7)
+        self.awareness_srv(False)
+        time.sleep(0.5)
+        self.animations_publisher.publish("animations","Gestures/Look_1")
+        if not self.failed_saving_face:
+            self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
+        succed = self.tm.save_face(self.actual_person["name"],5)
+        print("succed ",succed)
         #TODO apagar el topico con el filtro para meter la cara en la pantalla
         if succed:
             #TODO apagar el awareness y fijar la posicion de la cabeza para que mire al frente
             self.awareness_srv(False)
+            time.sleep(0.5)
             self.animations_publisher.publish("animations","Gestures/Maybe_1")
+            self.failed_saving_face=False
             self.save_face_succeded()
         else:
+            self.failed_saving_face=True
             self.tm.talk("I am sorry {}, I was not able to save your face, can you please see my tablet and fit your face".format(self.actual_person["name"]),"English")
             self.save_face_failed()
     
@@ -147,7 +169,6 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
         self.tm.talk("Please {}, follow me to the living room".format(self.actual_person["name"]),"English",wait=False)
         self.tm.go_to_place("living_room")
-        self.tm.wait_go_to_place()
         #TODO revisar el angulo de llegada del robot
         self.arrived_to_point()
 
@@ -159,6 +180,7 @@ class RECEPTIONIST(object):
         self.tm.go_to_defined_angle_srv(0)
         #Turns on recognition and looks for  person
         self.tm.start_recognition("front_camera")
+        #Start bottom camera for the chair
         rospy.sleep(0.5)
         self.tm.look_for_object("person",True)
         self.stop_rotation=False
@@ -173,6 +195,7 @@ class RECEPTIONIST(object):
             time.sleep(0.1)
         print("El angulo es de: "+str(self.angle)+" y stop rotation es: "+str(self.stop_rotation))
         self.tm.robot_stop_srv()
+        print(self.consoleFormatter.format("STOP LOOKING", "WARNING"))
         self.stop_rotation=False
         if self.angle>=self.angle_stop_looking_person or len(self.introduced_persons)==len(self.all_persons):
             self.tm.go_to_defined_angle_srv(self.angle_stop_looking_person)
@@ -182,6 +205,7 @@ class RECEPTIONIST(object):
         
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
+        self.tm.spin_srv(20)
         person_name = ""
         while person_name == "" and self.recognize_person_counter<2:
             person_name = self.tm.recognize_face(3)
@@ -191,13 +215,14 @@ class RECEPTIONIST(object):
         if person_name not in self.introduced_persons and person_name in self.all_persons:
             person_introduce = self.all_persons[person_name]
             #TODO manipulacion animations/poses
+            self.animations_publisher.publish("animations","Gestures/You_2")
             self.tm.talk(" {} I introduce to you {} he is {} years old and he likes to drink {}".format(self.actual_person["name"],person_name,person_introduce["age"],person_introduce["drink"]),"English")
+            self.animations_publisher.publish("animations","Gestures/Maybe_1")
             self.introduced_persons.append(person_name)
         self.introduced_old_person()
     
     def on_enter_LOOK4CHAIR(self):
         print(self.consoleFormatter.format("LOOK4CHAIR", "HEADER"))
-        self.tm.turn_camera("bottom_camera","custom",1,15)
         self.tm.start_recognition("")
         self.tm.start_recognition("bottom_camera")
         #TODO Revisar como hacer para silla sin/con persona
@@ -214,6 +239,9 @@ class RECEPTIONIST(object):
     def on_enter_SIGNAL_SOMETHING(self):
         print(self.consoleFormatter.format("SIGNAL_SOMETHING", "HEADER"))
         self.tm.talk("Please, take a seat {}".format(self.actual_person["name"]),"English")
+        self.animations_publisher.publish("animations","Gestures/You_2")
+        time.sleep(0.5)
+        self.animations_publisher.publish("animations","Gestures/Maybe_1")
         #TODO manipulacion animations/poses
         #self.tm.go_to_pose("signal")
         self.person_accomodated()
@@ -222,7 +250,6 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
         self.tm.talk("Waiting for guests to come","English")
         self.tm.go_to_place("door")
-        self.tm.wait_go_to_place()
         self.wait_new_guest()
 
     def check_rospy(self):
