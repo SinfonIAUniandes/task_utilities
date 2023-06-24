@@ -3,9 +3,11 @@ from transitions import Machine
 from task_module import Task_module as tm
 from perception_msgs.msg import get_labels_msg
 from geometry_msgs.msg import Twist, PoseWithCovarianceStamped
-from robot_toolkit_msgs.srv import point_at_srv, get_segmentation3D_srv
+from robot_toolkit_msgs.srv import point_at_srv, get_segmentation3D_srv, point_at_srvRequest
 import ConsoleFormatter
 import rospy
+import os
+import time
 import threading
 import numpy as np
 
@@ -15,17 +17,18 @@ class BREAKFAST(object):
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         
         self.task_name = "Serve the breakfast"
-        states = ["INIT", "GO2PANTRY", "LOOKFORCEREAL", "GETCLOSER", "GRAB"]
+        states = ["INIT", "GO2PANTRY", "LOOKFORCEREAL", "GETCLOSER", "GRAB", "BREAKFAST"]
         
         self.tm = tm(navigation=True, speech=True, perception=True)
         self.tm.initialize_node("serve_the_breakfast")
 
-        transitions = [{'trigger': 'init_go2pantry', 'source': 'INIT', 'dest': 'GO2PANTRY'},
+        transitions = [{'trigger': 'start', 'source': 'BREAKFAST', 'dest': 'INIT'},
+                       {'trigger': 'init_go2pantry', 'source': 'INIT', 'dest': 'GO2PANTRY'},
                        {'trigger': 'go2pantry_lookforcereal', 'source': 'GO2PANTRY', 'dest': 'LOOKFORCEREAL'},
                        {'trigger': 'lookforcereal_getcloser', 'source': 'LOOKFORCEREAL', 'dest': 'GETCLOSER'},
                        {'trigger': 'getcloser_grab', 'source': 'GETCLOSER', 'dest': 'GRAB'}]
 
-        self.machine = Machine(model=self, states=states, transitions=transitions, initial="")
+        self.machine = Machine(model=self, states=states, transitions=transitions, initial="BREAKFAST")
 
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
@@ -44,7 +47,7 @@ class BREAKFAST(object):
         self.labels = {}
 
         self.currentPositionAmcl = None
-        self.work_space = 0.5
+        self.work_space = 0.3
 
         self.cereal_coordinates = None
 
@@ -62,22 +65,24 @@ class BREAKFAST(object):
     def on_enter_LOOKFORCEREAL(self):
         self.tm.start_recognition("front_camera")
         self.tm.talk("I am looking for the cereal")
-        while "cup" not in self.labels or abs(self.lables["cup"][0]-160) > 10:
+        while "bottle" not in self.labels or abs(self.labels["bottle"][0]-160) > 10:
+            print("Looking for cereal")
+            #print(self.labels)
             twist = Twist()
-            twist.linear.y = 0.1
+            twist.linear.y = -0.1
             self.cmd_velPublisher.publish(twist)
         self.cmd_velPublisher.publish(Twist())
         self.tm.talk("I found the cereal")
         self.lookforcereal_getcloser()
 
     def on_enter_GETCLOSER(self):
-        self.cereal_coordinates = self.segmentation_srv.call()
+        self.cereal_coordinates = self.segmentation_srv.call().coordinates
         need_to_move = self.cereal_coordinates[0]-self.work_space
         actual_position = self.currentPositionAmcl
         self.tm.talk("I am getting closer to the cereal")
-        while self.calculateEuclideanDistance(actual_position.pose.pose.position.x, actual_position.pose.pose.position.y, self.currentPositionAmcl.pose.pose.position.x, self.currentPositionAmcl.pose.pose.position.y) < need_to_move:
+        while self.calculateEuclideanDistance(actual_position.position.x, actual_position.position.y, self.currentPositionAmcl.position.x, self.currentPositionAmcl.position.y) < need_to_move:
             twist = Twist()
-            twist.linear.x = 0.1
+            twist.linear.x = 0.15
             self.cmd_velPublisher.publish(twist)
         self.cmd_velPublisher.publish(Twist())
         self.tm.talk("I am close enough to the cereal")
@@ -85,17 +90,27 @@ class BREAKFAST(object):
 
     def on_enter_GRAB(self):
         self.tm.talk("I am grabbing the cereal")
-        point_at_srvRequest = point_at_srvRequest()
-        point_at_srvRequest.x = self.work_space
-        point_at_srvRequest.y = self.cereal_coordinates[1]
-        point_at_srvRequest.z = self.cereal_coordinates[2]
-        point_at_srvRequest.effector_name = "Arms"
-        point_at_srvRequest.frame = 0
-        point_at_srvRequest.speed = 0.5
-        self.pointAt_srv.call(point_at_srvRequest)
+        point_msg = point_at_srvRequest()
+        point_msg.x = self.work_space
+        point_msg.y = self.cereal_coordinates[1]
+        point_msg.z = self.cereal_coordinates[2]
+        print("x: ", point_msg.x, "y: ", point_msg.y, "z: ", point_msg.z)
+        point_msg.effector_name = "Arms"
+        point_msg.frame = 0
+        point_msg.speed = 0.5
+        self.pointAt_srv.call(point_msg)
         self.tm.talk("I grabbed the cereal")
 
+    def check_rospy(self):
+        #Termina todos los procesos al cerrar el nodo
+        while not rospy.is_shutdown():
+            time.sleep(0.1)
+        print(self.consoleFormatter.format("Shutting down", "FAIL"))
+        os._exit(os.EX_OK)
 
+    def run(self):
+        while not rospy.is_shutdown():
+            self.start()
 
     def callback_get_labels_subscribers(self, msg):
         labels_msg = msg.labels

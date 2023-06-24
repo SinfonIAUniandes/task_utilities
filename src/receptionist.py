@@ -125,7 +125,7 @@ class RECEPTIONIST(object):
         time.sleep(0.2)
         #TODO mostrar el topico de yolo en la pantalla
         self.tm.talk("Waiting for guests","English")
-        self.tm.look_for_object("person",True)
+        self.tm.look_for_object("person",False)
         self.tm.wait_for_object(-1)
         #TODO apagar el topico de yolo en la pantalla
         self.tm.start_recognition("")
@@ -205,7 +205,7 @@ class RECEPTIONIST(object):
         
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
-        # self.tm.spin_srv(20)
+        self.tm.spin_srv(20)
         person_name = ""
         while person_name == "" and self.recognize_person_counter<2:
             person_name = self.tm.recognize_face(3)

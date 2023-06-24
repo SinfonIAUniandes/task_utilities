@@ -71,7 +71,6 @@ class Task_module:
             self.save_audio_proxy = rospy.ServiceProxy('speech_utilities/save_audio_srv', saveAudio_srv)
             rospy.wait_for_service('/speech_utilities/q_a_speech_srv')
             self.q_a_proxy = rospy.ServiceProxy('/speech_utilities/q_a_speech_srv', q_a_speech_srv)
-
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
 
         self.navigation = navigation
@@ -303,7 +302,7 @@ class Task_module:
             return ""
     ################### SPEECH SERVICES ###################
 
-    def talk(self,text:str,language:str,wait=True)->str:
+    def talk(self,text:str,language="English",wait=True)->str:
         """
         Input: 
         text
