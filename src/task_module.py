@@ -25,7 +25,7 @@ from navigation_msgs.msg import simple_feedback_msg
 
 class Task_module:
 
-    def __init__(self, perception: bool, speech: bool, manipulation:bool, navigation: bool):
+    def __init__(self, perception=False, speech=False, manipulation=False, navigation=False):
         """Initializer for the Task_module class
 
         Args:
