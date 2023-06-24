@@ -124,6 +124,7 @@ class RECEPTIONIST(object):
         self.tm.start_recognition("front_camera")
         time.sleep(0.2)
         #TODO mostrar el topico de yolo en la pantalla
+        self.animations_publisher.publish("animations","Gestures/Maybe_1")
         self.tm.talk("Waiting for guests","English")
         self.tm.look_for_object("person",False)
         self.tm.wait_for_object(-1)
