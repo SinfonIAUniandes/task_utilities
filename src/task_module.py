@@ -16,7 +16,7 @@ from std_srvs.srv import Trigger, TriggerRequest
 
 from speech_utilities_msgs.srv import q_a_speech_srv, talk_speech_srv, saveAudio_srv, q_a_speech_srvRequest, talk_speech_srvRequest, saveAudio_srvRequest
 
-from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest
+from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest
 
 # from manipulation_msgs.srv import saveState, saveStateRequest, goToState, goToStateRequest
 
@@ -57,9 +57,6 @@ class Task_module:
 
             rospy.wait_for_service('perception_utilities/read_qr_srv')
             self.qr_read_proxy = rospy.ServiceProxy('/perception_utilities/read_qr_srv', read_qr_srv)
-
-            rospy.wait_for_service("perception_utilities/filtered_image")
-            self.filtered_image_proxy = rospy.ServiceProxy("perception_utilities/filtered_image", filtered_image_srv)
 
             self.object_found = False
             print(self.consoleFormatter.format("PERCEPTION services enabled","OKGREEN"))
@@ -158,26 +155,6 @@ class Task_module:
                     return True
                 else:
                     return False
-            except rospy.ServiceException as e:
-                print("Service call failed: %s"%e)
-                return False
-        else:
-            print("perception as false")
-            return False
-        
-    def publish_filtered_image(self,filter_name:str,camera_name:str)->bool:
-        """
-        Input:
-        filter_name: "face" || "qr" 
-        camera_name: "front_camera" || "bottom_camera"
-        Output: True if the service was called correctly, False if not
-        ----------
-        Publishes the filtered image from camera_name with filter_name
-        """
-        if self.perception:
-            try:
-                approved = self.filtered_image_proxy()
-                return approved.approved
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
                 return False
@@ -650,8 +627,8 @@ class Task_module:
 
     def saveState(self, name:str)->bool: 
         """
-        Input: robot_joints as name 
-        Output: True if the file is created or False if is not
+        Input: state as name 
+        Output: True if the state was created or False if is not
         ---------
         Saves the current state of the robot's joints to a CSV file 
         """
@@ -670,20 +647,20 @@ class Task_module:
             print("manipulation as false")
             return False
         
-    def goToState(self, joint_group_positions: list)->bool: 
+    def goToState(self, name:str)->bool: 
         """
-        Input: joint_group_position actions for the robot's arms 
-        Output: True after the robot moves
+        Input: state to be executed.
+        Output: True after the robot moves.
         ---------
         Performs a series of actions to move the robot's arms to a desired configuration defined by joint_group_positions.        
         """
         if self.manipulation: 
             try: 
-                go_to_state= self.goToState_proxy(joint_group_positions)
+                go_to_state= self.goToState_proxy(name)
                 if go_to_state:
                     return True
                 else: 
-                    print('cannot move :c')
+                    print('ccannot move')
                     return False
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
