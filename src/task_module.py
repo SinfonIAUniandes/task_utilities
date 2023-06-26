@@ -16,9 +16,9 @@ from std_srvs.srv import Trigger, TriggerRequest
 
 from speech_utilities_msgs.srv import q_a_speech_srv, talk_speech_srv, saveAudio_srv, q_a_speech_srvRequest, talk_speech_srvRequest, saveAudio_srvRequest
 
-from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest
+from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest
 
-# from manipulation_msgs.srv import saveState, saveStateRequest, goToState, goToStateRequest
+# from manipulation_msgs.srv import SaveState, SaveStateRequest, GoToState, GoToStateRequest
 
 from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
@@ -57,6 +57,9 @@ class Task_module:
 
             rospy.wait_for_service('perception_utilities/read_qr_srv')
             self.qr_read_proxy = rospy.ServiceProxy('/perception_utilities/read_qr_srv', read_qr_srv)
+
+            rospy.wait_for_service("perception_utilities/filtered_image")
+            self.filtered_image_proxy = rospy.ServiceProxy("perception_utilities/filtered_image", filtered_image_srv)
 
             self.object_found = False
             print(self.consoleFormatter.format("PERCEPTION services enabled","OKGREEN"))
@@ -113,18 +116,18 @@ class Task_module:
             self.navigation_status =0
             print(self.consoleFormatter.format("NAVIGATION services enabled","OKGREEN"))
 
-        self.manipulation = manipulation
+        # self.manipulation = manipulation
         
-        if manipulation:
-            print(self.consoleFormatter.format("Waiting for MANIPULATION services...","WARNING"))
+        # if manipulation:
+        #     print(self.consoleFormatter.format("Waiting for MANIPULATION services...","WARNING"))
             
-            rospy.wait_for_service('/manipulation_utilities/saveState')
-            self. saveState_proxy = rospy.ServiceProxy('/manipulation_utilities/saveState', saveState)
+            # rospy.wait_for_service('/manipulation_utilities/saveState')
+            # self.saveState_proxy = rospy.ServiceProxy('/manipulation_utilities/saveState', SaveState)
             
-            rospy.wait_for_service('/manipulation_utilities/goToState')
-            self. goToState_proxy = rospy.ServiceProxy('/manipulation_utilities/goToState', goToState)
+            # rospy.wait_for_service('/manipulation_utilities/goToState')
+            # self.goToState_proxy = rospy.ServiceProxy('/manipulation_utilities/goToState', GoToState)
 
-            print(self.consoleFormatter.format("MANIPULATION services enabled","OKGREEN"))
+            # print(self.consoleFormatter.format("MANIPULATION services enabled","OKGREEN"))
 
     #################################### SERVICES #######################################
 
@@ -155,6 +158,26 @@ class Task_module:
                     return True
                 else:
                     return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("perception as false")
+            return False
+        
+    def publish_filtered_image(self,filter_name:str,camera_name:str)->bool:
+        """
+        Input:
+        filter_name: "face" || "qr" 
+        camera_name: "front_camera" || "bottom_camera"
+        Output: True if the service was called correctly, False if not
+        ----------
+        Publishes the filtered image from camera_name with filter_name
+        """
+        if self.perception:
+            try:
+                approved = self.filtered_image_proxy()
+                return approved.approved
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
                 return False
@@ -625,49 +648,53 @@ class Task_module:
         
    ############ MANIPULATION SERVICES ###############
 
-    def saveState(self, name:str)->bool: 
-        """
-        Input: state as name 
-        Output: True if the state was created or False if is not
-        ---------
-        Saves the current state of the robot's joints to a CSV file 
-        """
-        if self.manipulation:
-            try: 
-                save_state= self.saveState_proxy(name)
-                if save_state: 
-                    return True 
-                else:
-                    print("The file was not created")
-                    return False
-            except rospy.ServiceException as e:
-                print("Service call failed: %s"%e)
-                return False
-        else: 
-            print("manipulation as false")
-            return False
+    # def saveState(self, name:str)->bool: 
+    #     """
+    #     Input: state as name 
+    #     Output: True if the state was created or False if is not
+    #     ---------
+    #     Saves the current state of the robot's joints to a CSV file 
+    #     """
+    #     if self.manipulation:
+    #         try: 
+    #             name_msg = String()
+    #             name_msg.data = name
+    #             save_state= self.saveState_proxy(name_msg)
+    #             if save_state: 
+    #                 return True 
+    #             else:
+    #                 print("The file was not created")
+    #                 return False
+    #         except rospy.ServiceException as e:
+    #             print("Service call failed: %s"%e)
+    #             return False
+    #     else: 
+    #         print("manipulation as false")
+    #         return False
         
-    def goToState(self, name:str)->bool: 
-        """
-        Input: state to be executed.
-        Output: True after the robot moves.
-        ---------
-        Performs a series of actions to move the robot's arms to a desired configuration defined by joint_group_positions.        
-        """
-        if self.manipulation: 
-            try: 
-                go_to_state= self.goToState_proxy(name)
-                if go_to_state:
-                    return True
-                else: 
-                    print('ccannot move')
-                    return False
-            except rospy.ServiceException as e:
-                print("Service call failed: %s"%e)
-                return False                
-        else: 
-            print("manipulation as false")
-            return False               
+    # def goToState(self, name:str)->bool: 
+    #     """
+    #     Input: state to be executed.
+    #     Output: True after the robot moves.
+    #     ---------
+    #     Performs a series of actions to move the robot's arms to a desired configuration defined by joint_group_positions.        
+    #     """
+    #     if self.manipulation: 
+    #         try: 
+    #             name_msg = String()
+    #             name_msg.data = name
+    #             go_to_state= self.goToState_proxy(name_msg)
+    #             if go_to_state:
+    #                 return True
+    #             else: 
+    #                 print('ccannot move')
+    #                 return False
+    #         except rospy.ServiceException as e:
+    #             print("Service call failed: %s"%e)
+    #             return False                
+    #     else: 
+    #         print("manipulation as false")
+    #         return False               
         
         
    ################ SUBSCRIBER CALLBACKS ################

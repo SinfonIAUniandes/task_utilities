@@ -82,14 +82,7 @@ class BREAKFAST(object):
         self.lookforbowl_requesthelp()
 
     def on_enter_REQUESTHELP(self):
-        point_msg = point_at_srvRequest()
-        point_msg.x = 0.27
-        point_msg.y = 0
-        point_msg.z = 0.1
-        point_msg.effector_name = "Arms"
-        point_msg.frame = 0
-        point_msg.speed = 0.3
-        self.pointAt_srv.call(point_msg)
+        # self.tm.saveState()
         self.tm.talk("Can you please put the bowl inside my arms?, when you are ready touch my head")
         while not self.isTouched:
             time.sleep(0.1)
@@ -166,9 +159,6 @@ class BREAKFAST(object):
 
     def calculateEuclideanDistance(self, xPoint1, yPoint1, xPoint2, yPoint2):
         return np.linalg.norm(np.array([xPoint1, yPoint1])-np.array([xPoint2, yPoint2]))
-    
-
-    
 
 
 if __name__ == "__main__":
