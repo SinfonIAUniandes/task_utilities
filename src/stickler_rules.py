@@ -26,7 +26,7 @@ class STICKLER_RULES(object):
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
-        self.task_name = "stickler for the rules"
+        self.task_name = "stickler_for_the_rules"
         states = ['INIT', 'LOOK4PERSON', 'LOOK4SHOES', 'ASK4SHOES', 'LOOK4DRINK', 'ASK4DRINK', 'GO2KITCHEN', 'GO2LIVING', 'GO2ROOM', 'ASK2LEAVE']
         self.tm = tm(perception = True,speech=True, manipulation=False, navigation=True)
         self.tm.initialize_node(self.task_name)
@@ -96,11 +96,16 @@ class STICKLER_RULES(object):
         self.at_room = False
         self.at_kitchen = False
         self.ids_seen = []
+        self.person_seen = False
 
 
     def callback_spin_until(self,data):
         self.angle = int(np.degrees(euler_from_quaternion([data.pose.pose.orientation.x, data.pose.pose.orientation.y, data.pose.pose.orientation.z, data.pose.pose.orientation.w])[2] % (2 * math.pi)))
         return self.angle
+    
+    def callback_get_labels(self,data):
+        self.labels = data.labels
+        self.ids = data.ids   
     
     def callback_look_for_object(self,data):
         self.stop_rotation=data.data
@@ -110,10 +115,6 @@ class STICKLER_RULES(object):
                     self.person_seen=True
             self.shoes = True
         return data
-
-    def callback_get_labels(self,data):
-        self.labels = data.labels
-        self.ids = data.ids
 
     def check_angle(self,desired,angle,offset)->bool:
         if desired+offset>360:
@@ -129,11 +130,13 @@ class STICKLER_RULES(object):
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.turn_camera("bottom_camera","custom",1,15)
         self.tm.go_to_place("living_room")
+        self.tm.wait_go_to_place()
         self.beggining()
 
     # ============================== LOOK4 STATES ==============================
     def on_enter_LOOK4PERSON(self):
         print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
+        self.ids_seen = []
         self.awareness_srv(True)
         time.sleep(0.5)
         self.animations_publisher.publish("animations","Gestures/Maybe_1")
@@ -143,11 +146,11 @@ class STICKLER_RULES(object):
         rospy.sleep(0.5)
         self.tm.look_for_object("person",True)
         self.stop_rotation=False
-        x, y, current_angle = self.get_position_proxy()
+        current_angle = self.get_position_proxy().theta
         while current_angle <= 360 and not self.person_seen:
-            tm.spin_srv(45)
+            self.tm.spin_srv(45)
             self.ids_seen.extend(self.ids)
-            x, y, current_angle = self.get_position_proxy()
+            current_angle = self.get_position_proxy().theta
         print("Angle: ",self.angle)
         print("El angulo es de: "+str(self.angle)+" y stop rotation es: "+str(self.stop_rotation))
         print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
@@ -162,6 +165,7 @@ class STICKLER_RULES(object):
             elif self.at_room:
                 self.full_turn_room()
         else:
+            self.tm.talk("Please come closer","English")
             if self.at_room:
                 self.person_at_room()
             else:
@@ -171,10 +175,10 @@ class STICKLER_RULES(object):
         # TODO: Mirar para abajo
         print(self.consoleFormatter.format("LOOK4SHOES", "HEADER"))
         self.tm.start_recognition("")
-        self.tm.start_recognition("bottom_camera")
+        self.tm.start_recognition("front_camera")
         rospy.sleep(0.5)
         #change cellphone for shoes
-        self.tm.look_for_object("cellphone",True)
+        self.tm.look_for_object("bottle",True)
         object_found = self.tm.wait_for_object(0.5)
         self.tm.start_recognition("")
         self.tm.look_for_object("",True)
@@ -189,7 +193,7 @@ class STICKLER_RULES(object):
         self.tm.start_recognition("front_camera")
         rospy.sleep(0.5)
         #change cellphone for cup or bottle
-        self.tm.look_for_object("cellphone",True)
+        self.tm.look_for_object("cell phone",True)
         object_found = self.tm.wait_for_object(0.5)
         self.tm.start_recognition("")
         self.tm.look_for_object("",True)
@@ -245,7 +249,7 @@ class STICKLER_RULES(object):
         self.at_kitchen, self.at_room = False, False
         self.arrive_living()
 
-    def on_enter_GO2ROOM(self):
+    def on_enter_GO2ROOM(self):                                                                                     
         print(self.consoleFormatter.format("GO2ROOM", "HEADER"))
         self.tm.go_to_place("pantry") # Definir cuarto
         self.tm.wait_go_to_place()
