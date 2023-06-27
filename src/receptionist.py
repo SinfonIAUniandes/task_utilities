@@ -82,6 +82,11 @@ class RECEPTIONIST(object):
         rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
         self.show_topic_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_topic_srv",tablet_service_srv)
 
+        print(self.consoleFormatter.format("Waiting for pytoolkit/autononumusLife...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
+        self.autonomous_life_srv = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
+        
+
         # ROS services (perception)
         print(self.consoleFormatter.format("Waiting for /get_empty_chairs_srv", "WARNING")) 
         rospy.wait_for_service("/perception_utilities/get_empty_chairs_srv")
@@ -128,22 +133,22 @@ class RECEPTIONIST(object):
     def callback_look_for_object(self,data):
         self.object_found=data.data
         if self.object_found:
-            print("reconocio PERSONA")
             self.stop_rotation=True
         return data
     
     def callback_get_empty_chairs(self,data):
         self.object_found=data.data
         if self.object_found:
-            print("reconocio SILLA")
             self.stop_rotation=True
         return data
 
     def on_enter_INIT(self):
+        self.autonomous_life_srv(False)
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.turn_camera("bottom_camera","custom",1,15)
+        self.awareness_srv(False)
         self.tm.go_to_place("door")
         self.beggining()
                 
@@ -177,7 +182,7 @@ class RECEPTIONIST(object):
         self.show_topic_srv("/perception_utilities/filtered_image")
         #TODO mostrar el topico con el filtro para meter la cara en la pantalla
         #TODO encender el awareness para que siga la cara de la persona
-        self.awareness_srv(False)
+        # self.awareness_srv(False)
         time.sleep(0.5)
         self.animations_publisher.publish("animations","Gestures/Look_1")
         if not self.failed_saving_face:
@@ -187,7 +192,7 @@ class RECEPTIONIST(object):
         #TODO apagar el topico con el filtro para meter la cara en la pantalla
         if succed:
             #TODO apagar el awareness y fijar la posicion de la cabeza para que mire al frente
-            self.awareness_srv(False)
+            # self.awareness_srv(False)
             time.sleep(1)
             self.animations_publisher.publish("animations","Gestures/Maybe_1")
             self.failed_saving_face=False
@@ -213,11 +218,11 @@ class RECEPTIONIST(object):
         self.introduced_persons.append(self.actual_person["name"])
         self.tm.talk("Hello everyone, this is {}, he is {} years old and he likes to drink {}".format(self.actual_person["name"],self.actual_person["age"],self.actual_person["drink"]),"English")
         self.tm.go_to_defined_angle_srv(0)
-        self.awareness_srv(True)
+        # self.awareness_srv(True)
         time.sleep(0.5)
         self.animations_publisher.publish("animations","Gestures/Maybe_1")
         time.sleep(0.5)
-        self.awareness_srv(False)
+        # self.awareness_srv(False)
         #Turns on recognition and looks for  person
         self.tm.start_recognition("front_camera")
         #Start bottom camera for the chair
@@ -230,8 +235,8 @@ class RECEPTIONIST(object):
         #TODO revisar el alguno del robot y la velocidad de giro, igual que el punto de parada del robot
         print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
         print("Angle: ",self.angle)
-        self.tm.constant_spin_proxy(15.0)
-        while not self.check_angle(self.angle_stop_looking_person,self.angle,6) and not self.stop_rotation:
+        self.tm.constant_spin_proxy(12.0)
+        while not self.check_angle(self.angle_stop_looking_person,self.angle,6) and not self.stop_rotation and len(self.introduced_persons)!=len(self.all_persons): 
             time.sleep(0.05)
         print("El angulo es de: "+str(self.angle)+" y stop rotation es: "+str(self.stop_rotation))
         self.tm.robot_stop_srv()
@@ -245,7 +250,7 @@ class RECEPTIONIST(object):
         
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
-        self.tm.spin_srv(15)
+        self.tm.spin_srv(20)
         person_name = ""
         while person_name == "" and self.recognize_person_counter<2:
             person_name = self.tm.recognize_face(3)
