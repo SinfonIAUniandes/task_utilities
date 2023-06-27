@@ -14,7 +14,7 @@ import numpy as np
 from std_srvs.srv import SetBool
 
 from navigation_msgs.srv import constant_spin_srv
-from perception_msgs.srv import get_empty_chairs_srv
+from perception_msgs.msg import get_labels_msg
 from navigation_msgs.msg import simple_feedback_msg
 from robot_toolkit_msgs.srv import tablet_service_srv
 from robot_toolkit_msgs.msg import animation_msg
@@ -49,6 +49,7 @@ class RECEPTIONIST(object):
             {'trigger': 'save_face_succeded', 'source': 'SAVE_FACE', 'dest': 'GO2LIVING'},
             {'trigger': 'arrived_to_point', 'source': 'GO2LIVING', 'dest': 'INTRODUCE_NEW'},
             {'trigger': 'introduced_new_person', 'source': 'INTRODUCE_NEW', 'dest': 'LOOK4PERSON'},
+            {'trigger': 'person_not_found', 'source': 'LOOK4PERSON', 'dest': 'LOOK4PERSON'},
             {'trigger': 'person_found', 'source': 'LOOK4PERSON', 'dest': 'INTRODUCE_OLD'},
             {'trigger': 'introduced_old_person', 'source': 'INTRODUCE_OLD', 'dest': 'LOOK4PERSON'},
             {'trigger': 'introduced_everyone', 'source': 'LOOK4PERSON', 'dest': 'LOOK4CHAIR'},
@@ -70,8 +71,6 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("Waiting for /look_for_object_publisher", "WARNING"))
         subscriber_look_for_object = rospy.Subscriber("/perception_utilities/look_for_object_publisher", Bool, self.callback_look_for_object)
 
-        print(self.consoleFormatter.format("Waiting for /get_empty_chairs", "WARNING"))
-        subscriber_get_empty_chairs = rospy.Subscriber("/perception_utilities/empty_chairs_publisher", Bool, self.callback_get_empty_chairs)
 
         # ROS Services (PyToolkit)
         print(self.consoleFormatter.format("Waiting for pytoolkit/awareness...", "WARNING"))
@@ -86,63 +85,48 @@ class RECEPTIONIST(object):
         rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
         self.autonomous_life_srv = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
         
+        # ROS subscribers (perception)
+        print(self.consoleFormatter.format("Waiting for /perception_utilities/get_labels_publisher", "WARNING"))
+        self.get_labels_publisher = rospy.Subscriber("/perception_utilities/get_labels_publisher", get_labels_msg, self.callback_get_labels)
 
-        # ROS services (perception)
-        print(self.consoleFormatter.format("Waiting for /get_empty_chairs_srv", "WARNING")) 
-        rospy.wait_for_service("/perception_utilities/get_empty_chairs_srv")
-        self.get_empty_chairs_srv = rospy.ServiceProxy("/perception_utilities/get_empty_chairs_srv",get_empty_chairs_srv)
 
         # ROS Publishers
         print(self.consoleFormatter.format("Waiting for /animations", "WARNING"))
         self.animations_publisher = rospy.Publisher("/animations", animation_msg, queue_size = 1)
 
         ##################### ROS CALLBACK VARIABLES #####################
-        self.angle = 0
-        self.recognize_person_counter = 0
-        self.angle_stop_looking_person = 190
-        self.object_found = False
-        self.stop_rotation = False
+        self.labels ={}
         ##################### GLOBAL VARIABLES #####################
-
-        
+        self.img_dimensions = (320,240)
+        self.angle_stop_looking_person = 190
+        self.recognize_person_counter = 0
         self.all_persons = {"Charlie":{"name":"Charlie","age":"20","drink":"beer"}}
         self.introduced_persons = []
         self.actual_person={}
         self.old_person = ""
         self.failed_saving_face=False
+        self.angle_index = 0
+        self.chair_angles = [90,130,160]
+        self.checked_chair_angles = []
+        self.empty_chair_angles = []
 
-
-
-    def callback_spin_until(self,data):
-        self.angle = int(np.degrees(euler_from_quaternion([data.pose.pose.orientation.x, data.pose.pose.orientation.y, data.pose.pose.orientation.z, data.pose.pose.orientation.w])[2] % (2 * math.pi)))
-        return self.angle
     
-    def check_angle(self,desired,angle,offset)->bool:
-        if desired+offset>360:
-            return 0<=angle<=(desired+offset)%360 or desired-offset<=angle<=360
-        elif desired-offset<0:
-            return 0<=angle<=desired+offset or (desired-offset)%360<=angle<=360
-        else:
-            return desired-offset<=angle<=desired+offset
-
-    def callback_look_for_object(self,data):
-        self.object_found=data.data
-        if self.object_found:
-            self.stop_rotation=True
-        return data
-    
-    def callback_get_empty_chairs(self,data):
-        self.object_found=data.data
-        if self.object_found:
-            self.stop_rotation=True
-        return data
+    def callback_get_labels(self,data):
+        labels = data.labels
+        x_coordinates = data.x_coordinates
+        y_coordinates = data.y_coordinates
+        widths = data.widths
+        heights = data.heights
+        ids = data.ids
+        for i in range(len(labels)):
+            if self.img_dimensions[0]//3<x_coordinates<int(self.img_dimensions[0]*2/3):
+                self.labels[labels[i]] = {"x":x_coordinates[i],"y":y_coordinates[i],"w":widths[i],"h":heights[i],"id":ids[i]}
 
     def on_enter_INIT(self):
         self.autonomous_life_srv(False)
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.turn_camera("front_camera","custom",1,15) 
-        self.tm.turn_camera("bottom_camera","custom",1,15)
         self.awareness_srv(False)
         self.tm.go_to_place("door")
         self.beggining()
@@ -175,7 +159,6 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
         self.tm.publish_filtered_image("face","front_camera")
         self.show_topic_srv("/perception_utilities/filtered_image")
-        #TODO mostrar el topico con el filtro para meter la cara en la pantalla
         #TODO encender el awareness para que siga la cara de la persona
         # self.awareness_srv(False)
         time.sleep(0.5)
@@ -191,6 +174,7 @@ class RECEPTIONIST(object):
             time.sleep(1)
             self.animations_publisher.publish("animations","Gestures/Maybe_1")
             self.failed_saving_face=False
+            #TODO show sinfonia img
             self.show_topic_srv("/robot_toolkit_node/camera/front/image_raw")
             self.save_face_succeded()
         else:
@@ -200,8 +184,6 @@ class RECEPTIONIST(object):
     
     def on_enter_GO2LIVING(self):
         print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
-        
-        
         self.tm.talk("Please {}, follow me to the living room".format(self.actual_person["name"]),"English",wait=False)
         self.tm.go_to_place("living_room")
         #TODO revisar el angulo de llegada del robot
@@ -212,7 +194,6 @@ class RECEPTIONIST(object):
         self.introduced_persons=[]
         self.introduced_persons.append(self.actual_person["name"])
         self.tm.talk("Hello everyone, this is {}, he is {} years old and he likes to drink {}".format(self.actual_person["name"],self.actual_person["age"],self.actual_person["drink"]),"English")
-        self.tm.go_to_defined_angle_srv(0)
         # self.awareness_srv(True)
         time.sleep(0.5)
         self.animations_publisher.publish("animations","Gestures/Maybe_1")
@@ -220,34 +201,44 @@ class RECEPTIONIST(object):
         # self.awareness_srv(False)
         #Turns on recognition and looks for  person
         self.tm.start_recognition("front_camera")
-        #Start bottom camera for the chair
-        rospy.sleep(0.5)
-        self.tm.look_for_object("person",True)
-        self.stop_rotation=False
+        self.checked_chair_angles=[]
+        self.empty_chair_angles=[]
         self.introduced_new_person()
     
     def on_enter_LOOK4PERSON(self):
-        #TODO revisar el alguno del robot y la velocidad de giro, igual que el punto de parada del robot
         print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
-        print("Angle: ",self.angle)
-        self.tm.constant_spin_proxy(12.0)
-        while not self.check_angle(self.angle_stop_looking_person,self.angle,6) and not self.stop_rotation and len(self.introduced_persons)!=len(self.all_persons): 
-            time.sleep(0.05)
-        print("El angulo es de: "+str(self.angle)+" y stop rotation es: "+str(self.stop_rotation))
-        self.tm.robot_stop_srv()
-        print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
-        self.stop_rotation=False
-        if self.check_angle(self.angle_stop_looking_person,self.angle,6) or len(self.introduced_persons)==len(self.all_persons):
-            self.tm.go_to_defined_angle_srv(self.angle_stop_looking_person)
-            self.introduced_everyone()
+        # El robot ya fue a todas las posiciones de personas
+        if len(self.checked_chair_angles)==len(self.chair_angles):
+            if len(self.introduced_persons)==len(self.all_persons):
+                print(self.consoleFormatter.format("INTRODUCED_EVERYONE", "OKGREEN"))
+                self.introduced_everyone()
+            else:
+                not_introduced = []
+                for person in self.all_persons:
+                    if person not in self.introduced_persons:
+                        not_introduced.append(person)
+                not_introduced_persons = ", ".join(not_introduced)
+                self.tm.talk("{} I am sorry I was not able to recognize you, please introduce yourself to {}".format(not_introduced_persons,self.actual_person["name"]),"English")
+                self.introduced_everyone()
+        # El robot busca una perosona
         else:
-            self.person_found()
+            self.tm.go_to_defined_angle_srv(self.chair_angles[self.angle_index])
+            self.checked_chair_angles.append(self.chair_angles[self.angle_index])
+            self.angle_index+=1
+            t1 = time.time()
+            while time.time()-t1<3:
+                if "person" in self.labels:
+                    self.tm.talk("Recognizing person","English")
+                    self.person_found()
+                    break
+            self.empty_chair_angles.append(self.checked_chair_angles[-1])
+            self.person_not_found()
+            
         
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
-        self.tm.spin_srv(20)
         person_name = ""
-        while person_name == "" and self.recognize_person_counter<2:
+        while person_name == "" and self.recognize_person_counter<3:
             person_name = self.tm.recognize_face(3)
             print("saw: "+person_name)
             self.recognize_person_counter+=1
@@ -263,19 +254,8 @@ class RECEPTIONIST(object):
     
     def on_enter_LOOK4CHAIR(self):
         print(self.consoleFormatter.format("LOOK4CHAIR", "HEADER"))
-        self.animations_publisher.publish("animations","Gestures/ShowTablet_1")
-        self.tm.start_recognition("")
-        self.tm.start_recognition("front_camera")
-        self.get_empty_chairs_srv(True)
-        #TODO Revisar como hacer para silla sin/con persona
-        rospy.sleep(0.5)
-        self.tm.look_for_object("chair",True)
-        self.tm.constant_spin_proxy(-20.0)
-        while not self.check_angle(0,self.angle,6) and not self.stop_rotation:
-            time.sleep(0.1)
-        self.tm.start_recognition("")
-        self.tm.robot_stop_srv()
-        self.tm.look_for_object("",True)
+        chair_angle = random.choice(self.empty_chair_angles)
+        self.tm.go_to_defined_angle_srv(chair_angle)
         self.chair_found()
 
     def on_enter_SIGNAL_SOMETHING(self):
@@ -283,14 +263,11 @@ class RECEPTIONIST(object):
         self.animations_publisher.publish("animations","Gestures/TakePlace_2")
         self.tm.talk("Please, take a seat {}".format(self.actual_person["name"]),"English")
         time.sleep(0.5)
-        
-        #TODO manipulacion animations/poses
-        #self.tm.go_to_pose("signal")
         self.person_accomodated()
 
     def on_enter_GO2DOOR(self):
         print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
-        self.tm.talk("Waiting for guests to come","English")
+        self.tm.talk("I am going to receive new guests","English",wait=False)
         self.tm.go_to_place("door")
         self.wait_new_guest()
 

@@ -20,7 +20,7 @@ class BREAKFAST(object):
         self.task_name = "Serve the breakfast"
         states = ["INIT", "GO2PANTRY", "LOOKFORBOWL", "REQUESTHELP", "GO2TABLE", "DROP"]
         
-        self.tm = tm(navigation=True, speech=True, perception=True)
+        self.tm = tm(navigation=True, speech=True, perception=True,manipulation=True)
         self.tm.initialize_node("serve_the_breakfast")
 
         transitions = [{'trigger': 'start', 'source': 'BREAKFAST', 'dest': 'INIT'},
@@ -82,7 +82,7 @@ class BREAKFAST(object):
         self.lookforbowl_requesthelp()
 
     def on_enter_REQUESTHELP(self):
-        # self.tm.saveState()
+        self.tm.goToState("bowl")
         self.tm.talk("Can you please put the bowl inside my arms?, when you are ready touch my head")
         while not self.isTouched:
             time.sleep(0.1)
