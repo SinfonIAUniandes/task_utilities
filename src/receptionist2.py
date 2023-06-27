@@ -16,7 +16,7 @@ from std_srvs.srv import SetBool
 from navigation_msgs.srv import constant_spin_srv
 from perception_msgs.msg import get_labels_msg
 from navigation_msgs.msg import simple_feedback_msg
-from robot_toolkit_msgs.srv import tablet_service_srv
+from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv
 from robot_toolkit_msgs.msg import animation_msg
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion
@@ -65,17 +65,14 @@ class RECEPTIONIST(object):
         rospy_check.start()
 
         # ROS Callbacks
-        print(self.consoleFormatter.format("Waiting for /amcl_pose", "WARNING"))
-        subscriber_odom = rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.callback_spin_until)
-
-        print(self.consoleFormatter.format("Waiting for /look_for_object_publisher", "WARNING"))
-        subscriber_look_for_object = rospy.Subscriber("/perception_utilities/look_for_object_publisher", Bool, self.callback_look_for_object)
-
 
         # ROS Services (PyToolkit)
         print(self.consoleFormatter.format("Waiting for pytoolkit/awareness...", "WARNING"))
         rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
         self.awareness_srv = rospy.ServiceProxy("/pytoolkit/ALBasicAwareness/set_awareness_srv",SetBool)
+
+        rospy.wait_for_service("/pytoolkit/ALMotion/move_head_srv")
+        self.move_head_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/move_head_srv",move_head_srv)
 
         print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
         rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
@@ -106,7 +103,7 @@ class RECEPTIONIST(object):
         self.old_person = ""
         self.failed_saving_face=False
         self.angle_index = 0
-        self.chair_angles = [90,130,160]
+        self.chair_angles = [85,135,175]
         self.checked_chair_angles = []
         self.empty_chair_angles = []
 
@@ -119,7 +116,7 @@ class RECEPTIONIST(object):
         heights = data.heights
         ids = data.ids
         for i in range(len(labels)):
-            if self.img_dimensions[0]//3<x_coordinates<int(self.img_dimensions[0]*2/3):
+            if self.img_dimensions[0]//3<x_coordinates[i]<int(self.img_dimensions[0]*2/3):
                 self.labels[labels[i]] = {"x":x_coordinates[i],"y":y_coordinates[i],"w":widths[i],"h":heights[i],"id":ids[i]}
 
     def on_enter_INIT(self):
@@ -147,6 +144,7 @@ class RECEPTIONIST(object):
         
     def on_enter_QA(self):
         print(self.consoleFormatter.format("QA", "HEADER"))
+        self.move_head_srv("up")
         name=self.tm.q_a_speech("name")
         age=self.tm.q_a_speech("age")
         drink=self.tm.q_a_speech("drink")
@@ -162,7 +160,7 @@ class RECEPTIONIST(object):
         #TODO encender el awareness para que siga la cara de la persona
         # self.awareness_srv(False)
         time.sleep(0.5)
-        self.animations_publisher.publish("animations","Gestures/Look_1")
+        self.move_head_srv("up")
         if not self.failed_saving_face:
             self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
         succed = self.tm.save_face(self.actual_person["name"],5)
@@ -172,7 +170,7 @@ class RECEPTIONIST(object):
             #TODO apagar el awareness y fijar la posicion de la cabeza para que mire al frente
             # self.awareness_srv(False)
             time.sleep(1)
-            self.animations_publisher.publish("animations","Gestures/Maybe_1")
+            self.move_head_srv("default")
             self.failed_saving_face=False
             #TODO show sinfonia img
             self.show_topic_srv("/robot_toolkit_node/camera/front/image_raw")
@@ -191,24 +189,20 @@ class RECEPTIONIST(object):
 
     def on_enter_INTRODUCE_NEW(self):
         print(self.consoleFormatter.format("INTRODUCE_NEW", "HEADER"))
-        self.introduced_persons=[]
-        self.introduced_persons.append(self.actual_person["name"])
         self.tm.talk("Hello everyone, this is {}, he is {} years old and he likes to drink {}".format(self.actual_person["name"],self.actual_person["age"],self.actual_person["drink"]),"English")
-        # self.awareness_srv(True)
-        time.sleep(0.5)
-        self.animations_publisher.publish("animations","Gestures/Maybe_1")
-        time.sleep(0.5)
-        # self.awareness_srv(False)
         #Turns on recognition and looks for  person
         self.tm.start_recognition("front_camera")
+        self.introduced_persons=[]
+        self.introduced_persons.append(self.actual_person["name"])
         self.checked_chair_angles=[]
-        self.empty_chair_angles=[]
+        self.empty_chair_angles=self.chair_angles.copy()
+        self.angle_index=0
         self.introduced_new_person()
     
     def on_enter_LOOK4PERSON(self):
         print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
         # El robot ya fue a todas las posiciones de personas
-        if len(self.checked_chair_angles)==len(self.chair_angles):
+        if len(self.checked_chair_angles)==len(self.chair_angles or len(self.introduced_persons)==len(self.all_persons)):
             if len(self.introduced_persons)==len(self.all_persons):
                 print(self.consoleFormatter.format("INTRODUCED_EVERYONE", "OKGREEN"))
                 self.introduced_everyone()
@@ -218,20 +212,22 @@ class RECEPTIONIST(object):
                     if person not in self.introduced_persons:
                         not_introduced.append(person)
                 not_introduced_persons = ", ".join(not_introduced)
-                self.tm.talk("{} I am sorry I was not able to recognize you, please introduce yourself to {}".format(not_introduced_persons,self.actual_person["name"]),"English")
+                self.tm.talk("{} I am sorry I was not able to recognize you, please introduce yourself to {}".format(not_introduced_persons,self.actual_person["name"]),"English",wait=True)
                 self.introduced_everyone()
         # El robot busca una perosona
         else:
+            self.move_head_srv("default")
             self.tm.go_to_defined_angle_srv(self.chair_angles[self.angle_index])
             self.checked_chair_angles.append(self.chair_angles[self.angle_index])
             self.angle_index+=1
             t1 = time.time()
+            self.labels ={}
             while time.time()-t1<3:
                 if "person" in self.labels:
                     self.tm.talk("Recognizing person","English")
+                    self.empty_chair_angles.remove(self.checked_chair_angles[-1])
                     self.person_found()
                     break
-            self.empty_chair_angles.append(self.checked_chair_angles[-1])
             self.person_not_found()
             
         
@@ -248,13 +244,16 @@ class RECEPTIONIST(object):
             #TODO manipulacion animations/poses
             self.animations_publisher.publish("animations","Gestures/TakePlace_2")
             self.tm.talk(" {} I introduce to you {} he is {} years old and he likes to drink {}".format(self.actual_person["name"],person_name,person_introduce["age"],person_introduce["drink"]),"English")
-            self.animations_publisher.publish("animations","Gestures/Maybe_1")
             self.introduced_persons.append(person_name)
         self.introduced_old_person()
     
     def on_enter_LOOK4CHAIR(self):
         print(self.consoleFormatter.format("LOOK4CHAIR", "HEADER"))
-        chair_angle = random.choice(self.empty_chair_angles)
+        if len(self.empty_chair_angles)!=0:
+            chair_angle = random.choice(self.empty_chair_angles)
+            print("chair_angle ",chair_angle)
+        else:
+            chair_angle=90
         self.tm.go_to_defined_angle_srv(chair_angle)
         self.chair_found()
 
