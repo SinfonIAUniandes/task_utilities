@@ -176,7 +176,7 @@ class STICKLER_RULES(object):
         print(self.consoleFormatter.format("LOOK4SHOES", "HEADER"))
         self.tm.start_recognition("")
         self.tm.start_recognition("front_camera")
-        rospy.sleep(0.5)
+        rospy.sleep(3)
         #change cellphone for shoes
         self.tm.look_for_object("bottle",True)
         object_found = self.tm.wait_for_object(0.5)
@@ -191,7 +191,7 @@ class STICKLER_RULES(object):
         print(self.consoleFormatter.format("LOOK4DRINK", "HEADER"))
         self.tm.start_recognition("")
         self.tm.start_recognition("front_camera")
-        rospy.sleep(0.5)
+        rospy.sleep(3)
         #change cellphone for cup or bottle
         self.tm.look_for_object("cell phone",True)
         object_found = self.tm.wait_for_object(0.5)
@@ -236,7 +236,7 @@ class STICKLER_RULES(object):
         print(self.consoleFormatter.format("GO2KITCHEN", "HEADER"))
         self.tm.talk("Please follow me to the kitchen","English")
         self.tm.go_to_place("pantry") # Definir cocina
-        self.tm.wait_go_to_place()
+        self.tm.wait_go_to_place() 
         self.at_kitchen = True
         self.at_living, self.at_room = False, False
         self.arrive_kitchen()
