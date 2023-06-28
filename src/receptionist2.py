@@ -30,7 +30,6 @@ class RECEPTIONIST(object):
         - Falta meter todos los servicios del pytoolkit al modulo para que se puedan llamar facilmente desde la maquina de estados.
         - Falta crear behaviours como el spin_until_object que es usado varias veces en varios tasks.
         - Falta revisar todos los angulos de navegacion al hacer look_4_something y la velocidad de giro 
-        - Poner una redundancia para cuando el robot asigna un nuevo a id a una misma persona para que no la presente (lista con los nombres de los que ya presento, incluyendo el actual)
         """
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
@@ -86,7 +85,6 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("Waiting for /perception_utilities/get_labels_publisher", "WARNING"))
         self.get_labels_publisher = rospy.Subscriber("/perception_utilities/get_labels_publisher", get_labels_msg, self.callback_get_labels)
 
-
         # ROS Publishers
         print(self.consoleFormatter.format("Waiting for /animations", "WARNING"))
         self.animations_publisher = rospy.Publisher("/animations", animation_msg, queue_size = 1)
@@ -94,8 +92,8 @@ class RECEPTIONIST(object):
         ##################### ROS CALLBACK VARIABLES #####################
         self.labels ={}
         ##################### GLOBAL VARIABLES #####################
+        self.sinfonia_url_img="https://cdn.discordapp.com/attachments/876543237270163498/1123367466102427708/logo_sinfonia.png"
         self.img_dimensions = (320,240)
-        self.angle_stop_looking_person = 190
         self.recognize_person_counter = 0
         self.all_persons = {"Charlie":{"name":"Charlie","age":"20","drink":"beer"}}
         self.introduced_persons = []
@@ -133,12 +131,9 @@ class RECEPTIONIST(object):
         self.show_topic_srv("/perception_utilities/yolo_publisher")
         self.tm.start_recognition("front_camera")
         time.sleep(0.2)
-        #TODO mostrar el topico de yolo en la pantalla
         self.tm.talk("Waiting for guests","English")
         self.tm.look_for_object("person",False)
-        self.tm.wait_for_object(-1)
-        #TODO apagar el topico de yolo en la pantalla
-        
+        self.tm.wait_for_object(-1)        
         self.tm.look_for_object("",True)
         self.person_arrived()
         
@@ -155,20 +150,14 @@ class RECEPTIONIST(object):
 
     def on_enter_SAVE_FACE(self):
         print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
-        self.tm.publish_filtered_image("face","front_camera")
-        self.show_topic_srv("/perception_utilities/filtered_image")
-        #TODO encender el awareness para que siga la cara de la persona
-        # self.awareness_srv(False)
-        time.sleep(0.5)
         self.move_head_srv("up")
         if not self.failed_saving_face:
+            self.tm.publish_filtered_image("face","front_camera")
+            self.show_topic_srv("/perception_utilities/filtered_image")
             self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
         succed = self.tm.save_face(self.actual_person["name"],5)
         print("succed ",succed)
-        #TODO apagar el topico con el filtro para meter la cara en la pantalla
         if succed:
-            #TODO apagar el awareness y fijar la posicion de la cabeza para que mire al frente
-            # self.awareness_srv(False)
             time.sleep(1)
             self.move_head_srv("default")
             self.failed_saving_face=False
@@ -184,7 +173,6 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
         self.tm.talk("Please {}, follow me to the living room".format(self.actual_person["name"]),"English",wait=False)
         self.tm.go_to_place("living_room")
-        #TODO revisar el angulo de llegada del robot
         self.arrived_to_point()
 
     def on_enter_INTRODUCE_NEW(self):
@@ -192,6 +180,7 @@ class RECEPTIONIST(object):
         self.tm.talk("Hello everyone, this is {}, he is {} years old and he likes to drink {}".format(self.actual_person["name"],self.actual_person["age"],self.actual_person["drink"]),"English")
         #Turns on recognition and looks for  person
         self.tm.start_recognition("front_camera")
+        # Reiniciar las variables de presentacion de personas y sillas
         self.introduced_persons=[]
         self.introduced_persons.append(self.actual_person["name"])
         self.checked_chair_angles=[]
@@ -207,6 +196,7 @@ class RECEPTIONIST(object):
                 print(self.consoleFormatter.format("INTRODUCED_EVERYONE", "OKGREEN"))
                 self.introduced_everyone()
             else:
+                print(self.consoleFormatter.format("FAILED_INTRODUCING", "FAIL"))
                 not_introduced = []
                 for person in self.all_persons:
                     if person not in self.introduced_persons:
@@ -266,7 +256,7 @@ class RECEPTIONIST(object):
 
     def on_enter_GO2DOOR(self):
         print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
-        self.tm.talk("I am going to receive new guests","English",wait=False)
+        self.tm.talk("Waiting for other guests to come","English",wait=False)
         self.tm.go_to_place("door")
         self.wait_new_guest()
 
