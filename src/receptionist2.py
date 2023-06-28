@@ -70,8 +70,13 @@ class RECEPTIONIST(object):
         rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
         self.awareness_srv = rospy.ServiceProxy("/pytoolkit/ALBasicAwareness/set_awareness_srv",SetBool)
 
+        print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/move_head...", "WARNING"))
         rospy.wait_for_service("/pytoolkit/ALMotion/move_head_srv")
         self.move_head_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/move_head_srv",move_head_srv)
+
+        print(self.consoleFormatter.format("Waiting for /pytoolkit/ALTabletService/show_image_srv...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
+        self.show_image_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_image_srv",tablet_service_srv)
 
         print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
         rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
@@ -92,10 +97,11 @@ class RECEPTIONIST(object):
         ##################### ROS CALLBACK VARIABLES #####################
         self.labels ={}
         ##################### GLOBAL VARIABLES #####################
-        self.sinfonia_url_img="https://cdn.discordapp.com/attachments/876543237270163498/1123367466102427708/logo_sinfonia.png"
+        
+        self.sinfonia_url_img="https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"
         self.img_dimensions = (320,240)
         self.recognize_person_counter = 0
-        self.all_persons = {"Charlie":{"name":"Charlie","age":"20","drink":"beer"}}
+        self.all_persons = {"Charlie":{"name":"Charlie","age":"25","drink":"Coke"}}
         self.introduced_persons = []
         self.actual_person={}
         self.old_person = ""
@@ -114,7 +120,7 @@ class RECEPTIONIST(object):
         heights = data.heights
         ids = data.ids
         for i in range(len(labels)):
-            if self.img_dimensions[0]//3<x_coordinates[i]<int(self.img_dimensions[0]*2/3):
+            if int(self.img_dimensions[0]*0.2)<x_coordinates[i]<int(self.img_dimensions[0]*0.8):
                 self.labels[labels[i]] = {"x":x_coordinates[i],"y":y_coordinates[i],"w":widths[i],"h":heights[i],"id":ids[i]}
 
     def on_enter_INIT(self):
@@ -161,8 +167,7 @@ class RECEPTIONIST(object):
             time.sleep(1)
             self.move_head_srv("default")
             self.failed_saving_face=False
-            #TODO show sinfonia img
-            self.show_topic_srv("/robot_toolkit_node/camera/front/image_raw")
+            self.show_image_srv(self.sinfonia_url_img)
             self.save_face_succeded()
         else:
             self.failed_saving_face=True
@@ -186,6 +191,7 @@ class RECEPTIONIST(object):
         self.checked_chair_angles=[]
         self.empty_chair_angles=self.chair_angles.copy()
         self.angle_index=0
+        self.show_topic_srv("/perception_utilities/yolo_publisher")
         self.introduced_new_person()
     
     def on_enter_LOOK4PERSON(self):
@@ -212,7 +218,7 @@ class RECEPTIONIST(object):
             self.angle_index+=1
             t1 = time.time()
             self.labels ={}
-            while time.time()-t1<3:
+            while time.time()-t1<5:
                 if "person" in self.labels:
                     self.tm.talk("Recognizing person","English")
                     self.empty_chair_angles.remove(self.checked_chair_angles[-1])
@@ -239,6 +245,7 @@ class RECEPTIONIST(object):
     
     def on_enter_LOOK4CHAIR(self):
         print(self.consoleFormatter.format("LOOK4CHAIR", "HEADER"))
+        self.show_image_srv(self.sinfonia_url_img)
         if len(self.empty_chair_angles)!=0:
             chair_angle = random.choice(self.empty_chair_angles)
             print("chair_angle ",chair_angle)
