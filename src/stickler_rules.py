@@ -16,7 +16,7 @@ from std_srvs.srv import SetBool
 from navigation_msgs.srv import constant_spin_srv, get_absolute_position_srv, get_absolute_position_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
 from perception_msgs.msg import get_labels_msg
-from robot_toolkit_msgs.srv import tablet_service_srv
+from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv
 from robot_toolkit_msgs.msg import animation_msg
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion
@@ -69,6 +69,10 @@ class STICKLER_RULES(object):
         rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
         self.awareness_srv = rospy.ServiceProxy("/pytoolkit/ALBasicAwareness/set_awareness_srv",SetBool)
 
+        print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/move_head...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALMotion/move_head_srv")
+        self.move_head_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/move_head_srv",move_head_srv)
+
         print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
         rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
         self.show_topic_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_topic_srv",tablet_service_srv)
@@ -97,32 +101,49 @@ class STICKLER_RULES(object):
         self.at_kitchen = False
         self.ids_seen = []
         self.person_seen = False
-
+        self.labels = []
+        self.widths = []
+        self.heights = []
+        self.ids = []
+        self.objects = {}
+        self.person_ids = []
+        # 320x240
 
     def callback_spin_until(self,data):
         self.angle = int(np.degrees(euler_from_quaternion([data.pose.pose.orientation.x, data.pose.pose.orientation.y, data.pose.pose.orientation.z, data.pose.pose.orientation.w])[2] % (2 * math.pi)))
         return self.angle
-    
+
     def callback_get_labels(self,data):
         self.labels = data.labels
-        self.ids = data.ids   
-    
+        self.ids = data.ids
+        self.widths = data.widths
+        self.heights = data.heights
+        for i in range(len(self.heights)):
+            size_dict = {"label": self.labels[i], "width": self.widths[i], "height": self.heights[i]}
+            if self.labels[i] == 'person':
+                self.person_ids.append[self.ids[i]]
+            self.objects[self.ids[i]] = size_dict
+
     def callback_look_for_object(self,data):
         self.stop_rotation=data.data
         if self.stop_rotation:
-            for i in self.ids:
-                if i not in self.ids_seen:
-                    self.person_seen=True
+            for id in self.person_ids:
+                if id not in self.ids_seen:
+                    self.person_seen = self.object_distance(id)
             self.shoes = True
         return data
-
-    def check_angle(self,desired,angle,offset)->bool:
-        if desired+offset>360:
-            return 0<=angle<=(desired+offset)%360 or desired-offset<=angle<=360
-        elif desired-offset<0:
-            return 0<=angle<=desired+offset or (desired-offset)%360<=angle<=360
-        else:
-            return desired-offset<=angle<=desired+offset
+    
+    def object_distance(self, object_id, wall_distance=200):
+        # Ancho promedio de un ser humano = 42.5cm
+        # Altura promedio de un ser humano = 170cm
+        # TODO: Determinar cuanto es eso en pixeles a una distancia adaptable
+        # Altura = 150px, Ancho = 50px a 200cm de distancia (DATOS NO CONFIABLES, HAY QUE CALCULAR ESTO)
+        object = self.objects[object_id]
+        width, height = object['width'], object['height']
+        # Ahora necesito hacer pruebas :) En teoria la relacion distancia:px es lineal, 
+        # entonces necesito probar para saber la pendiente y poder aproximar la distancia de una persona
+        width = int((wall_distance / float(object["width"])) * object['width'])
+        pass
 
     def on_enter_INIT(self):
         self.tm.talk("I am going to do the "+self.task_name+" task","English")
@@ -135,21 +156,25 @@ class STICKLER_RULES(object):
 
     # ============================== LOOK4 STATES ==============================
     def on_enter_LOOK4PERSON(self):
+        print(self.labels)
+        self.labels = []
+        self.ids = []
         print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
-        self.ids_seen = []
         self.awareness_srv(True)
         time.sleep(0.5)
         self.animations_publisher.publish("animations","Gestures/Maybe_1")
         time.sleep(0.5)
         self.awareness_srv(False)
         self.tm.start_recognition("front_camera")
-        rospy.sleep(0.5)
+        rospy.sleep(1)
+        self.show_topic_srv("/perception_utilities/yolo_publisher")
         self.tm.look_for_object("person",True)
         self.stop_rotation=False
+        #self.tm.spin_srv(23)
         current_angle = self.get_position_proxy().theta
         while current_angle <= 360 and not self.person_seen:
             self.tm.spin_srv(45)
-            self.ids_seen.extend(self.ids)
+            self.ids_seen.extend(self.person_ids)
             current_angle = self.get_position_proxy().theta
         print("Angle: ",self.angle)
         print("El angulo es de: "+str(self.angle)+" y stop rotation es: "+str(self.stop_rotation))
@@ -174,15 +199,18 @@ class STICKLER_RULES(object):
     def on_enter_LOOK4SHOES(self):
         # TODO: Mirar para abajo
         print(self.consoleFormatter.format("LOOK4SHOES", "HEADER"))
+        self.move_head_srv("down")
         self.tm.start_recognition("")
         self.tm.start_recognition("front_camera")
-        rospy.sleep(3)
+        rospy.sleep(1)
+        self.show_topic_srv("/perception_utilities/yolo_publisher")
         #change cellphone for shoes
-        self.tm.look_for_object("bottle",True)
+        self.tm.look_for_object("cell phone",True)
         object_found = self.tm.wait_for_object(0.5)
         self.tm.start_recognition("")
         self.tm.look_for_object("",True)
         if object_found:
+            self.move_head_srv("default")
             self.shoes_found()
         else:
             self.shoes_not_found()
@@ -191,14 +219,16 @@ class STICKLER_RULES(object):
         print(self.consoleFormatter.format("LOOK4DRINK", "HEADER"))
         self.tm.start_recognition("")
         self.tm.start_recognition("front_camera")
-        rospy.sleep(3)
+        rospy.sleep(1)
+        self.show_topic_srv("/perception_utilities/yolo_publisher")
         #change cellphone for cup or bottle
-        self.tm.look_for_object("cell phone",True)
+        self.tm.look_for_object("bottle",True)
         object_found = self.tm.wait_for_object(0.5)
         self.tm.start_recognition("")
         self.tm.look_for_object("",True)
         if object_found:
             if self.at_kitchen:
+                self.tm.talk("Right! I'm gonna go the living room again.","English", False)
                 self.drink_found_kitchen()
             else:
                 self.drink_found_not_kitchen()
@@ -208,15 +238,15 @@ class STICKLER_RULES(object):
     # ============================== ASK4 STATES ===============================
     def on_enter_ASK4SHOES(self):
         print(self.consoleFormatter.format("ASK4SHOES", "HEADER"))
-        self.tm.talk("You must wear shoes in this place.","English")
+        self.tm.talk("You must wear shoes in this place.","English", False)
         time.sleep(5)
         self.tm.talk("Please hurry up!","English")
-        time.sleep(15)
+        time.sleep(5)
         self.shoe_asked()
 
     def on_enter_ASK4DRINK(self):
         print(self.consoleFormatter.format("ASK4DRINK", "HEADER"))
-        self.tm.talk("You must take a Drink","English")
+        self.tm.talk("You must take a Drink","English", False)
         time.sleep(5)
         if self.at_kitchen:
             self.drink_asked_kitchen()
@@ -225,22 +255,22 @@ class STICKLER_RULES(object):
 
     def on_enter_ASK2LEAVE(self):
         print(self.consoleFormatter.format("ASK2LEAVE", "HEADER"))
-        self.tm.talk("You must leave this room please","English")
+        self.tm.talk("You must leave this room please","English", False)
         time.sleep(5)
         self.tm.talk("Please hurry up!, you really must not be here!","English")
-        time.sleep(10)
+        time.sleep(5)
         self.person_asked()
 
     # =============================== GO2 STATES ===============================
     def on_enter_GO2KITCHEN(self):
         print(self.consoleFormatter.format("GO2KITCHEN", "HEADER"))
         self.tm.talk("Please follow me to the kitchen","English")
-        self.tm.go_to_place("pantry") # Definir cocina
+        self.tm.go_to_place("door") # Definir cocina
         self.tm.wait_go_to_place() 
         self.at_kitchen = True
         self.at_living, self.at_room = False, False
         self.arrive_kitchen()
-    
+
     def on_enter_GO2LIVING(self):
         print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
         self.tm.go_to_place("living_room")
@@ -251,7 +281,7 @@ class STICKLER_RULES(object):
 
     def on_enter_GO2ROOM(self):                                                                                     
         print(self.consoleFormatter.format("GO2ROOM", "HEADER"))
-        self.tm.go_to_place("pantry") # Definir cuarto
+        self.tm.go_to_place("door") # Definir cuarto
         self.tm.wait_go_to_place()
         self.at_room = True
         self.at_kitchen, self.at_living = False, False
