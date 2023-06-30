@@ -14,7 +14,7 @@ from std_srvs.srv import Trigger, TriggerRequest
 
 # from robot_toolkit_msgs.msg import speech_msg
 
-from speech_utilities_msgs.srv import q_a_speech_srv, talk_speech_srv, saveAudio_srv, q_a_speech_srvRequest, talk_speech_srvRequest, saveAudio_srvRequest
+from speech_utilities_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest
 
 from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest
 
@@ -70,8 +70,8 @@ class Task_module:
             print(self.consoleFormatter.format("Waiting for SPEECH services...","WARNING"))
             rospy.wait_for_service('/speech_utilities/talk_speech_srv')
             self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_speech_srv)
-            rospy.wait_for_service('speech_utilities/save_audio_srv')
-            self.save_audio_proxy = rospy.ServiceProxy('speech_utilities/save_audio_srv', saveAudio_srv)
+            rospy.wait_for_service('speech_utilities/speech2text_srv')
+            self.speech2text_srv_proxy = rospy.ServiceProxy('speech_utilities/speech2text_srv', speech2text_srv)
             rospy.wait_for_service('/speech_utilities/q_a_speech_srv')
             self.q_a_proxy = rospy.ServiceProxy('/speech_utilities/q_a_speech_srv', q_a_speech_srv)
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
@@ -331,6 +331,7 @@ class Task_module:
         text
         language: English || Spanish
         wait(wait until the robot finishes talking)
+        animates: gesture hands
         Output: 'answer' that indicates what Pepper said.
         ----------
         Allows the robot to say the input of the service.
@@ -346,23 +347,26 @@ class Task_module:
             print("speech as false")
             return ""
 
-    def save_audio(self, seconds:int, file_name:str)->bool:
-        """
-        Input: seconds, file_name
-        Output: 'Audio Saved' that indicates that Pepper already saved the audio.
+    def speech2text_srv(self, file_name="prueba",seconds=0,transcription=True)->bool:
+        """default
+        Input: 
+        seconds: 0 for automatic stop || >0 for seconds to record
+        file_name: name of the file
+        transcription: True || False
+        Output: text that the robot heard
         ----------
         Allows the robot to save audio and saves it to a file.
         """
         if self.speech:
             try:
-                self.save_audio_proxy(seconds, file_name)
-                return True
+                text = self.speech2text_srv_proxy(file_name, seconds,transcription)
+                return text.answer
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
-                return False
+                return ""
         else:
             print("speech as false")
-            return False
+            return ""
 
     def q_a_speech(self, tag:str)->str:
         """
@@ -472,7 +476,7 @@ class Task_module:
             print("navigation as false")
             return False
 
-    def add_place_srv(self, place_name:str, persist:int, edges:list)->bool:
+    def add_place_srv(self, place_name:str, persist=1, edges=[])->bool:
         """
         Input: place_name, persist, edges
         Output: True if the service was called correctly, False if not

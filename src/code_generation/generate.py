@@ -44,14 +44,14 @@ def generate_code(task_input: str)-> str:
 
     # Details about the code to generate:
     - The code must be written in python and the output will be executed directly
-    - The code utilizes the rospy library to communicate with the robot
-    - The interface is already given as an importable python module, the import sentence is: `import task_module`
-    - The Task_module class must be instantiated in order to use the codebase interface only once `tm = task_module.Task_module(perception = True,speech=True,manipulation=True, navigation=True)`
-    - The initialize_node function must be called before any other function in the codebase interface, this turns on a ros node
-    - The code cannot include the original codebase interface, it is given that the codebase interface is instantiated as the `tm` instance
-    - No calls to rospy are allowed with the exception of rospy.sleep() calls, everything must be called through the codebase interface
-    - Do not use the time library to sleep, use rospy.sleep() instead
-    - Remember to initialize and dispose of every sensor in case you need them
+    - The code is going to be executed in a ROS node, so there is no need to initialize ROS
+    - The Task_module class is allready instantiated as `self.tm = task_module.Task_module(perception = True,speech=True,manipulation=True, navigation=True)`
+    - Use only self.tm.<function_name> to call the functions of the codebase interface
+    - Only use the functions of the codebase interface that are needed to complete the task and callbacks of the given ros topics
+    - The initialize_node function is allready called for you, you cannot call it again
+    - The code cannot include the original codebase interface, it is only for using its functions
+    - Remember to initialize and dispose of every sensor in case you need them, for example calling `self.tm.turn_camera("front_camera","custom",1,15)`
+    - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
 
     # Task Description:
 
