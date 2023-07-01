@@ -27,7 +27,7 @@ class STICKLER_RULES(object):
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
         self.task_name = "stickler_for_the_rules"
-        states = ['INIT', 'LOOK4PERSON', 'LOOK4SHOES', 'ASK4SHOES', 'LOOK4DRINK', 'ASK4DRINK', 'GO2KITCHEN', 'GO2LIVING', 'GO2ROOM', 'ASK2LEAVE']
+        states = ['INIT', 'LOOK4PERSON', 'LOOK4SHOES', 'LOOK4DRINK', 'ASK4SHOES', 'ASK2LEAVE', 'ASK4DRINK', 'GO2KITCHEN', 'GO2LIVING', 'GO2ROOM']
         self.tm = tm(perception = True,speech=True, manipulation=False, navigation=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
@@ -47,7 +47,7 @@ class STICKLER_RULES(object):
             {'trigger': 'arrive_living', 'source': 'GO2LIVING', 'dest': 'LOOK4PERSON'},
             {'trigger': 'full_turn_living', 'source': 'LOOK4PERSON', 'dest':'GO2ROOM'},
             {'trigger': 'arrive_room', 'source': 'GO2ROOM', 'dest':'LOOK4PERSON'},
-            {'trigger': 'person_at_room', 'source': 'LOOK4PERSON', 'dest': 'ASK2LEAVE'},
+            {'trigger': 'person_room', 'source': 'LOOK4PERSON', 'dest': 'ASK2LEAVE'},
             {'trigger': 'person_asked', 'source': 'ASK2LEAVE', 'dest': 'LOOK4PERSON'},
             {'trigger': 'full_turn_room', 'source': 'LOOK4PERSON', 'dest':'GO2LIVING'},
         ]
@@ -101,12 +101,16 @@ class STICKLER_RULES(object):
         self.at_kitchen = False
         self.ids_seen = []
         self.person_seen = False
+        self.wall_distance = 1.8
+        self.times_spin = 0
         self.labels = []
         self.widths = []
         self.heights = []
         self.ids = []
         self.objects = {}
         self.person_ids = []
+        self.sizes = []
+        self.reference_width, self.reference_distance = 93, 2 # Average width = 42.5cm (About 97px at 2m)
         # 320x240
 
     def callback_spin_until(self,data):
@@ -118,32 +122,40 @@ class STICKLER_RULES(object):
         self.ids = data.ids
         self.widths = data.widths
         self.heights = data.heights
-        for i in range(len(self.heights)):
+        for i in range(0, len(self.heights)):
             size_dict = {"label": self.labels[i], "width": self.widths[i], "height": self.heights[i]}
             if self.labels[i] == 'person':
-                self.person_ids.append[self.ids[i]]
+                self.person_ids.append(self.ids[i])
             self.objects[self.ids[i]] = size_dict
 
     def callback_look_for_object(self,data):
-        self.stop_rotation=data.data
-        if self.stop_rotation:
+        print(data.data)
+        if data.data:
             for id in self.person_ids:
                 if id not in self.ids_seen:
-                    self.person_seen = self.object_distance(id)
+                    self.person_seen = self.object_distance(id, self.wall_distance)
+                    print(f"Person seen: {self.person_seen}")
             self.shoes = True
         return data
     
-    def object_distance(self, object_id, wall_distance=200):
-        # Ancho promedio de un ser humano = 42.5cm
-        # Altura promedio de un ser humano = 170cm
-        # TODO: Determinar cuanto es eso en pixeles a una distancia adaptable
-        # Altura = 150px, Ancho = 50px a 200cm de distancia (DATOS NO CONFIABLES, HAY QUE CALCULAR ESTO)
-        object = self.objects[object_id]
-        width, height = object['width'], object['height']
-        # Ahora necesito hacer pruebas :) En teoria la relacion distancia:px es lineal, 
-        # entonces necesito probar para saber la pendiente y poder aproximar la distancia de una persona
-        width = int((wall_distance / float(object["width"])) * object['width'])
-        pass
+    def object_distance(self, object_id, wall_distance=2, offset=0.4):
+        """
+        Function to know if aa person is inside or not of a room calculating 
+        the distance 
+        Args:
+            object_id (float): Key in the dictionary to know the info about the person.
+            wall_distance (float, optional): Distance from pepper to the wall. Defaults to 200.
+            offset (float, optional): An offset to calibrate the function. Defaults to 20.
+        Returns:
+            bool: If the person is inside or not
+        """
+        width = self.objects[object_id]['width']
+        estimated_distance = (self.reference_width * self.reference_distance) / width
+        print(f"Width: {width}")
+        if estimated_distance <= (wall_distance + offset):
+            return True
+        else:
+            return False
 
     def on_enter_INIT(self):
         self.tm.talk("I am going to do the "+self.task_name+" task","English")
@@ -156,7 +168,6 @@ class STICKLER_RULES(object):
 
     # ============================== LOOK4 STATES ==============================
     def on_enter_LOOK4PERSON(self):
-        print(self.labels)
         self.labels = []
         self.ids = []
         print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
@@ -167,49 +178,51 @@ class STICKLER_RULES(object):
         self.awareness_srv(False)
         self.tm.start_recognition("front_camera")
         rospy.sleep(1)
-        self.show_topic_srv("/perception_utilities/yolo_publisher")
-        self.tm.look_for_object("person",True)
+        self.move_head_srv("default")
+        #self.show_topic_srv("/perception_utilities/yolo_publisher")
+        self.tm.look_for_object("person", True)
         self.stop_rotation=False
-        #self.tm.spin_srv(23)
-        current_angle = self.get_position_proxy().theta
-        while current_angle <= 360 and not self.person_seen:
+        while not self.times_spin == 7 and not self.person_seen:
+            print(f"person_seen {self.person_seen}")
+            self.times_spin += 1
+            print(f"Times spin: {self.times_spin}")
             self.tm.spin_srv(45)
             self.ids_seen.extend(self.person_ids)
-            current_angle = self.get_position_proxy().theta
-        print("Angle: ",self.angle)
-        print("El angulo es de: "+str(self.angle)+" y stop rotation es: "+str(self.stop_rotation))
+            time.sleep(1)
         print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
         self.tm.robot_stop_srv()
         self.tm.start_recognition("")
         self.tm.look_for_object("",True)
         self.stop_rotation = False
         self.person_seen = False
-        if current_angle >= 360:
+        if self.person_seen:
+            if self.at_living:
+                self.tm.talk("Please come closer","English")
+                self.person_found()
+            self.person_room()
+        elif self.times_spin == 7:
+            self.ids_seen = []
+            self.times_spin = 0
             if self.at_living:
                 self.full_turn_living()
-            elif self.at_room:
-                self.full_turn_room()
-        else:
-            self.tm.talk("Please come closer","English")
-            if self.at_room:
-                self.person_at_room()
-            else:
-                self.person_found()
+            self.full_turn_room()
 
     def on_enter_LOOK4SHOES(self):
         # TODO: Mirar para abajo
         print(self.consoleFormatter.format("LOOK4SHOES", "HEADER"))
+        self.awareness_srv(False)
+        time.sleep(0.5)
         self.move_head_srv("down")
         self.tm.start_recognition("")
         self.tm.start_recognition("front_camera")
+        #self.show_topic_srv("/perception_utilities/yolo_publisher")
+        #change cell phone for shoes
+        self.tm.look_for_object("cell phone", True)
         rospy.sleep(1)
-        self.show_topic_srv("/perception_utilities/yolo_publisher")
-        #change cellphone for shoes
-        self.tm.look_for_object("cell phone",True)
-        object_found = self.tm.wait_for_object(0.5)
-        self.tm.start_recognition("")
-        self.tm.look_for_object("",True)
-        if object_found:
+        object_found = self.tm.wait_for_object(1)
+        if not object_found:
+            self.tm.start_recognition("")
+            self.tm.look_for_object("",True)
             self.move_head_srv("default")
             self.shoes_found()
         else:
@@ -217,16 +230,17 @@ class STICKLER_RULES(object):
 
     def on_enter_LOOK4DRINK(self):
         print(self.consoleFormatter.format("LOOK4DRINK", "HEADER"))
+        self.awareness_srv(False)
+        time.sleep(0.5)
         self.tm.start_recognition("")
         self.tm.start_recognition("front_camera")
+        #self.show_topic_srv("/perception_utilities/yolo_publisher")
+        self.tm.look_for_object("bottle", True)
         rospy.sleep(1)
-        self.show_topic_srv("/perception_utilities/yolo_publisher")
-        #change cellphone for cup or bottle
-        self.tm.look_for_object("bottle",True)
-        object_found = self.tm.wait_for_object(0.5)
-        self.tm.start_recognition("")
-        self.tm.look_for_object("",True)
+        object_found = self.tm.wait_for_object(1)
         if object_found:
+            self.tm.start_recognition("")
+            self.tm.look_for_object("",True)
             if self.at_kitchen:
                 self.tm.talk("Right! I'm gonna go the living room again.","English", False)
                 self.drink_found_kitchen()
@@ -238,7 +252,7 @@ class STICKLER_RULES(object):
     # ============================== ASK4 STATES ===============================
     def on_enter_ASK4SHOES(self):
         print(self.consoleFormatter.format("ASK4SHOES", "HEADER"))
-        self.tm.talk("You must wear shoes in this place.","English", False)
+        self.tm.talk("You must not wear shoes in this place.","English", False)
         time.sleep(5)
         self.tm.talk("Please hurry up!","English")
         time.sleep(5)
@@ -255,6 +269,7 @@ class STICKLER_RULES(object):
 
     def on_enter_ASK2LEAVE(self):
         print(self.consoleFormatter.format("ASK2LEAVE", "HEADER"))
+        self.times_spin = 0
         self.tm.talk("You must leave this room please","English", False)
         time.sleep(5)
         self.tm.talk("Please hurry up!, you really must not be here!","English")
@@ -281,6 +296,7 @@ class STICKLER_RULES(object):
 
     def on_enter_GO2ROOM(self):                                                                                     
         print(self.consoleFormatter.format("GO2ROOM", "HEADER"))
+        self.tm.talk("I'm gonna check the forbidden room.","English")
         self.tm.go_to_place("door") # Definir cuarto
         self.tm.wait_go_to_place()
         self.at_room = True
@@ -295,8 +311,7 @@ class STICKLER_RULES(object):
         os._exit(os.EX_OK)
 
     def run(self):
-        while not rospy.is_shutdown():
-            self.start()
+        self.start()
 
 # Crear una instancia de la maquina de estados
 if __name__ == "__main__":
