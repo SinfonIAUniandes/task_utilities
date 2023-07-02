@@ -13,6 +13,8 @@ from std_srvs.srv import Trigger, TriggerRequest, SetBool
 
 from robot_toolkit_msgs.srv import tablet_service_srv
 
+from manipulation_msgs.srv import GoToState, GoToAction, GraspObject
+
 from speech_utilities_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest
 
 from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest
@@ -145,6 +147,18 @@ class Task_module:
         if manipulation:
             print(self.consoleFormatter.format("Waiting for MANIPULATION services...","WARNING"))
    
+            print(self.consoleFormatter.format("Waiting for manipulation_utilitites/goToState"))
+            rospy.wait_for_service('manipulation_utilities/goToState')
+            self.go_to_pose_proxy = rospy.ServiceProxy('manipulation_utilities/goToState', GoToState)
+
+            print(self.consoleFormatter.format("Waiting for manipulation_utilitites/goToAction"))
+            rospy.wait_for_service('manipulation_utilities/goToAction')
+            self.go_to_action_proxy = rospy.ServiceProxy('manipulation_utilities/goToAction', GoToAction)
+
+            print(self.consoleFormatter.format("Waiting for manipulation_utilitites/graspObject"))
+            rospy.wait_for_service('manipulation_utilities/graspObject')
+            self.grasp_object_proxy = rospy.ServiceProxy('manipulation_utilities/graspObject', GraspObject)
+
             print(self.consoleFormatter.format("MANIPULATION services enabled","OKGREEN"))
 
         self.pytoolkit = pytoolkit
@@ -650,7 +664,69 @@ class Task_module:
             return False
         
     ############ MANIPULATION SERVICES ###############    
-    # TODO
+    
+    def go_to_pose(self,pose:str)->bool:
+        """
+        Input: pose options ->("bowl","box","cylinder","medium_object", "small_object_left_hand","small_object_right_hand","tray","head_up","head_down","head_default")
+        Output: True if the service was called correctly, False if not
+        ----------
+        Goes to pose with hands or head
+        """
+        if self.manipulation:
+            try:
+                approved = self.go_to_pose_proxy(pose)
+                if approved=="OK":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("manipulation as false")
+            return False
+        
+    def execute_trayectory(self,trayectory:str)->bool:
+        """
+        Input: trayectory options ->("place_both_arms","place_left_arm","place_right_arm")
+        Output: True if the service was called correctly, False if not
+        ----------
+        Executes trayectory with the hands
+        """
+        if self.manipulation:
+            try:
+                approved = self.go_to_action_proxy(trayectory)
+                if approved=="OK":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("manipulation as false")
+            return False
+        
+    def grasp_object(self,object_name:str)->bool:
+        """
+        Input: object_name
+        Output: True if the service was called correctly, False if not
+        ----------
+        Grasp the <object_name>
+        """
+        if self.manipulation:
+            try:
+                approved = self.grasp_object_proxy(object_name)
+                if approved=="OK":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("manipulation as false")
+            return False
 
     ################ PYTOOLKIT ################
 
