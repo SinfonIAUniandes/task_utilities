@@ -180,7 +180,7 @@ class STICKLER_RULES(object):
         rospy.sleep(1)
         self.move_head_srv("default")
         #self.show_topic_srv("/perception_utilities/yolo_publisher")
-        self.tm.look_for_object("person", True)
+        self.tm.look_for_object("person", False)
         self.stop_rotation=False
         while not self.times_spin == 7 and not self.person_seen:
             print(f"person_seen {self.person_seen}")
@@ -194,8 +194,8 @@ class STICKLER_RULES(object):
         self.tm.start_recognition("")
         self.tm.look_for_object("",True)
         self.stop_rotation = False
-        self.person_seen = False
         if self.person_seen:
+            self.person_seen = False
             if self.at_living:
                 self.tm.talk("Please come closer","English")
                 self.person_found()
