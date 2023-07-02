@@ -19,7 +19,7 @@ from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequ
 
 from manipulation_msgs.srv import SaveState, SaveStateRequest, GoToState, GoToStateRequest
 
-from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
+from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
 
 class Task_module:
@@ -227,3 +227,12 @@ class Task_module:
         ---------
         Performs a series of actions to move the robot's arms to a desired configuration defined by joint_group_positions.
         """
+    ################ ROS TOPICS ###################
+
+    # /perception_utilities/get_labels_publisher
+    """
+    Necessary import: from perception_msgs.msg import get_labels_msg
+    Description: Publishes the labels of the objects detected by the robot's cameras, their position, dimensions and id.
+    Message type: get_labels_msg
+    get_labels_msg content: labels String[], x_coordinates float[], y_coordinates float[], widths float[], heights float[], ids float[]
+    """

@@ -6,26 +6,23 @@ import rospkg
 import rosservice
 import ConsoleFormatter
 
-
 from std_msgs.msg import Int32, String, Bool
-from std_srvs.srv import Trigger, TriggerRequest
+from std_srvs.srv import Trigger, TriggerRequest, SetBool
 
 # All imports from tools
 
-# from robot_toolkit_msgs.msg import speech_msg
+from robot_toolkit_msgs.srv import tablet_service_srv
 
 from speech_utilities_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest
 
 from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest
-
-from manipulation_msgs.srv import SaveState, SaveStateRequest, GoToState, GoToStateRequest
 
 from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
 
 class Task_module:
 
-    def __init__(self, perception=False, speech=False, manipulation=False, navigation=False):
+    def __init__(self, perception=False, speech=False, manipulation=False, navigation=False, pytoolkit = False):
         """Initializer for the Task_module class
 
         Args:
@@ -36,98 +33,142 @@ class Task_module:
         """
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
-        self.perception= perception
+        ################### GLOBAL VARIABLES ###################
+        self.object_found = False
+        self.navigation_status =0
 
+        self.perception= perception
         if perception:
             print(self.consoleFormatter.format("Waiting for PERCEPTION services...","WARNING"))
+
+            print(self.consoleFormatter.format("Waiting for perception_utilities/turn_camera...", "WARNING"))
             rospy.wait_for_service('/perception_utilities/turn_camera_srv')
             self.turn_camera_proxy = rospy.ServiceProxy('/perception_utilities/turn_camera_srv', turn_camera_srv)
 
+            print(self.consoleFormatter.format("Waiting for perception_utilities/start_recognition...", "WARNING"))
             rospy.wait_for_service('/perception_utilities/start_recognition_srv')
             self.start_recognition_proxy = rospy.ServiceProxy('/perception_utilities/start_recognition_srv', start_recognition_srv)
 
+            print(self.consoleFormatter.format("Waiting for perception_utilities/look_for_object...", "WARNING"))
             rospy.wait_for_service('/perception_utilities/look_for_object_srv')
             self.look_for_object_proxy = rospy.ServiceProxy('/perception_utilities/look_for_object_srv', look_for_object_srv)
 
+            print(self.consoleFormatter.format("Waiting for perception_utilities/save_face...", "WARNING"))
             rospy.wait_for_service('/perception_utilities/save_face_srv')
             self.save_face_proxy = rospy.ServiceProxy('/perception_utilities/save_face_srv', save_face_srv)
 
+            print(self.consoleFormatter.format("Waiting for perception_utilities/recognize_face...", "WARNING"))
             rospy.wait_for_service('/perception_utilities/recognize_face_srv')
             self.recognize_face_proxy = rospy.ServiceProxy('/perception_utilities/recognize_face_srv', recognize_face_srv)
 
+            print(self.consoleFormatter.format("Waiting for perception_utilities/read_qr...", "WARNING"))
             rospy.wait_for_service('perception_utilities/read_qr_srv')
             self.qr_read_proxy = rospy.ServiceProxy('/perception_utilities/read_qr_srv', read_qr_srv)
 
+            print(self.consoleFormatter.format("Waiting for perception_utilities/filtered_image...", "WARNING"))
             rospy.wait_for_service("perception_utilities/filtered_image")
             self.filtered_image_proxy = rospy.ServiceProxy("perception_utilities/filtered_image", filtered_image_srv)
 
-            self.object_found = False
             print(self.consoleFormatter.format("PERCEPTION services enabled","OKGREEN"))
 
         self.speech=speech
 
         if speech:
             print(self.consoleFormatter.format("Waiting for SPEECH services...","WARNING"))
+
+            print(self.consoleFormatter.format("Waiting for speech_utilities/talk_speech...", "WARNING"))
             rospy.wait_for_service('/speech_utilities/talk_speech_srv')
             self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_speech_srv)
+
+            print(self.consoleFormatter.format("Waiting for speech_utilities/speech2text...", "WARNING"))
             rospy.wait_for_service('speech_utilities/speech2text_srv')
             self.speech2text_srv_proxy = rospy.ServiceProxy('speech_utilities/speech2text_srv', speech2text_srv)
+
+            print(self.consoleFormatter.format("Waiting for speech_utilities/q_a_speech...", "WARNING"))
             rospy.wait_for_service('/speech_utilities/q_a_speech_srv')
             self.q_a_proxy = rospy.ServiceProxy('/speech_utilities/q_a_speech_srv', q_a_speech_srv)
+
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
 
         self.navigation = navigation
-
         if navigation:
             print(self.consoleFormatter.format("Waiting for NAVIGATION services...","WARNING"))
+
+            print(self.consoleFormatter.format("Waiting for navigation_utilities/set_current_place...", "WARNING"))
             rospy.wait_for_service('/navigation_utilities/set_current_place_srv')
             self.set_current_place_proxy = rospy.ServiceProxy('/navigation_utilities/set_current_place_srv', set_current_place_srv)
 
+            print(self.consoleFormatter.format("Waiting for navigation_utilities/go_to_relative_point...", "WARNING"))
             rospy.wait_for_service('navigation_utilities/go_to_relative_point_srv')
             self.go_to_relative_point_proxy = rospy.ServiceProxy('/navigation_utilities/go_to_relative_point_srv', go_to_relative_point_srv)
 
+            print(self.consoleFormatter.format("Waiting for navigation_utilities/go_to_place...", "WARNING"))
             rospy.wait_for_service('navigation_utilities/go_to_place_srv')
             self.go_to_place_proxy = rospy.ServiceProxy('/navigation_utilities/go_to_place_srv', go_to_place_srv)
 
+            print(self.consoleFormatter.format("Waiting for navigation_utilities/start_random_navigation...", "WARNING"))
             rospy.wait_for_service('navigation_utilities/start_random_navigation_srv')
             self.start_random_navigation_proxy = rospy.ServiceProxy('/navigation_utilities/start_random_navigation_srv', start_random_navigation_srv)
 
+            print(self.consoleFormatter.format("Waiting for navigation_utilities/add_place...", "WARNING"))
             rospy.wait_for_service('navigation_utilities/add_place_srv')
             self.add_place_proxy = rospy.ServiceProxy('/navigation_utilities/add_place_srv', add_place_srv)
 
-            rospy.wait_for_service('navigation_utilities/follow_you_srv')
-            self.follow_you_proxy = rospy.ServiceProxy('/navigation_utilities/follow_you_srv', follow_you_srv)
+            #TODO Follow me
+            # print(self.consoleFormatter.format("Waiting for navigation_utilities/follow...", "WARNING"))
+            # rospy.wait_for_service('navigation_utilities/follow_you_srv')
+            # self.follow_you_proxy = rospy.ServiceProxy('/navigation_utilities/follow_you_srv', follow_you_srv)
 
+            print(self.consoleFormatter.format("Waiting for navigation_utilities/robot_stop_srv...", "WARNING"))
             rospy.wait_for_service('navigation_utilities/robot_stop_srv')
             self.robot_stop_proxy = rospy.ServiceProxy('/navigation_utilities/robot_stop_srv', robot_stop_srv)
 
+            print(self.consoleFormatter.format("Waiting for navigation_utilities/spin_srv...", "WARNING"))
             rospy.wait_for_service('navigation_utilities/spin_srv')
             self.spin_proxy = rospy.ServiceProxy('/navigation_utilities/spin_srv', spin_srv)
 
+            print(self.consoleFormatter.format("Waiting for navigation_utilities/go_to_defined_angle_srv...", "WARNING"))
             rospy.wait_for_service('navigation_utilities/go_to_defined_angle_srv')
             self.go_to_defined_angle_proxy = rospy.ServiceProxy('/navigation_utilities/go_to_defined_angle_srv', go_to_defined_angle_srv)
 
+            print(self.consoleFormatter.format("Waiting for navigation_utilities/get_route_guidance_srv...", "WARNING"))
             rospy.wait_for_service('navigation_utilities/get_route_guidance_srv')
             self.get_route_guidance_proxy = rospy.ServiceProxy('/navigation_utilities/get_route_guidance_srv', get_route_guidance_srv)
 
+            print(self.consoleFormatter.format("Waiting for navigation_utilities/constant_spin_srv...", "WARNING"))
             rospy.wait_for_service('/navigation_utilities/constant_spin_srv')
             self.constant_spin_proxy = rospy.ServiceProxy('/navigation_utilities/constant_spin_srv', constant_spin_srv)
-
-            self.navigation_status =0
+            
             print(self.consoleFormatter.format("NAVIGATION services enabled","OKGREEN"))
 
         self.manipulation = manipulation
-        
         if manipulation:
             print(self.consoleFormatter.format("Waiting for MANIPULATION services...","WARNING"))
-            
-            rospy.wait_for_service('/manipulation_utilities/saveState')
-            self.saveState_proxy = rospy.ServiceProxy('/manipulation_utilities/saveState', SaveState)
-            
-            rospy.wait_for_service('/manipulation_utilities/goToState')
-            self.goToState_proxy = rospy.ServiceProxy('/manipulation_utilities/goToState', GoToState)
-
+   
             print(self.consoleFormatter.format("MANIPULATION services enabled","OKGREEN"))
+
+        self.pytoolkit = pytoolkit
+        if pytoolkit:
+            print(self.consoleFormatter.format("Waiting for PYTOOLKIT services...","WARNING"))
+
+            print(self.consoleFormatter.format("Waiting for pytoolkit/awareness...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
+            self.awareness_proxy = rospy.ServiceProxy("/pytoolkit/ALBasicAwareness/set_awareness_srv",SetBool)
+
+            print(self.consoleFormatter.format("Waiting for /pytoolkit/ALTabletService/show_image_srv...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
+            self.show_image_proxy = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_image_srv",tablet_service_srv)
+
+            print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
+            self.show_topic_proxy = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_topic_srv",tablet_service_srv)
+
+            print(self.consoleFormatter.format("Waiting for pytoolkit/autononumusLife...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
+            self.autonomous_life_proxy = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
+
+            print(self.consoleFormatter.format("PYTOOLKIT services enabled","OKGREEN"))
+
 
     #################################### SERVICES #######################################
 
@@ -137,10 +178,9 @@ class Task_module:
         """
         rospy.init_node('task_'+task_name+'_node')
 
-
     ################### PERCEPTION SERVICES ###################
 
-    def turn_camera(self,camera_name:str,command:str,resolution=1,fps=10)->bool:
+    def turn_camera(self,camera_name:str,command="custom",resolution=1,fps=15)->bool:
         """
         Input:
         camera_name: "front_camera" || "bottom_camera" || "depth_camera"
@@ -184,7 +224,7 @@ class Task_module:
         else:
             print("perception as false")
             return False
-
+        
     def start_recognition(self,camera_name:str)->bool:
         """
         Input:
@@ -207,11 +247,10 @@ class Task_module:
             print("perception as false")
             return False
 
-
     def look_for_object(self,object_name:str,ignore_already_seen:bool)->bool:
         """
         Input:
-        object_name: label of the object to look for
+        object_name: label of the object to look for options -> ("person","bench","backpack","handbag","suitcase","bottle","cup","fork","knife","spoon","bowl","chair","couch","bed","laptop")
         ignore_already_seen: True->ignore objects already seen || False->don't ignore objects already seen
         Output: True if the service was called correctly, False if not
         ----------
@@ -230,7 +269,6 @@ class Task_module:
         else:
             print("perception as false")
             return False
-
 
     def wait_for_object(self,timeout:float)->bool:
         """
@@ -287,7 +325,7 @@ class Task_module:
         Input: num_pics of the face to recognize
         Output: name of the recognized person
         ----------
-        Recognizes the face of the person with num_pics of person
+        Recognizes the face of the person with <num_pics>
         """
         if self.perception:
             try:
@@ -323,32 +361,33 @@ class Task_module:
         else:
             print("perception as false")
             return ""
+        
     ################### SPEECH SERVICES ###################
 
-    def talk(self,text:str,language="English",wait=True,animated=False)->str:
+    def talk(self,text:str,language="English",wait=True,animated=False)->bool:
         """
         Input: 
         text
         language: English || Spanish
         wait(wait until the robot finishes talking)
         animates: gesture hands
-        Output: 'answer' that indicates what Pepper said.
+        Output: True if everything ok || False if not
         ----------
         Allows the robot to say the input of the service.
         """
         if self.speech:
             try:
-                answer = self.talk_proxy(text,language,wait, animated)
-                return answer
+                self.talk_proxy(text,language,wait, animated)
+                return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
-                return ""
+                return False
         else:
             print("speech as false")
-            return ""
+            return False
 
     def speech2text_srv(self, file_name="prueba",seconds=0,transcription=True)->bool:
-        """default
+        """
         Input: 
         seconds: 0 for automatic stop || >0 for seconds to record
         file_name: name of the file
@@ -370,7 +409,7 @@ class Task_module:
 
     def q_a_speech(self, tag:str)->str:
         """
-        Input: tag in lowercase ("age", "name", "drink")
+        Input: tag in lowercase: options -> ("age", "name", "drink")
         Output: answer
         ----------
         Returns a specific answer for predefined questions.
@@ -388,12 +427,13 @@ class Task_module:
 
     ################### NAVIGATION SERVICES ###################
 
+    
     def set_current_place(self,place_name:str)->bool:
         """
         Input: place_name 
         Output: True if the service was called correctly, False if not
         ----------
-        Sets the pose of the robot to the coordinates of the place specified in
+        Sets the place of the robot to the coordinates of the place specified in
         the request message, then it clears the global costmap.
         """
         if self.navigation:
@@ -415,7 +455,7 @@ class Task_module:
         Input: x, y, theta
         Output: True if the service was called correctly, False if not
         ----------
-        Sends the robot to the coordinates (in meters and relative to the robot)
+        Sends the robot to the coordinates (in meters relative to the robot and rotates theta angle (raidans) relative)
         specified in the request message.
         """
         if self.navigation:
@@ -434,7 +474,7 @@ class Task_module:
 
     def go_to_place(self,place_name:str, graph=1, wait=True)->bool:
         """
-        Input: place_name ("door","living_room"), graph
+        Input: place_name options -> ("door","living_room"), graph
         Output: True if the service was called correctly, False if not
         ----------
         Goes to place_name
@@ -454,69 +494,28 @@ class Task_module:
         else:
             print("navigation as false")
             return False
-
-    def start_random_navigation_srv(self)->bool:
-        """
-        Input: None
-        Output: True if the service was called correctly, False if not
-        ----------
-        Starts random navigation
-        """
-        if self.navigation:
-            try:
-                approved = self.start_random_navigation_proxy()
-                if approved=="approved":
-                    return True
-                else:
-                    return False
-            except rospy.ServiceException as e:
-                print("Service call failed: %s"%e)
-                return False
-        else:
-            print("navigation as false")
-            return False
-
-    def add_place_srv(self, place_name:str, persist=1, edges=[])->bool:
-        """
-        Input: place_name, persist, edges
-        Output: True if the service was called correctly, False if not
-        ----------
-        Adds place_name to the graph
-        """
-        if self.navigation:
-            try:
-                approved = self.add_place_proxy(place_name, persist, edges)
-                if approved=="approved":
-                    return True
-                else:
-                    return False
-            except rospy.ServiceException as e:
-                print("Service call failed: %s"%e)
-                return False
-        else:
-            print("navigation as false")
-            return False
-
-    def follow_you_srv(self, place_name: str)->bool:
-        """
-        Input: None
-        Output: True if the service was called correctly, False if not
-        ----------
-        Starts following you
-        """
-        if self.navigation:
-            try:
-                approved = self.follow_you_proxy(place_name)
-                if approved=="approved":
-                    return True
-                else:
-                    return False
-            except rospy.ServiceException as e:
-                print("Service call failed: %s"%e)
-                return False
-        else:
-            print("navigation as false")
-            return False
+        
+    #TODO
+    # def follow_me_srv(self, place_name: str)->bool:
+    #     """
+    #     Input: place_name
+    #     Output: True if the service was called correctly, False if not
+    #     ----------
+    #     Guides person to <place_name>, when person goes far stops and waits
+    #     """
+    #     if self.navigation:
+    #         try:
+    #             approved = self.follow_you_proxy(place_name)
+    #             if approved=="approved":
+    #                 return True
+    #             else:
+    #                 return False
+    #         except rospy.ServiceException as e:
+    #             print("Service call failed: %s"%e)
+    #             return False
+    #     else:
+    #         print("navigation as false")
+    #         return False
 
     def robot_stop_srv(self)->bool:
         """
@@ -604,7 +603,7 @@ class Task_module:
         Input: None
         Output: True if the service was called correctly, False if not
         ----------
-        Starts constant spin at a <velocity>
+        Starts constant spin at a <velocity> in degrees/sec (5-25)
         """
         if self.navigation:
             try:
@@ -650,58 +649,100 @@ class Task_module:
             print("perception as false")
             return False
         
-   ############ MANIPULATION SERVICES ###############
+    ############ MANIPULATION SERVICES ###############    
+    # TODO
 
-    def saveState(self, name:str)->bool: 
+    ################ PYTOOLKIT ################
+
+    def show_topic(self, topic:str)->bool:
         """
-        Input: state as name 
-        Output: True if the state was created or False if is not
-        ---------
-        Saves the current state of the robot's joints to a CSV file 
+        Input: topic
+        Output: True if the service was called correctly, False if not
+        ----------
+        Displays the topic on the screen of the robot
         """
-        if self.manipulation:
-            try: 
-                name_msg = String()
-                name_msg.data = name
-                save_state= self.saveState_proxy(name_msg)
-                if save_state: 
-                    return True 
-                else:
-                    print("The file was not created")
-                    return False
-            except rospy.ServiceException as e:
-                print("Service call failed: %s"%e)
-                return False
-        else: 
-            print("manipulation as false")
-            return False
-        
-    def goToState(self, name:str)->bool: 
-        """
-        Input: state to be executed.
-        Output: True after the robot moves.
-        ---------
-        Performs a series of actions to move the robot's arms to a desired configuration defined by joint_group_positions.        
-        """
-        if self.manipulation: 
-            try: 
-                name_msg = String()
-                name_msg.data = name
-                go_to_state= self.goToState_proxy(name_msg)
-                if go_to_state:
+        if self.pytoolkit:
+            try:
+                approved = self.show_topic_proxy(topic)
+                if approved=="OK":
                     return True
-                else: 
-                    print('ccannot move')
+                else:
                     return False
             except rospy.ServiceException as e:
-                print("Service call failed: %s"%e)
-                return False                
-        else: 
-            print("manipulation as false")
-            return False               
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("pytoolkit as false")
+            return False       
         
-        
-   ################ SUBSCRIBER CALLBACKS ################
+    def show_image(self, image_path:str)->bool:
+        """
+        Input: image_path or allreade saved image options -> ("sinfonia")
+        Output: True if the service was called correctly, False if not
+        ----------
+        Displays the image on the screen of the robot
+        """
+        images = {"sinfonia":"https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"}
+        if self.pytoolkit:
+            try:
+                url = image_path
+                if image_path in images:
+                    url = images[image_path]
+                approved = self.show_image_proxy(url)
+                if approved=="OK":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("pytoolkit as false")
+            return False
+
+    def set_awareness(self, state:bool)->bool:
+        """
+        Input: True turn on || False turn off
+        Output: True if the service was called correctly, False if not
+        ----------
+        Sets the awareness of the robot
+        """
+        if self.pytoolkit:
+            try:
+                approved = self.awareness_proxy(state)
+                if approved=="OK":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("pytoolkit as false")
+            return False
+
+    def set_autonomous_life(self, state:bool)->bool:
+        """
+        Input: True turn on || False turn off
+        Output: True if the service was called correctly, False if not
+        ----------
+        Sets the autonomous life of the robot
+        """
+        if self.pytoolkit:
+            try:
+                approved = self.autonomous_life_proxy(state)
+                if approved=="OK":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("pytoolkit as false")
+            return False
+     
+    ################ SUBSCRIBER CALLBACKS ################
 
     def callback_look_for_object(self,data):
         self.object_found=data.data
