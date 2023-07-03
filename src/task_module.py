@@ -685,6 +685,30 @@ class Task_module:
         else:
             print("manipulation as false")
             return False
+   ############ MANIPULATION SERVICES ###############
+
+    def saveState(self, name:str)->bool:
+        """
+        Input: state as name
+        Output: True if the state was created or False if is not
+        ---------
+        Saves the current state of the robot's joints to a CSV file
+        """
+        if self.manipulation:
+            try:
+                name_msg = String()
+                name_msg.data = name
+                save_state= self.saveState_proxy(name_msg)
+                if save_state:
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("manipulation as false")
+            return False
         
     def execute_trayectory(self,trayectory:str)->bool:
         """
@@ -699,6 +723,30 @@ class Task_module:
                 if approved=="OK":
                     return True
                 else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("manipulation as false")
+            return False
+
+    def goToState(self, name:str)->bool:
+        """
+        Input: state to be executed.
+        Output: True after the robot moves.
+        ---------
+        Performs a series of actions to move the robot's arms to a desired configuration defined by joint_group_positions.
+        """
+        if self.manipulation:
+            try:
+                name_msg = String()
+                name_msg.data = name
+                go_to_state= self.goToState_proxy(name_msg)
+                if go_to_state:
+                    return True
+                else:
+                    print('ccannot move')
                     return False
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
