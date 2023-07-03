@@ -97,7 +97,8 @@ class RECEPTIONIST(object):
         ##################### ROS CALLBACK VARIABLES #####################
         self.labels ={}
         ##################### GLOBAL VARIABLES #####################
-        
+
+        self.initial_place = "init"
         self.sinfonia_url_img="https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"
         self.img_dimensions = (320,240)
         self.recognize_person_counter = 0
@@ -124,6 +125,7 @@ class RECEPTIONIST(object):
                 self.labels[labels[i]] = {"x":x_coordinates[i],"y":y_coordinates[i],"w":widths[i],"h":heights[i],"id":ids[i]}
 
     def on_enter_INIT(self):
+        self.tm.set_current_place(self.initial_place)
         self.autonomous_life_srv(False)
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
@@ -182,6 +184,8 @@ class RECEPTIONIST(object):
 
     def on_enter_INTRODUCE_NEW(self):
         print(self.consoleFormatter.format("INTRODUCE_NEW", "HEADER"))
+        self.tm.talk("Please {}, stand besides me".format(self.actual_person["name"]),"English")
+        time.sleep(2)
         self.tm.talk("Hello everyone, this is {}, he is {} years old and he likes to drink {}".format(self.actual_person["name"],self.actual_person["age"],self.actual_person["drink"]),"English")
         #Turns on recognition and looks for  person
         self.tm.start_recognition("front_camera")
