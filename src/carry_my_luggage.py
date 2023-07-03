@@ -12,6 +12,7 @@ import math
 import os
 import numpy as np
 from std_srvs.srv import SetBool
+from std_msgs.msg import String, touch_msg
 
 from navigation_msgs.srv import constant_spin_srv
 from perception_msgs.msg import get_labels_msg
@@ -42,6 +43,7 @@ class CML(object):
         transitions = [
             {'trigger': 'start', 'source': 'CML', 'dest': 'INIT'},
             {'trigger': 'beggining', 'source': 'INIT', 'dest': 'CHOOSE_BAG'},
+            {'trigger': 'bag_not_chosen', 'source': 'CHOOSE_BAG', 'dest': 'CHOOSE_BAG'},
             {'trigger': 'bag_chosen', 'source': 'CHOOSE_BAG', 'dest': 'GRAB_BAG'},
             {'trigger': 'bag_grabbed', 'source': 'GRAB_BAG', 'dest': 'FOLLOW'},
             
@@ -80,22 +82,74 @@ class CML(object):
         print(self.consoleFormatter.format("Waiting for /perception_utilities/get_labels_publisher", "WARNING"))
         self.get_labels_publisher = rospy.Subscriber("/perception_utilities/get_labels_publisher", get_labels_msg, self.callback_get_labels)
 
+        print(self.consoleFormatter.format("Waiting for /perception_utilities/pose_publisher", "WARNING"))
+        self.pose_publisher = rospy.Subscriber("/perception_utilities/pose_publisher", String, self.callback_pose)
+
+        # ROS subscribers (head)
+        print(self.consoleFormatter.format("Waiting for /touch", "WARNING"))
+        subscriber_touch= rospy.Subscriber("/touch", touch_msg, self.callback_touch)
+
         # ROS Publishers
         print(self.consoleFormatter.format("Waiting for /animations", "WARNING"))
         self.animations_publisher = rospy.Publisher("/animations", animation_msg, queue_size = 1)
 
         ##################### ROS CALLBACK VARIABLES #####################
-
+        self.pose = ""
+        self.touch = False
         ##################### GLOBAL VARIABLES #####################
+        self.initial_place="init"
+
+    def callback_pose(self,data):
+        self.pose = data
+
+    def callback_touch(self,data):
+        if("head" in data.name and data.state == True):
+            self.touch = True
+        else:
+            self.touch = False
 
     def on_enter_INIT(self):
+        self.tm.set_current_place(self.initial_place)
         self.autonomous_life_srv(False)
         self.tm.talk("I am going to do the carry my luggage task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.awareness_srv(False)
-        self.tm.go_to_place("door")
+        #TODO
+        self.tm.go_to_place("choose_bag")
         self.beggining()
+    
+    def on_enter_CHOOSE_BAG(self):
+        self.tm.talk("Please, choose a bag, signal the bag you want me to grab","English")
+        possible_options = ["Pointing to the left","Pointing to the right"]
+        t1 = time.time()
+        while self.pose not in possible_options and time.time()-t1<5:
+            time.sleep(0.05)
+        if self.pose == "Pointing to the left":
+            self.tm.go_to_place("left_bag")
+            self.bag_chosen()
+        elif self.pose == "Pointing to the right":
+            self.tm.go_to_place("right_bag")   
+            self.bag_chosen() 
+        else:
+            self.bag_not_chosen()
+
+    def on_enter_GRAB_BAG(self):
+        self.tm.talk("I am going to grab the bag","English")
+        self.tm.go_to_pose("small_object_right_hand")
+        self.tm.talk("Please place the bag in my hand, when you are ready touch my head","English")
+        while not self.touch:
+            time.sleep(0.05)
+        self.tm.talk("Thank you","English")
+        self.bag_grabbed()
+
+    def on_enter_FOLLOW(self):
+        self.tm.talk("I am going to follow you","English")
+        #TODO
+        self.tm.go_to_place("outside")
+        self.tm.talk("I am leaving your bag here for you","English")
+        self.tm.execute_trayectory("place_right_arm")
+            
 
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo
