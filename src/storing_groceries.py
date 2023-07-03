@@ -225,7 +225,6 @@ class STORING_GROCERIES(object):
         elif destine_section == 4:
             postion_section = 'fifth'
         self.tm.talk("Can you please put the"+ self.selected_object+" inside the"+ postion_section + " from the top to the bottom", "English",wait=False)
-        se
         self.tm.talk("When you are ready to grab the "+ self.selected_object + " touch my head","English",wait=False)
         while not self.isTouched:
             time.sleep(0.1)
