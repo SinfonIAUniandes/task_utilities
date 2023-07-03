@@ -130,6 +130,10 @@ class SERVE_BREAKFAST(object):
                 decreaseDistance += 0.05
             else:
                 break
+        if self.objects[self.object_i] == "spoon":
+            self.tm.execute_trayectory("place_right_arm")
+        else:
+            self.tm.execute_trayectory("place_both_arms")
         self.tm.go_to_relative_point(-self.object_instructions[self.objects[self.object_i]]["backward_distance"], 0, 0)
         self.setMoveArms_srv.call(True, True)
         self.object_i += 1
