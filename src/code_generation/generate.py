@@ -1,5 +1,6 @@
 import openai
 import os
+import re
 
 ## TODO: Get a working OpenAI API key
 
@@ -21,7 +22,11 @@ def generate_text(text_prompt, system_message=None, model="gpt-3.5-turbo", tempe
         temperature=temperature,
         messages=messages
     )
-    return prediction['choices'][0]['message']['content']
+    answer =prediction['choices'][0]['message']['content']
+    pattern = r'```python(.*?)\n```'
+    code = ((re.search(pattern, answer, re.DOTALL)).group(1)).strip()
+
+    return code
 
 
 def get_task_module_code()-> str:
@@ -44,14 +49,17 @@ def generate_code(task_input: str)-> str:
 
     # Details about the code to generate:
     - The code must be written in python and the output will be executed directly
-    - The code utilizes the rospy library to communicate with the robot
-    - The interface is already given as an importable python module, the import sentence is: `import task_module`
-    - The Task_module class must be instantiated in order to use the codebase interface only once `tm = task_module.Task_module(perception = True,speech=True,manipulation=True, navigation=True)`
-    - The initialize_node function must be called before any other function in the codebase interface, this turns on a ros node
-    - The code cannot include the original codebase interface, it is given that the codebase interface is instantiated as the `tm` instance
-    - No calls to rospy are allowed with the exception of rospy.sleep() calls, everything must be called through the codebase interface
-    - Do not use the time library to sleep, use rospy.sleep() instead
-    - Remember to initialize and dispose of every sensor in case you need them
+    - The code is going to be executed in a ROS node, so there is no need to initialize ROS
+    - The Task_module class is allready instantiated as `self.tm = task_module.Task_module(perception = True,speech=True,manipulation=True, navigation=True)`
+    - Do not instantiate the Task_module class again
+    - Use only self.tm.<function_name> to call the functions of the codebase interface
+    - Only use the functions of the codebase interface that are needed to complete the task and callbacks of the given ros topics
+    - The initialize_node function is allready called for you, you cannot call it again
+    - The code cannot include the original codebase interface, it is only for using its functions
+    - Remember to initialize and dispose of every sensor in case you need them, for example calling `self.tm.turn_camera("front_camera","custom",1,15)`
+    - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
+    - Add prints to your code to notify the user of what is happening
+    - You are allowed to do ros topic callbacks of the given topics
 
     # Task Description:
 
@@ -68,4 +76,6 @@ def generate_code(task_input: str)-> str:
 
 if __name__ == "__main__":
     openai.api_key = os.environ["OPENAI_API_KEY"]
-    print(generate_code("Go to the living room and ask the person his name, then go to the door and say something funny of the person name"))
+    task = "Go to the living room, spin until you find a person, greet them and ask them to follow you to the kitchen."
+    code = generate_code(task)
+    print(code)

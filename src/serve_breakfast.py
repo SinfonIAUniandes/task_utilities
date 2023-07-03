@@ -22,7 +22,7 @@ class BREAKFAST(object):
         self.task_name = "Serve the breakfast"
         states = ["INIT", "GO2PANTRY", "LOOKFORBOWL", "REQUESTHELP", "GO2TABLE", "DROP", "END"]
         
-        self.tm = tm(navigation=True, speech=True, perception=True)
+        self.tm = tm(navigation=True, speech=True, perception=True,manipulation=True)
         self.tm.initialize_node("serve_the_breakfast")
 
         transitions = [{'trigger': 'start', 'source': 'BREAKFAST', 'dest': 'INIT'},
@@ -107,6 +107,7 @@ class BREAKFAST(object):
 
 
     def on_enter_REQUESTHELP(self):
+<<<<<<< HEAD
         self.setMoveArms_srv.call(False, False)
         self.setMoveArms_srv.call(False, False)
         if self.object_name == "cereal":
@@ -155,6 +156,13 @@ class BREAKFAST(object):
             self.openCloseHand_srv.call("right", "close")
             self.requesthelp_go2table()
 
+=======
+        self.tm.goToState("bowl")
+        self.tm.talk("Can you please put the bowl inside my arms?, when you are ready touch my head")
+        while not self.isTouched:
+            time.sleep(0.1)
+        self.requesthelp_go2table()
+>>>>>>> ae3a3e01e0f137026c89d8055c8a42f6f536cd86
 
     def on_enter_GO2TABLE(self):
         self.tm.talk("Navigating to the "+self.navigation_drop_goal)
@@ -287,6 +295,7 @@ class BREAKFAST(object):
 
     def calculateEuclideanDistance(self, xPoint1, yPoint1, xPoint2, yPoint2):
         return np.linalg.norm(np.array([xPoint1, yPoint1])-np.array([xPoint2, yPoint2]))
+<<<<<<< HEAD
     
     def callback_odom_subscriber(self,msg:Odometry):
         """
@@ -298,6 +307,8 @@ class BREAKFAST(object):
         """
         self.currentPositionOdom = msg.pose.pose
     
+=======
+>>>>>>> ae3a3e01e0f137026c89d8055c8a42f6f536cd86
 
 
 if __name__ == "__main__":
