@@ -24,19 +24,11 @@ from tf.transformations import euler_from_quaternion
 
 class CML(object):
     def __init__(self):
-        
-        # TODO
-        """
-        - Revisar si se meten los servicios de interface o del pytoolkit directamente (ojala nodo de interface)
-        - Falta meter todos los servicios del pytoolkit al modulo para que se puedan llamar facilmente desde la maquina de estados.
-        - Falta crear behaviours como el spin_until_object que es usado varias veces en varios tasks.
-        - Falta revisar todos los angulos de navegacion al hacer look_4_something y la velocidad de giro 
-        """
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
         self.task_name = "carry_my_luggage"
-        states = ['INIT', 'CHOOSE_BAG', 'GRAB_BAG', 'FOLLOW']   
+        states = ['INIT', 'CHOOSE_BAG', 'GRAB_BAG', 'FOLLOW','RETURN_TO_HOUSE']   
         self.tm = tm(perception = True,speech=True,manipulation=True, navigation=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
@@ -46,6 +38,7 @@ class CML(object):
             {'trigger': 'bag_not_chosen', 'source': 'CHOOSE_BAG', 'dest': 'CHOOSE_BAG'},
             {'trigger': 'bag_chosen', 'source': 'CHOOSE_BAG', 'dest': 'GRAB_BAG'},
             {'trigger': 'bag_grabbed', 'source': 'GRAB_BAG', 'dest': 'FOLLOW'},
+            {'trigger': 'return_home', 'source': 'FOLLOW', 'dest': 'RETURN_TO_HOUSE'},
             
         ]
         
@@ -147,9 +140,16 @@ class CML(object):
         self.tm.talk("I am going to follow you","English")
         #TODO
         self.tm.go_to_place("outside")
-        self.tm.talk("I am leaving your bag here for you","English")
+        self.tm.talk("Could you pick up your bag?","English")
+        self.tm.talk("Touch my head when when tou had picked up your bag","English")
+        while not self.touch:
+            time.sleep(0.05)
+        self.tm.talk("Thank you","English")
         self.tm.execute_trayectory("place_right_arm")
-            
+
+    def on_enter_RETURN_TO_HOUSE(self):
+        self.tm.talk("Returing home","English")
+        self.tm.go_to_place("door")
 
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo
