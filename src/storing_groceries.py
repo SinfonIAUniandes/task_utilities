@@ -5,6 +5,7 @@ from perception_msgs.msg import get_labels_msg
 from geometry_msgs.msg import Twist, PoseWithCovarianceStamped
 from robot_toolkit_msgs.msg import touch_msg, animation_msg
 from robot_toolkit_msgs.srv import point_at_srv, get_segmentation3D_srv, point_at_srvRequest
+from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srvss
 import ConsoleFormatter
 import rospy
 import os
@@ -140,7 +141,6 @@ class STORING_GROCERIES(object):
         print(self.consoleFormatter.format("Categorizing sections...", "WARNING"))
         range_section = self.img_dimensions[0]//self.num_sections
         y_ranges = [(range_section*i, range_section*(i+1)) for i in range(self.num_sections)]
-        recognized_sections = {''}
         for label in self.labels:
             category = self.categorize_object(label)
             if category != "Uncategorized":
@@ -178,6 +178,7 @@ class STORING_GROCERIES(object):
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.awareness_srv(False)
+        # TODO: Add the perception: set_model_recognition srv to the tm module
         self.init_go2table()
 
     def on_enter_GO2TABLE(self):
@@ -198,9 +199,34 @@ class STORING_GROCERIES(object):
     
     def on_enter_REQHELPGRAB(self):
         print(self.consoleFormatter.format("REQHELPGRAB", "HEADER"))
-        self.tm.talk("Can you please put the"+ self.selected_object+" inside my arms?, when you are ready touch my head","English",wait=False)
-        while not self.isTouched:
-            time.sleep(0.1)
+        if self.selected_object == "cereal box":
+            self.tm.go_to_pose('box', 0.2)
+            rospy.sleep(2)
+            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready touch my head","English",wait=False)
+            while not self.isTouched:
+                rospy.sleep(0.1)
+            self.tm.go_to_pose('cylinder', 0.1)
+            rospy.sleep(2)
+            self.tm.go_to_pose('close_both_hands', 0.2)
+            rospy.sleep(1)
+        elif self.selected_object == "fruit":
+            self.tm.go_to_pose('small_object_right_hand', 0.2)
+            self.tm.go_to_pose('open_right_hand', 0.2)
+            rospy.sleep(2)
+            self.tm.talk("Could you place the "+self.selected_object+" in my right hand, please?, when you are ready touch my head","English",wait=False)
+            while not self.isTouched:
+                rospy.sleep(0.1)
+            self.tm.go_to_pose('close_right_hand', 0.2)
+            rospy.sleep(1)
+        else:
+            self.tm.go_to_pose('bottle', 0.2)
+            rospy.sleep(2)
+            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready touch my head","English",wait=False)
+            while not self.isTouched:
+                rospy.sleep(0.1)
+            self.tm.go_to_pose('take_bottle', 0.2)
+            rospy.sleep(1)
+
         self.object_grabbed()
 
     def on_enter_GO2CABINET(self):
@@ -224,10 +250,33 @@ class STORING_GROCERIES(object):
             postion_section = 'fourth'
         elif destine_section == 4:
             postion_section = 'fifth'
+
+        if self.selected_object == "cereal box":
+            self.tm.talk("Could you take the "+self.selected_object+" from my hands?", "English",wait=False)
+            self.tm.talk("When you are ready to grab the "+ self.selected_object + " touch my head","English",wait=False)
+            while not self.isTouched:
+                rospy.sleep(0.1)
+            self.tm.go_to_pose('box', 0.05)
+            rospy.sleep(2)
+            self.tm.go_to_pose('standard', 0.2)
+            rospy.sleep(1)
+        elif self.selected_object == "fruit":
+            self.tm.talk("Could you take the "+self.selected_object+" from my right hand?", "English",wait=False)
+            self.tm.talk("When you are ready to grab the "+ self.selected_object + " touch my head","English",wait=False)
+            while not self.isTouched:
+                rospy.sleep(0.1)
+            self.tm.go_to_pose('open_right_hand', 0.2)
+            self.tm.go_to_pose('standard', 0.2)
+            rospy.sleep(1)
+        else:
+            self.tm.talk("Could you take the "+self.selected_object+" from my hands?", "English",wait=False)
+            self.tm.talk("When you are ready to grab the "+ self.selected_object + " touch my head","English",wait=False)
+            while not self.isTouched:
+                rospy.sleep(0.1)
+            self.tm.go_to_pose('open_both_hands', 0.2)
+            self.tm.go_to_pose('standard', 0.2)
+
         self.tm.talk("Can you please put the"+ self.selected_object+" inside the"+ postion_section + " from the top to the bottom", "English",wait=False)
-        self.tm.talk("When you are ready to grab the "+ self.selected_object + " touch my head","English",wait=False)
-        while not self.isTouched:
-            time.sleep(0.1)
         rospy.sleep(3)
         self.tm.talk("Thank you for your help","English",wait=False)
         self.object_stored()
@@ -244,7 +293,7 @@ class STORING_GROCERIES(object):
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo
         while not rospy.is_shutdown():
-            time.sleep(0.1)
+            rospy.sleep(0.1)
         print(self.consoleFormatter.format("Shutting down", "FAIL"))
         os._exit(os.EX_OK)
 
