@@ -107,62 +107,11 @@ class BREAKFAST(object):
 
 
     def on_enter_REQUESTHELP(self):
-<<<<<<< HEAD
-        self.setMoveArms_srv.call(False, False)
-        self.setMoveArms_srv.call(False, False)
-        if self.object_name == "cereal":
-            jointsRequest = set_angle_srvRequest()
-            print("xd")
-            jointsRequest.name = ['LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 'LWristYaw', 'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 'RWristYaw']
-            jointsRequest.angle =  [0.0,0.3,0.0,-0.4,-1.4,0.0,-0.3,0.0,0.4,1.4]
-            jointsRequest.speed = 0.2
-            self.setAngle_srv.call(jointsRequest)
-            print("yd")
-            rospy.sleep(2.2)
-            self.tm.talk("Can you please put the "+self.object_name+" between my hands?, when you are ready touch my head")
-            while not self.isTouched:
-                time.sleep(0.1)
-            jointsRequest = set_angle_srvRequest()
-            print("xd")
-            jointsRequest.name = ['LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 'LWristYaw', 'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 'RWristYaw']
-            jointsRequest.angle = [0.0,0.3,0.0,-1.0,-1.4,0.0,-0.3,0.0,1.0,1.4]
-            jointsRequest.speed = 0.2
-            self.setAngle_srv.call(jointsRequest)
-            print("yd")
-            rospy.sleep(2.2)
-            self.openCloseHand_srv.call("both", "close")
-            self.requesthelp_go2table()
-        elif self.object_name == "bowl":
-            jointsRequest = set_angle_srvRequest()
-            jointsRequest.name = ['LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 'LWristYaw', 'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 'RWristYaw']
-            jointsRequest.angle = self.object_instructions[self.object_name]["grap_angles"]
-            jointsRequest.speed = 0.1
-            self.setAngle_srv.call(jointsRequest)
-            rospy.sleep(2)
-            self.tm.talk("Can you please put the "+self.object_name+" inside my arms?, when you are ready touch my head")
-            while not self.isTouched:
-                time.sleep(0.1)
-            self.requesthelp_go2table()
-        elif self.object_name == "spoon":
-            jointsRequest = set_angle_srvRequest()
-            jointsRequest.name = ['LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 'LWristYaw', 'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 'RWristYaw']
-            jointsRequest.angle = self.object_instructions[self.object_name]["grap_angles"]
-            jointsRequest.speed = 0.1
-            self.setAngle_srv.call(jointsRequest)
-            self.tm.talk("Can you please put the "+self.object_name+" inside my right hand?, when you are ready touch my head")
-            self.openCloseHand_srv.call("right", "open")
-            while not self.isTouched:
-                time.sleep(0.1)
-            self.openCloseHand_srv.call("right", "close")
-            self.requesthelp_go2table()
-
-=======
         self.tm.goToState("bowl")
         self.tm.talk("Can you please put the bowl inside my arms?, when you are ready touch my head")
         while not self.isTouched:
             time.sleep(0.1)
         self.requesthelp_go2table()
->>>>>>> ae3a3e01e0f137026c89d8055c8a42f6f536cd86
 
     def on_enter_GO2TABLE(self):
         self.tm.talk("Navigating to the "+self.navigation_drop_goal)
@@ -295,7 +244,6 @@ class BREAKFAST(object):
 
     def calculateEuclideanDistance(self, xPoint1, yPoint1, xPoint2, yPoint2):
         return np.linalg.norm(np.array([xPoint1, yPoint1])-np.array([xPoint2, yPoint2]))
-<<<<<<< HEAD
     
     def callback_odom_subscriber(self,msg:Odometry):
         """
@@ -307,8 +255,6 @@ class BREAKFAST(object):
         """
         self.currentPositionOdom = msg.pose.pose
     
-=======
->>>>>>> ae3a3e01e0f137026c89d8055c8a42f6f536cd86
 
 
 if __name__ == "__main__":

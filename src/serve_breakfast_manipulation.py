@@ -171,26 +171,14 @@ class SERVE_BREAKFAST(object):
     
     def callback_odom_subscriber(self,msg:Odometry):
         self.currentPositionOdom = msg.pose.pose
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     def check_rospy(self):
         while not rospy.is_shutdown():
             rospy.sleep(0.1)
         print(self.consoleFormatter.format("Shutting down", "FAIL"))
         os._exit(os.EX_OK)
+
+if __name__ == "__main__":
+    sm = SERVE_BREAKFAST()
+    sm.run()
+    rospy.spin()
