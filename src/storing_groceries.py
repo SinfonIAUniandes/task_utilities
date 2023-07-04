@@ -19,9 +19,6 @@ import sys
 #TODO: REQHELPSTORE mejor usar un diccionario para guardar las vainas
 #TODO: Como identificar las categorias de los objetos
 #TODO: Dimensiones estan en x y no en y
-#TODO: Limpiar self.labels
-#TODO: Asumiendo el robot ve los 5 gabinetes al tiempo y el ultimo gabinete queda exactamente en la parte de arriba del frame y el primero en la parte de abajo
-#TODO: Manejar el self.labels
 #TODO: Categorizar las repizas: mejor cada vez que va si no sabe donde va
 
 class STORING_GROCERIES(object):
@@ -93,14 +90,50 @@ class STORING_GROCERIES(object):
 
         self.selected_object = ""
         self.actual_obj_cat = "Uncategorized"
-        self.num_sections = 5
+        self.num_sections = 6
         self.isTouched = False
         self.sensorFront = False
         self.sensorMiddle = False
         self.sensorRear = False
-
-        self.cabinet_sections = {'Packaged Dry Goods':-1, 'Canned Goods':-1, 'Fresh Fruits':-1,'Dairy':-1,'Uncategorized':-1}
-        self.objects_stored = {k:[] for k in range(self.num_sections)}
+        
+        self.cabinet_sections = {
+            'Packaged Dry Goods':{
+                'section': -1,
+                'y_approx': -1,
+                'stored_objects': [],
+                'contain_objects': ['cracker box', 'sugar box', 'pudding box', 'gelatin box', 'cereal box'],
+            },
+            'Canned Goods':{
+                'section': -1,
+                'y_approx': -1,
+                'stored_objects': [],
+                'contain_objects': ['meat can', 'coffee can', 'fish can', 'chips can'],
+            },
+            'Fresh Fruits':{
+                'section': -1,
+                'y_approx': -1,
+                'stored_objects': [],
+                'contain_objects': ['banana', 'strawberry', 'apple', 'lemon', 'peach', 'pear', 'orange', 'plum', 'fruit'],
+            },
+            'Dairy':{
+                'section': -1,
+                'y_approx': -1,
+                'stored_objects': [],
+                'contain_objects': ['milk']
+            },
+            'Drinks':{
+                'section': -1,
+                'y_approx': -1,
+                'stored_objects': [],
+                'contain_objects': ['bottle', 'soda']
+            },
+            'Uncategorized':{
+                'section': -1,
+                'y_approx': -1,
+                'stored_objects': [],
+                'contain_objects': []
+            }
+        }
 
     def callback_get_labels(self,data):
         labels = data.labels
@@ -127,12 +160,12 @@ class STORING_GROCERIES(object):
 
 
     def categorize_object(self, object_name):
-        packaged_dry_goods = ['cracker box', 'sugar box', 'pudding box', 'gelatin box', 'cereal box']
+        packaged_dry_goods = 
         #box and cylinder for cereal box
 
 
-        canned_goods = ['meat can', 'coffee can', 'fish can', 'chips can']
-        fresh_fruits = ['banana', 'strawberry', 'apple', 'lemon', 'peach', 'pear', 'orange', 'plum']
+        canned_goods = 
+        fresh_fruits =
         dairy = ['milk']
         
         if object_name in packaged_dry_goods:
@@ -148,24 +181,14 @@ class STORING_GROCERIES(object):
 
     def categorize_sections(self):
         print(self.consoleFormatter.format("Categorizing sections...", "WARNING"))
-        range_section = self.img_dimensions[0]//self.num_sections
-        y_ranges = [(range_section*i, range_section*(i+1)) for i in range(self.num_sections)]
-        for label in self.labels:
-            category = self.categorize_object(label)
-            if category != "Uncategorized":
-                y = self.labels[label]["y"]
-                for i in range(len(y_ranges)):
-                    if y_ranges[i][0] <= y <= y_ranges[i][1]:
-                        if self.cabinet_sections[category] == -1:
-                            self.cabinet_sections[category] = i
-                        break
-        # assign empty sections to the first empty section
-        empty_sections = [i for i in self.cabinet_sections if self.cabinet_sections[i] == -1]
-        for category in self.cabinet_sections:
-            if self.cabinet_sections[category] == -1:
-                self.cabinet_sections[category] = empty_sections[0]
-                empty_sections.pop(0)
-                break
+        min_diff = self.img_dimensions[0]//(self.num_sections+1)
+        max_diff = (self.img_dimensions[0]//(self.num_sections-1))*2
+        self.labels = {}
+        t1 = time.time()
+        while time.time()-t1<5:
+            pass
+        
+        
         print(self.consoleFormatter.format("Sections categorized", "OKGREEN"))
         print(self.consoleFormatter.format("Sections: "+str(self.cabinet_sections), "OKGREEN"))
         self.cabinet_sections_recognized()
@@ -185,9 +208,8 @@ class STORING_GROCERIES(object):
         self.autonomous_life_srv(False)
         self.tm.talk("I am going to do the storing groceries task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        self.tm.turn_camera("front_camera","custom",1,15) 
+        self.tm.turn_camera("front_camera","custom",1,15)
         self.awareness_srv(False)
-        # TODO: Add the perception: set_model_recognition srv to the tm module
         self.init_go2table()
 
     def on_enter_GO2TABLE(self):
@@ -201,10 +223,15 @@ class STORING_GROCERIES(object):
         print(self.consoleFormatter.format("LOOK4OBJECT", "HEADER"))
         self.tm.start_recognition("front_camera")
         self.tm.talk("I am looking for an object","English",wait=False)
+        self.labels = {}
+        t1 = time.time()
+        while time.time()-t1<5:
+            pass
         posible_objects = ['cracker box', 'sugar box', 'pudding box', 'gelatin box', 'meat can', 'coffe can', 'fish can', 'chips can', 'banana', 'strawberry', 'apple', 'lemon', 'peach', 'pear', 'orange', 'plum', 'milk', 'cereal box']
         self.selected_object = random.choice([obj for obj in self.labels["labels"] if obj in posible_objects])
         self.actual_obj_cat = self.categorize_object(self.selected_object)
         self.tm.talk("I found a "+self.selected_object,"English",wait=False)
+        self.labels = {}
         self.object_found_categorized()
     
     def on_enter_REQHELPGRAB(self):
@@ -289,6 +316,7 @@ class STORING_GROCERIES(object):
         self.tm.talk("Can you please put the"+ self.selected_object+" inside the"+ postion_section + " from the top to the bottom", "English",wait=False)
         rospy.sleep(3)
         self.tm.talk("Thank you for your help","English",wait=False)
+        self.objects_stored[self.actual_obj_cat] = self.selected_object
         self.object_stored()
 
     def on_enter_RECOGCABINETCATEGORIES(self):
