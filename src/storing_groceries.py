@@ -16,10 +16,6 @@ import random
 import sys
 
 #TODO: poner REQHELPGRAB como un diccionario por tipo de cosa o meter en grasp_object del modulo ese diccionario y que solo se llame grasp object
-#TODO: REQHELPSTORE mejor usar un diccionario para guardar las vainas
-#TODO: Como identificar las categorias de los objetos
-#TODO: Dimensiones estan en x y no en y
-#TODO: Categorizar las repizas: mejor cada vez que va si no sabe donde va
 
 class STORING_GROCERIES(object):
     def __init__(self):
@@ -96,6 +92,8 @@ class STORING_GROCERIES(object):
         self.sensorMiddle = False
         self.sensorRear = False
 
+        self.objects_to_store = 0
+        self.objects_stored = 0
 
         # 'section' numero de gabinete asignado (0..self.num_sections)
         # 'y_approx' coordenada y aproximada de los objetos que estan en 'stored_objects' (en el gabinete)
@@ -200,8 +198,9 @@ class STORING_GROCERIES(object):
                 cat = self.categorize_object(object_info['label'])
                 self.cabinet_sections[cat]['section'] = 0
                 self.cabinet_sections[cat]['y_approx'] = object_info['y']
-                self.cabinet_sections[cat]['stored_objects'].append(object_info['label'])
+                self.cabinet_sections[cat]['stored_objects'].push(object_info['label'])
                 stored = True
+                self.objects_stored += 1
                 processed_cats += 1
             else:
                 for category,info_category in self.cabinet_sections.items():
@@ -209,15 +208,17 @@ class STORING_GROCERIES(object):
                         if abs(info_category['y_approx'] - object_info['y']) < max_diff:
                             if object_info['label'] not in info_category['contain_objects']:
                                 self.cabinet_sections[category]['contain_objects'].append(object_info['label'])
-                            self.cabinet_sections[category]['stored_objects'].append(object_info['label'])
+                            self.cabinet_sections[category]['stored_objects'].push(object_info['label'])
                             stored = True
+                            self.objects_stored += 1
                             self.cabinet_sections[category]['y_approx'] = (self.cabinet_sections[category]['y_approx'] + object_info['y'])/2
                 if not stored:
                     cat = self.categorize_object(object_info['label'])
                     self.cabinet_sections[cat]['section'] = processed_cats
                     self.cabinet_sections[cat]['y_approx'] = object_info['y']
-                    self.cabinet_sections[cat]['stored_objects'].append(object_info['label'])
+                    self.cabinet_sections[cat]['stored_objects'].push(object_info['label'])
                     stored = True
+                    self.objects_stored += 1
                     processed_cats += 1
 
             processed_labels += 1
@@ -228,7 +229,7 @@ class STORING_GROCERIES(object):
 
 
     def all_objects_stored(self):
-        if len(self.objects_stored) >= 10:
+        if len(self.objects_stored) >= len(self.objects_to_store):
             return True
         return False
 
@@ -258,8 +259,14 @@ class STORING_GROCERIES(object):
         self.tm.talk("I am looking for an object","English",wait=False)
         self.labels = {}
         t1 = time.time()
-        while time.time()-t1<5:
+        time_to_look = 2
+        if self.is_first_time():
+            time_to_look = 5
+        while time.time()-t1<time_to_look:
             pass
+
+        if self.is_first_time():
+            self.objects_to_store = len(self.labels)
         posible_objects = ['cracker box', 'sugar box', 'pudding box', 'gelatin box', 'meat can', 'coffe can', 'fish can', 'chips can', 'banana', 'strawberry', 'apple', 'lemon', 'peach', 'pear', 'orange', 'plum', 'milk', 'cereal box']
         self.selected_object = random.choice([obj for obj in self.labels["labels"] if obj in posible_objects])
         self.actual_obj_cat = self.categorize_object(self.selected_object)
@@ -309,18 +316,11 @@ class STORING_GROCERIES(object):
     def on_enter_REQHELPSTORE(self):
         print(self.consoleFormatter.format("REQHELPSTORE", "HEADER"))
         destine_section = self.cabinet_sections[self.actual_obj_cat]
-        postion_section = ''
-        if destine_section == 0:
-            postion_section = 'first'
-        elif destine_section == 1:
-            postion_section = 'second'
-        elif destine_section == 2:
-            postion_section = 'third'
-        elif destine_section == 3:
-            postion_section = 'fourth'
-        elif destine_section == 4:
-            postion_section = 'fifth'
-
+        put_in = ""
+        if len(destine_section["stored_objects"]) == 0:
+            put_in = "inside the empty drawer at the bottom"
+        else:
+            put_in = "beside the "+destine_section["stored_objects"][0]
         if self.selected_object == "cereal box":
             self.tm.talk("Could you take the "+self.selected_object+" from my hands?", "English",wait=False)
             self.tm.talk("When you are ready to grab the "+ self.selected_object + " touch my head","English",wait=False)
@@ -346,10 +346,11 @@ class STORING_GROCERIES(object):
             self.tm.go_to_pose('open_both_hands', 0.2)
             self.tm.go_to_pose('standard', 0.2)
 
-        self.tm.talk("Can you please put the"+ self.selected_object+" inside the"+ postion_section + " from the top to the bottom", "English",wait=False)
+        self.tm.talk("Can you please put the"+ self.selected_object + put_in, "English",wait=False)
         rospy.sleep(3)
         self.tm.talk("Thank you for your help","English",wait=False)
-        self.objects_stored[self.actual_obj_cat] = self.selected_object
+        self.objects_stored += 1
+        destine_section["stored_objects"].push(self.selected_object)
         self.object_stored()
 
     def on_enter_RECOGCABINETCATEGORIES(self):
