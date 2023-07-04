@@ -95,7 +95,7 @@ class STORING_GROCERIES(object):
         self.sensorFront = False
         self.sensorMiddle = False
         self.sensorRear = False
-        
+
         self.cabinet_sections = {
             'Packaged Dry Goods':{
                 'section': -1,
@@ -125,7 +125,7 @@ class STORING_GROCERIES(object):
                 'section': -1,
                 'y_approx': -1,
                 'stored_objects': [],
-                'contain_objects': ['bottle', 'soda']
+                'contain_objects': ['bottle', 'soda'] #TODO: verify if soda is in the dataset
             },
             'Uncategorized':{
                 'section': -1,
@@ -160,24 +160,11 @@ class STORING_GROCERIES(object):
 
 
     def categorize_object(self, object_name):
-        packaged_dry_goods = 
-        #box and cylinder for cereal box
-
-
-        canned_goods = 
-        fresh_fruits =
-        dairy = ['milk']
-        
-        if object_name in packaged_dry_goods:
-            return "Packaged Dry Goods"
-        elif object_name in canned_goods:
-            return "Canned Goods"
-        elif object_name in fresh_fruits:
-            return "Fresh Fruits"
-        elif object_name in dairy:
-            return "Dairy"
-        else:
-            return "Uncategorized"
+        for k,v in self.cabinet_sections.items():
+            if object_name in v['contain_objects']:
+                return k
+        self.cabinet_sections['Uncategorized']['contain_objects'].append(object_name)
+        return "Uncategorized"
 
     def categorize_sections(self):
         print(self.consoleFormatter.format("Categorizing sections...", "WARNING"))
@@ -187,8 +174,7 @@ class STORING_GROCERIES(object):
         t1 = time.time()
         while time.time()-t1<5:
             pass
-        
-        
+
         print(self.consoleFormatter.format("Sections categorized", "OKGREEN"))
         print(self.consoleFormatter.format("Sections: "+str(self.cabinet_sections), "OKGREEN"))
         self.cabinet_sections_recognized()
