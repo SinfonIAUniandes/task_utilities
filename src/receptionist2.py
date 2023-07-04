@@ -108,7 +108,7 @@ class RECEPTIONIST(object):
         self.old_person = ""
         self.failed_saving_face=False
         self.angle_index = 0
-        self.chair_angles = [85,135,175]
+        self.chair_angles = [160,190]
         self.checked_chair_angles = []
         self.empty_chair_angles = []
 
@@ -252,7 +252,6 @@ class RECEPTIONIST(object):
                     break
             self.person_not_found()
             
-        
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
         person_name = ""
@@ -276,7 +275,7 @@ class RECEPTIONIST(object):
             chair_angle = random.choice(self.empty_chair_angles)
             print("chair_angle ",chair_angle)
         else:
-            chair_angle=90
+            chair_angle=180
         self.tm.go_to_defined_angle_srv(chair_angle)
         self.chair_found()
 
