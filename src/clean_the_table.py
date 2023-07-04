@@ -20,21 +20,20 @@ class CLEAN_THE_TABLE(object):
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         
         self.task_name = "Clean the table"
-        states = ["INIT", "GO2KITCHEN", "GO2TABLE"]
+        states = ["INIT", "CTT", "GO2KITCHEN", "GO_GRAB_PLACE", "GO_POSE_OBJECT", "GO_DROP_PLACE", "GO_DROP_OBJECT", "DROP_OBJECT", "END"]
         
         self.tm = tm(navigation=True, speech=True, perception=True, manipulation=True)
         self.tm.initialize_node("clean_the_table")
 
         transitions = [{'trigger': 'start', 'source': 'CTT', 'dest': 'INIT'},
-                       {'trigger': 'init_go2kitchen', 'source': 'INIT', 'dest': 'GO2KITCHEN'},
-                       {'trigger': 'init_gograbplace', 'source': 'GO2KITCHEN', 'dest': 'GO_GRAB_PLACE'}
+                       {'trigger': 'go2kitchen', 'source': 'INIT', 'dest': 'GO2KITCHEN'},
+                       {'trigger': 'go_grab_place', 'source': 'GO2KITCHEN', 'dest': 'GO_GRAB_PLACE'}
                        {'trigger': 'grab_object', 'source': 'GO_GRAB_PLACE', 'dest': 'GO_POSE_OBJECT'},
                        {'trigger': 'grab_object_again', 'source': 'GO_GRAB_PLACE', 'dest': 'GO_GRAB_PLACE'},
                        {'trigger': 'drop_place', 'source': 'GO_POSE_OBJECT', 'dest': 'GO_DROP_PLACE'},
-                       {'trigger': 'go_drop_object', 'source': 'GO_DROP_PLACE', 'dest': 'GO_DROP_OBJECT'},
                        {'trigger': 'drop_object', 'source': 'GO_DROP_PLACE', 'dest': 'DROP_OBJECT'},
                        {'trigger': 'drop_object_again', 'source': 'GO_DROP_PLACE', 'dest': 'GO_DROP_PLACE'},
-                       {'trigger': 'again', 'source': 'GO_DROP_OBJECT', 'dest': 'GO_GRAB_PLACE'},
+                       {'trigger': 'again', 'source': 'DROP_OBJECT', 'dest': 'GO_GRAB_PLACE'},
                        {'trigger': 'end', 'source': 'DROP_OBJECT', 'dest': 'END'}]
  
          self.machine = Machine(model=self, states=self.STATES, transitions=self.TRANSITIONS, initial='INIT')
@@ -58,12 +57,12 @@ class CLEAN_THE_TABLE(object):
         self.object = ""
         self.times_i = 0
         self.centinel = True
-
+        self.arm = True
         self.object_instructions = {
-            "spoon":{"grap_place":"grap_place", "drop_place":"drop_place", "forward_distance":0.35, "backward_distance":0.35},
-            "fork":{"grap_place":"grap_place", "drop_place":"drop_place", "forward_distance":0.4, "backward_distance":0.4},
-            "knife":{"grap_place":"grap_place", "drop_place":"drop_place", "forward_distance":0.35, "backward_distance":0.35},
-            "dish":{"grap_place":"grap_place", "drop_place":"drop_place", "forward_distance":0.35, "backward_distance":0.35},
+            "spoon":{"grap_place":"table", "drop_place":"dishwasher", "forward_distance":0.35, "backward_distance":0.35},
+            "fork":{"grap_place":"table", "drop_place":"dishwasher", "forward_distance":0.4, "backward_distance":0.4},
+            "knife":{"grap_place":"table", "drop_place":"dishwasher", "forward_distance":0.35, "backward_distance":0.35},
+            "dish":{"grap_place":"table", "drop_place":"dishwasher", "forward_distance":0.35, "backward_distance":0.35},
         }
 
         self.rate = rospy.Rate(10)
@@ -79,50 +78,72 @@ class CLEAN_THE_TABLE(object):
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.awareness_srv(False)
-        self.init_go2kitchen()
+        self.go2kitchen()
 
     def on_enter_GO2KITCHEN(self):
         self.tm.talk("I am going to navigate to the kitchen","English")
         self.tm.go_to_place("kitchen")
         self.tm.talk("I am in the kitchen","English")
-        self.init_go2table  
+        self.go_grab_place()  
 
     def on_enter_GO_GRAB_PLACE(self):
-        navigation_grap_place = self.object_instructions[self.object]["grap_place"]
-        self.tm.talk("I am navigating to the "+navigation_grap_place)
-        self.tm.go_to_place(navigation_grap_place)
-        self.grab_object()
+        if(self.object==""):
+            navigation_grap_place = "table"
+        else:
+            navigation_grap_place = self.object_instructions[self.object]["grap_place"]
+        
+        if(self.times_i==1):
+            self.grab_object()
+        
+        else:
+            self.tm.talk("I am going to navigate to the "+navigation_grap_place)
+            self.tm.go_to_place(navigation_grap_place)
+            self.tm.talk("I am in the "+ navigation_grap_place,"English")
+            self.grab_object()
 
     def on_enter_GO_POSE_OBJECT(self):
         while(self.centinel):
             if(self.labels == "spoon"):
                 self.tm.talk("I have found the spoon")
-                self.tm.go_to_pose("small_object_right_hand")
+                if(self.arm == True):
+                    self.tm.go_to_pose("small_object_left_hand")
+                    self.arm = False
+                else:
+                    self.tm.go_to_pose("small_object_right_hand")
                 self.object = "spoon"
                 self.centinel = False
                     
             elif(self.labels == "fork"):
                 self.tm.talk("I have found the fork")
-                self.tm.go_to_pose("small_object_right_hand")
+                if(self.arm == True):
+                    self.tm.go_to_pose("small_object_left_hand")
+                    self.arm = False
+                else:
+                    self.tm.go_to_pose("small_object_right_hand")
                 self.object = "fork"
                 self.centinel = False
 
             elif(self.labels == "knife"):
                 self.tm.talk("I have found the knife")
-                self.tm.go_to_pose("small_object_right_hand")
+                if(self.arm == True):
+                    self.tm.go_to_pose("small_object_left_hand")
+                    self.arm = False
+                else:
+                    self.tm.go_to_pose("small_object_right_hand")
                 self.object = "knife"
                 self.centinel = False
 
             elif(self.labels == "dish"):
-                self.tm.talk("I have found the spoon")
-                self.tm.go_to_pose("bowl")
+                self.tm.talk("I have found the dish")
+¡               self.tm.go_to_pose("bowl")
                 self.object = "bowl"
                 self.centinel = False
-            
+        
+        self.times_i=self.times_i+1
         self.tm.talk("Can you place the "+self.object+" inside my arms, please?, when you are ready touch my head")
         while not self.isTouched:
             rospy.sleep(0.1)
-        if(object_id<2):
+        if(self.times_i<2):
             self.grab_object_again()
         else:
             self.drop_place()
@@ -131,16 +152,11 @@ class CLEAN_THE_TABLE(object):
         navigation_drop_place = self.object_instructions[self.object]["drop_place"]
         self.tm.talk("I am navigating to the "+navigation_drop_place)
         self.tm.go_to_place(navigation_drop_place)
-        self.go_drop_object()
-
-    def on_enter_GO_DROP_OBJECT(self):
-        navigation_drop_place = self.object_instructions[self.object]["drop_place"]
-        self.tm.talk("I am navigating to the "+navigation_drop_place)
-        self.tm.go_to_place(navigation_drop_place)
+        self.tm.talk("I am in the "+navigation_drop_place)
         self.drop_object()
 
     def on_enter_DROP_OBJECT(self):
-        self.tm.talk("I am going to place the "+self.object+" on the table")
+        self.tm.talk("I am going to place the "+self.object+" on the dishwasher")
         previousPosition = self.currentPositionOdom.position
         decreaseDistance = 0
         while True:
@@ -151,16 +167,17 @@ class CLEAN_THE_TABLE(object):
             else:
                 break
         
-        if object_i<2:
+        if times_i==2:
             self.tm.execute_trayectory("place_left_arm")
+            self.tm.talk("Object placed in dishwasher")
             self.tm.execute_trayectory("place_right_arm")
+            self.tm.talk("Object placed in dishwasher")
         else:
             self.tm.execute_trayectory("place_both_arms")
-            
+
         self.tm.go_to_relative_point(-self.object_instructions[self.object]["backward_distance"], 0, 0)
         self.setMoveArms_srv.call(True, True)
-        self.object_i += 1
-        if self.object_i < len(self.objects):
+        if times_i < 6:
             self.tm.talk("I am ready for grabbing the next object")
             self.again()
         else:
