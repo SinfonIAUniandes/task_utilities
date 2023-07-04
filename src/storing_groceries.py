@@ -15,6 +15,15 @@ import numpy as np
 import random
 import sys
 
+#TODO: poner REQHELPGRAB como un diccionario por tipo de cosa o meter en grasp_object del modulo ese diccionario y que solo se llame grasp object
+#TODO: REQHELPSTORE mejor usar un diccionario para guardar las vainas
+#TODO: Como identificar las categorias de los objetos
+#TODO: Dimensiones estan en x y no en y
+#TODO: Limpiar self.labels
+#TODO: Asumiendo el robot ve los 5 gabinetes al tiempo y el ultimo gabinete queda exactamente en la parte de arriba del frame y el primero en la parte de abajo
+#TODO: Manejar el self.labels
+#TODO: Categorizar las repizas: mejor cada vez que va si no sabe donde va
+
 class STORING_GROCERIES(object):
     def __init__(self):
 
@@ -190,6 +199,7 @@ class STORING_GROCERIES(object):
 
     def on_enter_LOOK4OBJECT(self):
         print(self.consoleFormatter.format("LOOK4OBJECT", "HEADER"))
+        self.tm.start_recognition("front_camera")
         self.tm.talk("I am looking for an object","English",wait=False)
         posible_objects = ['cracker box', 'sugar box', 'pudding box', 'gelatin box', 'meat can', 'coffe can', 'fish can', 'chips can', 'banana', 'strawberry', 'apple', 'lemon', 'peach', 'pear', 'orange', 'plum', 'milk', 'cereal box']
         self.selected_object = random.choice([obj for obj in self.labels["labels"] if obj in posible_objects])
@@ -204,7 +214,7 @@ class STORING_GROCERIES(object):
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready touch my head","English",wait=False)
             while not self.isTouched:
-                rospy.sleep(0.1)
+                rospy.sleep(0.05)
             self.tm.go_to_pose('cylinder', 0.1)
             rospy.sleep(2)
             self.tm.go_to_pose('close_both_hands', 0.2)
@@ -215,7 +225,7 @@ class STORING_GROCERIES(object):
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" in my right hand, please?, when you are ready touch my head","English",wait=False)
             while not self.isTouched:
-                rospy.sleep(0.1)
+                rospy.sleep(0.05)
             self.tm.go_to_pose('close_right_hand', 0.2)
             rospy.sleep(1)
         else:
@@ -223,7 +233,7 @@ class STORING_GROCERIES(object):
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready touch my head","English",wait=False)
             while not self.isTouched:
-                rospy.sleep(0.1)
+                rospy.sleep(0.05)
             self.tm.go_to_pose('take_bottle', 0.2)
             rospy.sleep(1)
 
@@ -255,7 +265,7 @@ class STORING_GROCERIES(object):
             self.tm.talk("Could you take the "+self.selected_object+" from my hands?", "English",wait=False)
             self.tm.talk("When you are ready to grab the "+ self.selected_object + " touch my head","English",wait=False)
             while not self.isTouched:
-                rospy.sleep(0.1)
+                rospy.sleep(0.05)
             self.tm.go_to_pose('box', 0.05)
             rospy.sleep(2)
             self.tm.go_to_pose('standard', 0.2)
@@ -264,7 +274,7 @@ class STORING_GROCERIES(object):
             self.tm.talk("Could you take the "+self.selected_object+" from my right hand?", "English",wait=False)
             self.tm.talk("When you are ready to grab the "+ self.selected_object + " touch my head","English",wait=False)
             while not self.isTouched:
-                rospy.sleep(0.1)
+                rospy.sleep(0.05)
             self.tm.go_to_pose('open_right_hand', 0.2)
             self.tm.go_to_pose('standard', 0.2)
             rospy.sleep(1)
@@ -272,7 +282,7 @@ class STORING_GROCERIES(object):
             self.tm.talk("Could you take the "+self.selected_object+" from my hands?", "English",wait=False)
             self.tm.talk("When you are ready to grab the "+ self.selected_object + " touch my head","English",wait=False)
             while not self.isTouched:
-                rospy.sleep(0.1)
+                rospy.sleep(0.05)
             self.tm.go_to_pose('open_both_hands', 0.2)
             self.tm.go_to_pose('standard', 0.2)
 

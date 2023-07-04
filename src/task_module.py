@@ -75,6 +75,10 @@ class Task_module:
             rospy.wait_for_service("/perception_utilities/get_person_description_srv")
             self.get_person_description_proxy = rospy.ServiceProxy("/perception_utilities/get_person_description_srv", get_person_description_srv)
 
+            print(self.consoleFormatter.format("Waiting for perception_utilities/set_model_recognition...", "WARNING"))
+            rospy.wait_for_service("perception_utilities/set_model_recognition_srv")
+            self.set_model_proxy = rospy.ServiceProxy("perception_utilities/set_model_recognition_srv", set_model_recognition_srv)
+
             print(self.consoleFormatter.format("PERCEPTION services enabled","OKGREEN"))
 
         self.speech=speech
@@ -268,7 +272,7 @@ class Task_module:
     def look_for_object(self,object_name:str,ignore_already_seen:bool)->bool:
         """
         Input:
-        object_name: label of the object to look for options -> ("person","bench","backpack","handbag","suitcase","bottle","cup","fork","knife","spoon","bowl","chair","couch","bed","laptop")
+        object_name: label of the object to look for options -> classes names depends of the actual model (see set_model service)
         ignore_already_seen: True->ignore objects already seen || False->don't ignore objects already seen
         Output: True if the service was called correctly, False if not
         ----------
@@ -399,7 +403,29 @@ class Task_module:
         else:
             print("perception as false")
             return ""
-        
+
+    def set_model(self,model_name:str)->bool:
+        """
+        Input: model name -> "default" || "objects"
+        Output: True if the service was called correctly, False if not
+        ----------
+        Sets the model to use for the object recognition.
+        classes by model:
+        default: ["person","bench","backpack","handbag","suitcase","bottle","cup","fork","knife","spoon","bowl","chair","couch","bed","laptop"]
+        #TODO: verify objcets
+        objects: ['masterchef can', 'bag', 'ball', 'banana', 'bleach cleanser', 'bottle', 'bowl', 'chair', 'cloth', 'cracker box', 'dress', 'drink', 'footwear', 'fruit', 'gelatin box', 'jacket', 'jeans', 'lemon', 'milk', 'mug', 'mustard bottle', 'pitcher base', 'potted meat can', 'pudding box', 'shirt', 'short', 'skirt', 'snack', 'spoon', 'strawberry', 'sugar box', 'tomato soup can', 'tuna fish can']
+        """
+        if self.perception:
+            try:
+                approved = self.set_model_proxy(model_name)
+                return approved.approved
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("perception as false")
+            return False
+
     ################### SPEECH SERVICES ###################
 
     def talk(self,text:str,language="English",wait=True,animated=False)->bool:
