@@ -12,13 +12,13 @@ import math
 import os
 import numpy as np
 from std_srvs.srv import SetBool
-from std_msgs.msg import String, touch_msg
+from std_msgs.msg import String
 
 from navigation_msgs.srv import constant_spin_srv
 from perception_msgs.msg import get_labels_msg
 from navigation_msgs.msg import simple_feedback_msg
 from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv
-from robot_toolkit_msgs.msg import animation_msg
+from robot_toolkit_msgs.msg import animation_msg,touch_msg
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion
 
@@ -29,7 +29,7 @@ class CML(object):
         # Definir los estados posibles del semáforo
         self.task_name = "carry_my_luggage"
         states = ['INIT', 'CHOOSE_BAG', 'GRAB_BAG', 'FOLLOW','RETURN_TO_HOUSE']   
-        self.tm = tm(perception = True,speech=True,manipulation=True, navigation=True)
+        self.tm = tm(perception = True,speech=True,manipulation=True, navigation=False, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
@@ -71,9 +71,6 @@ class CML(object):
         rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
         self.autonomous_life_srv = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
         
-        # ROS subscribers (perception)
-        print(self.consoleFormatter.format("Waiting for /perception_utilities/get_labels_publisher", "WARNING"))
-        self.get_labels_publisher = rospy.Subscriber("/perception_utilities/get_labels_publisher", get_labels_msg, self.callback_get_labels)
 
         print(self.consoleFormatter.format("Waiting for /perception_utilities/pose_publisher", "WARNING"))
         self.pose_publisher = rospy.Subscriber("/perception_utilities/pose_publisher", String, self.callback_pose)
@@ -93,6 +90,7 @@ class CML(object):
         self.initial_place="init"
 
     def callback_pose(self,data):
+        print(data)
         self.pose = data
 
     def callback_touch(self,data):
@@ -105,11 +103,11 @@ class CML(object):
         print(self.consoleFormatter.format("INIT", "HEADER"))
         self.tm.show_image("sinfonia")
         self.tm.set_current_place(self.initial_place)
-        self.autonomous_life_srv(False)
         self.tm.talk("I am going to do the carry my luggage task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.start_recognition("front_camera")
+        self.tm.pose_srv("front_camera")
         self.awareness_srv(False)
         #TODO
         self.tm.go_to_place("choose_bag")
