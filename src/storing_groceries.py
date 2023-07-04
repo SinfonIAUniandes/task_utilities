@@ -96,6 +96,11 @@ class STORING_GROCERIES(object):
         self.sensorMiddle = False
         self.sensorRear = False
 
+
+        # 'section' numero de gabinete asignado (0..self.num_sections)
+        # 'y_approx' coordenada y aproximada de los objetos que estan en 'stored_objects' (en el gabinete)
+        # 'stored_objects' lista con los objetos que ya estan en el gabinete
+        # 'contain_objects' objetos que deben ser almacenados en la categoria
         self.cabinet_sections = {
             'Packaged Dry Goods':{
                 'section': -1,
@@ -136,6 +141,20 @@ class STORING_GROCERIES(object):
         }
 
     def callback_get_labels(self,data):
+        """CALLBACK for get_labels topic
+
+        transform the data from the topic to a dictonary with the following structure:
+        labels = {
+            "id":{
+                "label": "object_name",
+                "x": x_coordinate,
+                "y": y_coordinate,
+                "w": width,
+                "h": height
+            },
+            ...
+        }
+        """
         labels = data.labels
         x_coordinates = data.x_coordinates
         y_coordinates = data.y_coordinates
@@ -143,37 +162,65 @@ class STORING_GROCERIES(object):
         heights = data.heights
         ids = data.ids
         for i in range(len(labels)):
-            if self.img_dimensions[0]//3<x_coordinates[i]<int(self.img_dimensions[0]*2/3):
-                self.labels[labels[i]] = {"x":x_coordinates[i],"y":y_coordinates[i],"w":widths[i],"h":heights[i],"id":ids[i]}
+            self.labels[ids[i]] = {"label":labels[i],"x":x_coordinates[i],"y":y_coordinates[i],"w":widths[i],"h":heights[i]}
 
     def callback_head_sensor_subscriber(self, msg:touch_msg):
+        if 'head_' in msg.name and msg.state:
+            self.isTouched=True
+        else:
+            self.isTouched=False
         if msg.name == "head_rear":
             self.sensorRear = msg.state
         elif msg.state == "head_middle":
             self.sensorMiddle = msg.state
         elif msg.state == "head_front":
             self.sensorFront = msg.state
-        if self.sensorFront or self.sensorMiddle or self.sensorRear:
-            self.isTouched=True
-        else:
-            self.isTouched=False
 
 
     def categorize_object(self, object_name):
-        for k,v in self.cabinet_sections.items():
-            if object_name in v['contain_objects']:
-                return k
+        for category,info_category in self.cabinet_sections.items():
+            if object_name in info_category['contain_objects']:
+                return category
         self.cabinet_sections['Uncategorized']['contain_objects'].append(object_name)
         return "Uncategorized"
 
     def categorize_sections(self):
         print(self.consoleFormatter.format("Categorizing sections...", "WARNING"))
-        min_diff = self.img_dimensions[0]//(self.num_sections+1)
-        max_diff = (self.img_dimensions[0]//(self.num_sections-1))*2
+        max_diff = self.img_dimensions[0]//(self.num_sections+1)
+        max_different_diff = (self.img_dimensions[0]//(self.num_sections-1))*2
         self.labels = {}
         t1 = time.time()
-        while time.time()-t1<5:
+        while time.time()-t1<2:
             pass
+        processed_labels = 0
+        processed_cats = 0
+        for label_id, object_info in self.labels.items():
+            stored=False
+            if processed_labels == 0:
+                cat = self.categorize_object(object_info['label'])
+                self.cabinet_sections[cat]['section'] = 0
+                self.cabinet_sections[cat]['y_approx'] = object_info['y']
+                self.cabinet_sections[cat]['stored_objects'].append(object_info['label'])
+                stored = True
+                processed_cats += 1
+            else:
+                for category,info_category in self.cabinet_sections.items():
+                    if info_category['y_approx'] != -1:
+                        if abs(info_category['y_approx'] - object_info['y']) < max_diff:
+                            if object_info['label'] not in info_category['contain_objects']:
+                                self.cabinet_sections[category]['contain_objects'].append(object_info['label'])
+                            self.cabinet_sections[category]['stored_objects'].append(object_info['label'])
+                            stored = True
+                            self.cabinet_sections[category]['y_approx'] = (self.cabinet_sections[category]['y_approx'] + object_info['y'])/2
+                if not stored:
+                    cat = self.categorize_object(object_info['label'])
+                    self.cabinet_sections[cat]['section'] = processed_cats
+                    self.cabinet_sections[cat]['y_approx'] = object_info['y']
+                    self.cabinet_sections[cat]['stored_objects'].append(object_info['label'])
+                    stored = True
+                    processed_cats += 1
+
+            processed_labels += 1
 
         print(self.consoleFormatter.format("Sections categorized", "OKGREEN"))
         print(self.consoleFormatter.format("Sections: "+str(self.cabinet_sections), "OKGREEN"))
