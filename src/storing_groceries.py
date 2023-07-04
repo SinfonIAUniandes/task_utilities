@@ -20,7 +20,7 @@ class STORING_GROCERIES(object):
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
-        self.task_name = "storing groceries"
+        self.task_name = "storing_groceries"
         states = ['INIT', 'GO2TABLE', 'LOOK4OBJECT', 'REQHELPGRAB', 'GO2CABINET', 'RECOGCABINETCATEGORIES', 'REQHELPSTORE', 'END']
         self.tm = tm(perception=True, speech=True, manipulation=False, navigation=True)
         self.tm.initialize_node(self.task_name)
@@ -174,7 +174,7 @@ class STORING_GROCERIES(object):
 
     def on_enter_INIT(self):
         self.autonomous_life_srv(False)
-        self.tm.talk("I am going to do the  "+self.task_name+" task","English")
+        self.tm.talk("I am going to do the storing groceries task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.awareness_srv(False)

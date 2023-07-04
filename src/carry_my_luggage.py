@@ -102,17 +102,22 @@ class CML(object):
             self.touch = False
 
     def on_enter_INIT(self):
+        print(self.consoleFormatter.format("INIT", "HEADER"))
+        self.tm.show_image("sinfonia")
         self.tm.set_current_place(self.initial_place)
         self.autonomous_life_srv(False)
         self.tm.talk("I am going to do the carry my luggage task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.turn_camera("front_camera","custom",1,15) 
+        self.tm.start_recognition("front_camera")
         self.awareness_srv(False)
         #TODO
         self.tm.go_to_place("choose_bag")
         self.beggining()
     
     def on_enter_CHOOSE_BAG(self):
+        print(self.consoleFormatter.format("CHOOSE_BAG", "HEADER"))
+        self.tm.show_topic("/perception_utilities/pose_image_publisher")
         self.tm.talk("Please, choose a bag, signal the bag you want me to grab","English")
         possible_options = ["Pointing to the left","Pointing to the right"]
         t1 = time.time()
@@ -128,6 +133,7 @@ class CML(object):
             self.bag_not_chosen()
 
     def on_enter_GRAB_BAG(self):
+        print(self.consoleFormatter.format("GRAB_BAG", "HEADER"))
         self.tm.talk("I am going to grab the bag","English")
         self.tm.go_to_pose("small_object_right_hand")
         self.tm.talk("Please place the bag in my hand, when you are ready touch my head","English")
@@ -137,8 +143,9 @@ class CML(object):
         self.bag_grabbed()
 
     def on_enter_FOLLOW(self):
+        print(self.consoleFormatter.format("FOLLOW", "HEADER"))
         self.tm.talk("I am going to follow you","English")
-        #TODO
+        #TODO 
         self.tm.go_to_place("outside")
         self.tm.talk("Could you pick up your bag?","English")
         self.tm.talk("Touch my head when when tou had picked up your bag","English")
@@ -148,6 +155,7 @@ class CML(object):
         self.tm.execute_trayectory("place_right_arm")
 
     def on_enter_RETURN_TO_HOUSE(self):
+        print(self.consoleFormatter.format("RETURN_TO_HOUSE", "HEADER"))
         self.tm.talk("Returing home","English")
         self.tm.go_to_place("door")
 
