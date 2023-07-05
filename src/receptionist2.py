@@ -102,7 +102,7 @@ class RECEPTIONIST(object):
         self.sinfonia_url_img="https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"
         self.img_dimensions = (320,240)
         self.recognize_person_counter = 0
-        self.all_persons = {"Charlie":{"name":"Charlie","age":"25","drink":"Whiskey","gender":"Man","pronoun":"he"}}
+        self.all_persons = {"John":{"name":"John","age":"21","drink":"Milk","gender":"Man","pronoun":"he"}}
         self.introduced_persons = []
         self.actual_person={}
         self.old_person = ""
