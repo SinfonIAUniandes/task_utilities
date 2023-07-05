@@ -35,14 +35,14 @@ class ROBOT_INSPECTION(object):
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
         self.task_name = "robot inspection"
-        states = ['INIT', 'GO2TABLE', 'TOUCHING', 'GO2DOOR']
+        states = ['INIT', 'GO2INSPECTION', 'TOUCHING', 'GO2DOOR']
         self.tm = tm(perception = False, speech=True,manipulation=False, navigation=True)
         self.tm.initialize_node("robot_inspection")
         # Definir las transiciones permitidas entre los estados
         transitions = [
             {'trigger': 'start', 'source': 'ROBOT_INSPECTION', 'dest': 'INIT'},
-            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'GO2TABLE'},
-            {'trigger': 'waiting', 'source': 'GO2TABLE', 'dest': 'TOUCHING'},
+            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'GO2INSPECTION'},
+            {'trigger': 'waiting', 'source': 'GO2INSPECTION', 'dest': 'TOUCHING'},
             {'trigger': 'endings', 'source': 'TOUCHING', 'dest': 'GO2DOOR'}
         ]
         
@@ -70,12 +70,14 @@ class ROBOT_INSPECTION(object):
     def on_enter_INIT(self):
         self.tm.talk("I am going to do the  "+ self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
+        self.tm.talk("Please open the door to begin the task","English")
+        self.tm.go_to_place("study")
         self.beggining()
                 
-    def on_enter_GO2TABLE(self):
-        print(self.consoleFormatter.format("GO2TABLE", "HEADER"))
+    def on_enter_GO2INSPECTION(self):
+        print(self.consoleFormatter.format("GO2INSPECTION", "HEADER"))
         self.tm.talk("I am going to the table position","English",wait=False)
-        self.tm.go_to_place("table")
+        self.tm.go_to_place("study")
         self.tm.talk("I'm in the table position","English",wait=False)
         self.waiting()
     
@@ -89,7 +91,7 @@ class ROBOT_INSPECTION(object):
 
     def on_enter_GO2DOOR(self):
         print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
-        self.tm.talk("I am going to the door position","English",wait=False)
+        self.tm.talk("I am going to the exit door position","English",wait=False)
         self.tm.go_to_place("door")
         self.tm.talk("Robot inspection completed","English", wait=False)
         os._exit(os.EX_OK)     
