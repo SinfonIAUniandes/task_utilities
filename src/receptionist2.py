@@ -248,7 +248,6 @@ class RECEPTIONIST(object):
             while time.time()-t1<5:
                 if "person" in self.labels:
                     self.tm.talk("Recognizing person","English")
-                    self.empty_chair_angles.remove(self.checked_chair_angles[-1])
                     self.person_found()
                     break
             self.person_not_found()
@@ -262,6 +261,7 @@ class RECEPTIONIST(object):
             self.recognize_person_counter+=1
         self.recognize_person_counter=0
         if person_name not in self.introduced_persons and person_name in self.all_persons:
+            self.empty_chair_angles.remove(self.checked_chair_angles[-1])
             person_introduce = self.all_persons[person_name]
             print("Person introduce: ",person_introduce)
             #TODO manipulacion animations/poses

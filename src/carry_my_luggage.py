@@ -164,6 +164,8 @@ class CML(object):
         print(self.consoleFormatter.format("RETURN_TO_HOUSE", "HEADER"))
         self.tm.talk("Returning home","English")
         self.tm.go_to_place("door")
+        print(self.consoleFormatter.format("TASK FINISHED", "OKGREEN"))
+        os._exit(os.EX_OK)
 
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo
