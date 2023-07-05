@@ -100,37 +100,43 @@ class STORING_GROCERIES(object):
         # 'stored_objects' lista con los objetos que ya estan en el gabinete
         # 'contain_objects' objetos que deben ser almacenados en la categoria
         self.cabinet_sections = {
-            'Packaged Dry Goods':{
+            'cleaning supplies':{
+                'name_individual': "cleanning supply",
                 'section': -1,
                 'y_approx': -1,
                 'stored_objects': [],
-                'contain_objects': ['cracker box', 'sugar box', 'pudding box', 'gelatin box', 'cereal box'],
+                'contain_objects': ['cleanser'],
             },
-            'Canned Goods':{
+            'drinks':{
+                'name_individual': 'drink',
                 'section': -1,
                 'y_approx': -1,
                 'stored_objects': [],
-                'contain_objects': ['meat can', 'coffee can', 'fish can', 'chips can'],
+                'contain_objects': ['milk', 'juice', 'bottle', 'drink'],
             },
-            'Fresh Fruits':{
+            'food':{
+                'name_individual': 'food',
                 'section': -1,
                 'y_approx': -1,
                 'stored_objects': [],
-                'contain_objects': ['banana', 'strawberry', 'apple', 'lemon', 'peach', 'pear', 'orange', 'plum', 'fruit'],
+                'contain_objects': ['tuna', 'tomato_soup', 'spam', 'mustard', 'jello', 'coffee_grounds', 'sugar'],
             },
-            'Dairy':{
+            'fruits':{
+                'name_individual': 'fruit',
                 'section': -1,
                 'y_approx': -1,
                 'stored_objects': [],
-                'contain_objects': ['milk']
+                'contain_objects': ['banana', 'fruit']
             },
-            'Drinks':{
+            'snacks':{
+                'name_individual': 'snack',
                 'section': -1,
                 'y_approx': -1,
                 'stored_objects': [],
-                'contain_objects': ['bottle', 'soda'] #TODO: verify if soda is in the dataset
+                'contain_objects': ['cheezit','snack']
             },
             'Uncategorized':{
+                'name_individual': 'object',
                 'section': -1,
                 'y_approx': -1,
                 'stored_objects': [],
