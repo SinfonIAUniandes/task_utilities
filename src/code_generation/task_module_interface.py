@@ -33,13 +33,9 @@ class Task_module:
             manipulation (bool): Enables or disables manipulation services
             navigation (bool): Enables or disables navigation services
         """
-
-    #################################### SERVICES #######################################
-
-
     ################### PERCEPTION SERVICES ###################
 
-    def turn_camera(self,camera_name:str,command:str,resolution=1,fps=10)->bool:
+    def turn_camera(self,camera_name:str,command="custom",resolution=1,fps=15)->bool:
         """
         Input:
         camera_name: "front_camera" || "bottom_camera" || "depth_camera"
@@ -50,7 +46,17 @@ class Task_module:
         ----------
         Turns on/off camera_name, if command is custom, it sets the resolution and fps
         """
-
+        
+    def publish_filtered_image(self,filter_name:str,camera_name:str)->bool:
+        """
+        Input:
+        filter_name: "face" || "qr" 
+        camera_name: "front_camera" || "bottom_camera"
+        Output: True if the service was called correctly, False if not
+        ----------
+        Publishes the filtered image from camera_name with filter_name
+        """
+ 
     def start_recognition(self,camera_name:str)->bool:
         """
         Input:
@@ -63,7 +69,7 @@ class Task_module:
     def look_for_object(self,object_name:str,ignore_already_seen:bool)->bool:
         """
         Input:
-        object_name: label of the object to look for
+        object_name: label of the object to look for options -> ("person","bench","backpack","handbag","suitcase","bottle","cup","fork","knife","spoon","bowl","chair","couch","bed","laptop")
         ignore_already_seen: True->ignore objects already seen || False->don't ignore objects already seen
         Output: True if the service was called correctly, False if not
         ----------
@@ -91,7 +97,7 @@ class Task_module:
         Input: num_pics of the face to recognize
         Output: name of the recognized person
         ----------
-        Recognizes the face of the person with num_pics of person
+        Recognizes the face of the person with <num_pics>
         """
 
     def qr_read(self,timeout:float)->str:
@@ -101,56 +107,50 @@ class Task_module:
         ----------
         Reads a qr code for a max of <timeout> seconds
         """
-
+        
     ################### SPEECH SERVICES ###################
 
-    def talk(self,text:str,language="English",wait=True,animated=False):
+    def talk(self,text:str,language="English",wait=True,animated=False)->bool:
         """
-        Input: 
-        text
+        Input:
+        text : text that robot will say
         language: English || Spanish
         wait(wait until the robot finishes talking)
         animates: gesture hands
-        Output: True if the service was called correctly, False if not
+        Output: True if everything ok || False if not
         ----------
         Allows the robot to say the input of the service.
         """
 
-    def speech2text_srv(self, file_name:str,seconds=0,transcription=True)->str:
-        """default
+    def speech2text_srv(self, file_name="prueba",seconds=0,transcription=True)->bool:
+        """
         Input: 
-        seconds: 0 for automatic stop || >0 for seconds to record
+        seconds: 0 for automatic stop || > 0 for seconds to record
         file_name: name of the file
         transcription: True || False
         Output: text that the robot heard
         ----------
-        Allows the robot to save audio and do speech to text
+        Allows the robot to save audio and saves it to a file.
         """
 
-    def q_a_speech(self, tag:str):
+    def q_a_speech(self, tag:str)->str:
         """
-        Input: tag in lowercase ("age", "name", "drink")
-        Output: answer.
+        Input: tag in lowercase: options -> ("age", "name", "drink")
+        Output: answer
         ----------
         Returns a specific answer for predefined questions.
         """
 
     ################### NAVIGATION SERVICES ###################
 
-    def go_to_place(self,place_name:str, graph=1,wait=True)->bool:
-        """
-        Input: place_name ("door","living_room"), graph
-        Output: True if the service was called correctly, False if not
-        ----------
-        Goes to place_name
-        """
-
+    
     def set_current_place(self,place_name:str)->bool:
         """
-        Input: place_name
+        Input: place_name 
         Output: True if the service was called correctly, False if not
         ----------
-        Sets the current place name to <place_name>
+        Sets the place of the robot to the coordinates of the place specified in
+        the request message, then it clears the global costmap.
         """
 
     def go_to_relative_point(self,x:float,y:float,theta:float)->bool:
@@ -158,17 +158,39 @@ class Task_module:
         Input: x, y, theta
         Output: True if the service was called correctly, False if not
         ----------
-        Sends the robot to the coordinates (in meters and relative to the robot)
+        Sends the robot to the coordinates (in meters relative to the robot and rotates theta angle (raidans) relative)
         specified in the request message.
         """
 
-    def add_place_srv(self, place_name:str, persist=1, edges=[])->bool:
+    def go_to_place(self,place_name:str, graph=1, wait=True)->bool:
         """
-        Input: place_name, persist, edges
+        Input: place_name options -> ("door","living_room"), graph
         Output: True if the service was called correctly, False if not
         ----------
-        Adds place_name to the graph
+        Goes to place_name
         """
+        
+    #TODO
+    # def follow_you_srv(self, place_name: str)->bool:
+    #     """
+    #     Input: place_name
+    #     Output: True if the service was called correctly, False if not
+    #     ----------
+    #     Guides person to <place_name>, when person goes far stops and waits
+    #     """
+    #     if self.navigation:
+    #         try:
+    #             approved = self.follow_you_proxy(place_name)
+    #             if approved=="approved":
+    #                 return True
+    #             else:
+    #                 return False
+    #         except rospy.ServiceException as e:
+    #             print("Service call failed: %s"%e)
+    #             return False
+    #     else:
+    #         print("navigation as false")
+    #         return False
 
     def robot_stop_srv(self)->bool:
         """
@@ -183,7 +205,7 @@ class Task_module:
         Input: degrees
         Output: True if the service was called correctly, False if not
         ----------
-        Spins the robot <degrees> realtive to the initial position
+        Spins the robot a number of degrees
         """
 
     def go_to_defined_angle_srv(self, degrees:float):
@@ -199,7 +221,7 @@ class Task_module:
         Input: place_name
         Output: True if the service was called correctly, False if not
         ----------
-        Gives instructions in steps to get to the <place_name>
+        Gives instruction in steps to get to the <place_name>
         """
 
     def constant_spin_srv(self,velocity:float)->bool:
@@ -207,32 +229,82 @@ class Task_module:
         Input: None
         Output: True if the service was called correctly, False if not
         ----------
-        Starts constant spin at a <velocity>
+        Starts constant spin at a <velocity> in degrees/sec (5-25)
         """
 
-    ################### MANIPULATION SERVICES ###################
+    def wait_go_to_place(self)->bool:
+        """
+        Input: None
+        Output: True if the service was called correctly, False if not
+        ----------
+        Waits for the robot to reach the place when navigating
+        """
+        
+    ############ MANIPULATION SERVICES ###############    
+    
+    def go_to_pose(self,pose:str)->bool:
+        """
+        Input: pose options ->("bowl","box","cylinder","medium_object", "small_object_left_hand","small_object_right_hand","tray","head_up","head_down","head_default")
+        Output: True if the service was called correctly, False if not
+        ----------
+        Goes to pose with hands or head
+        """
 
-    def saveState(self, name:str)->bool:
+    def execute_trayectory(self,trayectory:str)->bool:
         """
-        Input: robot_joints as name
-        Output: True if the file is created or False if is not
-        ---------
-        Saves the current state of the robot's joints to a CSV file
+        Input: trayectory options ->("place_both_arms","place_left_arm","place_right_arm")
+        Output: True if the service was called correctly, False if not
+        ----------
+        Executes trayectory with the hands
+        """
+        
+    def grasp_object(self,object_name:str)->bool:
+        """
+        Input: object_name
+        Output: True if the service was called correctly, False if not
+        ----------
+        Grasp the <object_name>
         """
 
-    def goToState(self, joint_group_positions: list)->bool:
-        """
-        Input: joint_group_position actions for the robot's arms
-        Output: True after the robot moves
-        ---------
-        Performs a series of actions to move the robot's arms to a desired configuration defined by joint_group_positions.
-        """
-    ################ ROS TOPICS ###################
+    ################ PYTOOLKIT ################
 
-    # /perception_utilities/get_labels_publisher
-    """
-    Necessary import: from perception_msgs.msg import get_labels_msg
-    Description: Publishes the labels of the objects detected by the robot's cameras, their position, dimensions and id.
-    Message type: get_labels_msg
-    get_labels_msg content: labels String[], x_coordinates float[], y_coordinates float[], widths float[], heights float[], ids float[]
-    """
+    def show_topic(self, topic:str)->bool:
+        """
+        Input: topic
+        Output: True if the service was called correctly, False if not
+        ----------
+        Displays the topic on the screen of the robot
+        """    
+        
+    def show_image(self, image_path:str)->bool:
+        """
+        Input: image_path or allreade saved image options -> ("sinfonia")
+        Output: True if the service was called correctly, False if not
+        ----------
+        Displays the image on the screen of the robot
+        """
+
+    def set_awareness(self, state:bool)->bool:
+        """
+        Input: True turn on || False turn off
+        Output: True if the service was called correctly, False if not
+        ----------
+        Sets the awareness of the robot
+        """
+
+    def set_autonomous_life(self, state:bool)->bool:
+        """
+        Input: True turn on || False turn off
+        Output: True if the service was called correctly, False if not
+        ----------
+        Sets the autonomous life of the robot
+        """
+     
+    ################ SUBSCRIBER CALLBACKS ################
+
+    def callback_look_for_object(self,data):
+        self.object_found=data.data
+        return data
+
+    def callback_simple_feedback_subscriber(self, msg):
+        self.navigation_status = msg.navigation_status
