@@ -82,6 +82,7 @@ class SERVE_BREAKFAST(object):
         self.tm.talk("I have found the "+self.objects[self.object_i])
         self.grab_object()
 
+
     def on_enter_GRAB_OBJECT(self):
         self.setMoveArms_srv.call(False, False)
         if self.objects[self.object_i] == "bowl":
