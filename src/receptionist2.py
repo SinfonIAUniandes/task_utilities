@@ -16,7 +16,7 @@ from std_srvs.srv import SetBool
 from navigation_msgs.srv import constant_spin_srv
 from perception_msgs.msg import get_labels_msg
 from navigation_msgs.msg import simple_feedback_msg
-from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv
+from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv,Tshirt_color_srv
 from robot_toolkit_msgs.msg import animation_msg
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion
@@ -85,6 +85,11 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("Waiting for pytoolkit/autononumusLife...", "WARNING"))
         rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
         self.autonomous_life_srv = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
+
+        print(self.consoleFormatter.format("Waiting for pytoolkit/Tshirt_color", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALPerception/Tshirt_color_srv")
+        self.Tshirt_color_srv = rospy.ServiceProxy("/pytoolkit/ALPerception/Tshirt_color_srv",Tshirt_color_srv)
+        
         
         # ROS subscribers (perception)
         print(self.consoleFormatter.format("Waiting for /perception_utilities/get_labels_publisher", "WARNING"))
@@ -97,17 +102,18 @@ class RECEPTIONIST(object):
         ##################### ROS CALLBACK VARIABLES #####################
         self.labels ={}
         ##################### GLOBAL VARIABLES #####################
-        
+
+        self.initial_place = "init_living_room"
         self.sinfonia_url_img="https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"
         self.img_dimensions = (320,240)
         self.recognize_person_counter = 0
-        self.all_persons = {"Charlie":{"name":"Charlie","age":"25","drink":"Coke"}}
+        self.all_persons = {"Charlie":{"name":"Charlie","age":"25","drink":"Whiskey","gender":"Man","pronoun":"he","Tshirt":"white"}}
         self.introduced_persons = []
         self.actual_person={}
         self.old_person = ""
         self.failed_saving_face=False
         self.angle_index = 0
-        self.chair_angles = [85,135,175]
+        self.chair_angles = [160,190]
         self.checked_chair_angles = []
         self.empty_chair_angles = []
 
@@ -123,13 +129,31 @@ class RECEPTIONIST(object):
             if int(self.img_dimensions[0]*0.2)<x_coordinates[i]<int(self.img_dimensions[0]*0.8):
                 self.labels[labels[i]] = {"x":x_coordinates[i],"y":y_coordinates[i],"w":widths[i],"h":heights[i],"id":ids[i]}
 
+    def categorize_age(self,age):
+        if age < 18:
+            category = "teenager"
+        elif age < 25:
+            category = "young adult"
+        elif age < 35:
+            category = "adult"
+        elif age < 50:
+            category = "middle aged adult"
+        elif age < 65:
+            category = "senior"
+        else:
+            category = "elder"
+        return category
+    
+    ############## TASK STATES ##############
+
     def on_enter_INIT(self):
-        self.autonomous_life_srv(False)
+        print(self.consoleFormatter.format("INIT", "HEADER"))
+        self.tm.set_current_place(self.initial_place)
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.awareness_srv(False)
-        self.tm.go_to_place("door")
+        self.tm.go_to_place("door_living_room")
         self.beggining()
                 
     def on_enter_WAIT4GUEST(self):
@@ -147,10 +171,8 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("QA", "HEADER"))
         self.move_head_srv("up")
         name=self.tm.q_a_speech("name")
-        age=self.tm.q_a_speech("age")
         drink=self.tm.q_a_speech("drink")
-        self.actual_person = {"name":name,"age":age,"drink":drink}
-        self.all_persons[name] = {"name":name,"age":age,"drink":drink}
+        self.actual_person = {"name":name,"drink":drink}
         self.tm.start_recognition("")
         self.person_met()
 
@@ -162,10 +184,21 @@ class RECEPTIONIST(object):
             self.show_topic_srv("/perception_utilities/filtered_image")
             self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
         succed = self.tm.save_face(self.actual_person["name"],5)
+        attributes = self.tm.get_person_description()
+        Tshirt = self.Tshirt_color_srv()
+        print("attributes: ",attributes)
+        # attributes = {"age":25,"gender":"Male","race":"White"}
         print("succed ",succed)
-        if succed:
+        if succed and attributes!={}:
             time.sleep(1)
-            self.move_head_srv("default")
+            self.actual_person["age"]=attributes["age"]
+            self.actual_person["gender"]=attributes["gender"]
+            self.actual_person["race"]=attributes["race"]
+            self.actual_person["Tshirt"]= Tshirt
+            self.actual_person["pronoun"]= "he" if  attributes["gender"] == "Man" else "she"
+            self.actual_person["age_category"]=self.categorize_age(attributes["age"])
+            self.all_persons[self.actual_person["name"]] = self.actual_person
+            self.move_head_srv("default")  
             self.failed_saving_face=False
             self.show_image_srv(self.sinfonia_url_img)
             self.save_face_succeded()
@@ -182,7 +215,9 @@ class RECEPTIONIST(object):
 
     def on_enter_INTRODUCE_NEW(self):
         print(self.consoleFormatter.format("INTRODUCE_NEW", "HEADER"))
-        self.tm.talk("Hello everyone, this is {}, he is {} years old and he likes to drink {}".format(self.actual_person["name"],self.actual_person["age"],self.actual_person["drink"]),"English")
+        self.tm.talk("Please {}, stand besides me".format(self.actual_person["name"]),"English")
+        time.sleep(2)
+        self.tm.talk(f'Hello everyone, this is {self.actual_person["name"]}, {self.actual_person["pronoun"]} is a {self.actual_person["gender"]}. {self.actual_person["pronoun"]} is wearing a {self.actual_person["Tshirt"]} shirt. {self.actual_person["name"]} is around {self.actual_person["age"]} years old and {self.actual_person["pronoun"]} likes to drink {self.actual_person["drink"]}',"English")
         #Turns on recognition and looks for  person
         self.tm.start_recognition("front_camera")
         # Reiniciar las variables de presentacion de personas y sillas
@@ -226,7 +261,6 @@ class RECEPTIONIST(object):
                     break
             self.person_not_found()
             
-        
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
         person_name = ""
@@ -237,9 +271,10 @@ class RECEPTIONIST(object):
         self.recognize_person_counter=0
         if person_name not in self.introduced_persons and person_name in self.all_persons:
             person_introduce = self.all_persons[person_name]
+            print("Person introduce: ",person_introduce)
             #TODO manipulacion animations/poses
             self.animations_publisher.publish("animations","Gestures/TakePlace_2")
-            self.tm.talk(" {} I introduce to you {} he is {} years old and he likes to drink {}".format(self.actual_person["name"],person_name,person_introduce["age"],person_introduce["drink"]),"English")
+            self.tm.talk(f' {self.actual_person["name"]} I introduce to you {person_name}. {person_name} is a {person_introduce["gender"]}. {person_introduce["pronoun"]} is wearing a {person_introduce["Tshirt"]} shirt. {person_name} is around {person_introduce["age"]} years old and likes to drink {person_introduce["drink"]}'.format(self.actual_person["name"],person_name,person_introduce["pronoun"],person_introduce["age_category"],person_introduce["gender"],person_introduce["drink"]),"English")
             self.introduced_persons.append(person_name)
         self.introduced_old_person()
     
@@ -250,7 +285,7 @@ class RECEPTIONIST(object):
             chair_angle = random.choice(self.empty_chair_angles)
             print("chair_angle ",chair_angle)
         else:
-            chair_angle=90
+            chair_angle=180
         self.tm.go_to_defined_angle_srv(chair_angle)
         self.chair_found()
 
@@ -264,7 +299,7 @@ class RECEPTIONIST(object):
     def on_enter_GO2DOOR(self):
         print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
         self.tm.talk("Waiting for other guests to come","English",wait=False)
-        self.tm.go_to_place("door")
+        self.tm.go_to_place("door_living_room")
         self.wait_new_guest()
 
     def check_rospy(self):

@@ -13,11 +13,11 @@ from std_srvs.srv import Trigger, TriggerRequest, SetBool
 
 from robot_toolkit_msgs.srv import tablet_service_srv
 
-from manipulation_msgs.srv import GoToState, GoToAction, GraspObject
+from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
 
 from speech_utilities_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest
 
-from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest
+from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,get_person_description_srv,pose_srv
 
 from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
@@ -70,6 +70,18 @@ class Task_module:
             print(self.consoleFormatter.format("Waiting for perception_utilities/filtered_image...", "WARNING"))
             rospy.wait_for_service("perception_utilities/filtered_image")
             self.filtered_image_proxy = rospy.ServiceProxy("perception_utilities/filtered_image", filtered_image_srv)
+
+            print(self.consoleFormatter.format("Waiting for perception_utilities/get_person_description...", "WARNING"))
+            rospy.wait_for_service("/perception_utilities/get_person_description_srv")
+            self.get_person_description_proxy = rospy.ServiceProxy("/perception_utilities/get_person_description_srv", get_person_description_srv)
+
+            print(self.consoleFormatter.format("Waiting for perception_utilities/pose_srv...", "WARNING"))
+            rospy.wait_for_service("/perception_utilities/pose_srv")
+            self.pose_srv_proxy = rospy.ServiceProxy("/perception_utilities/pose_srv", pose_srv)
+
+            print(self.consoleFormatter.format("Waiting for perception_utilities/set_model_recognition...", "WARNING"))
+            rospy.wait_for_service("perception_utilities/set_model_recognition_srv")
+            self.set_model_proxy = rospy.ServiceProxy("perception_utilities/set_model_recognition_srv", set_model_recognition_srv)
 
             print(self.consoleFormatter.format("PERCEPTION services enabled","OKGREEN"))
 
@@ -147,15 +159,15 @@ class Task_module:
         if manipulation:
             print(self.consoleFormatter.format("Waiting for MANIPULATION services...","WARNING"))
    
-            print(self.consoleFormatter.format("Waiting for manipulation_utilitites/goToState"))
+            print(self.consoleFormatter.format("Waiting for manipulation_utilitites/goToState","WARNING"))
             rospy.wait_for_service('manipulation_utilities/goToState')
             self.go_to_pose_proxy = rospy.ServiceProxy('manipulation_utilities/goToState', GoToState)
 
-            print(self.consoleFormatter.format("Waiting for manipulation_utilitites/goToAction"))
+            print(self.consoleFormatter.format("Waiting for manipulation_utilitites/goToAction","WARNING"))
             rospy.wait_for_service('manipulation_utilities/goToAction')
             self.go_to_action_proxy = rospy.ServiceProxy('manipulation_utilities/goToAction', GoToAction)
 
-            print(self.consoleFormatter.format("Waiting for manipulation_utilitites/graspObject"))
+            print(self.consoleFormatter.format("Waiting for manipulation_utilitites/graspObject","WARNING"))
             rospy.wait_for_service('manipulation_utilities/graspObject')
             self.grasp_object_proxy = rospy.ServiceProxy('manipulation_utilities/graspObject', GraspObject)
 
@@ -264,7 +276,7 @@ class Task_module:
     def look_for_object(self,object_name:str,ignore_already_seen:bool)->bool:
         """
         Input:
-        object_name: label of the object to look for options -> ("person","bench","backpack","handbag","suitcase","bottle","cup","fork","knife","spoon","bowl","chair","couch","bed","laptop")
+        object_name: label of the object to look for options -> classes names depends of the actual model (see set_model service)
         ignore_already_seen: True->ignore objects already seen || False->don't ignore objects already seen
         Output: True if the service was called correctly, False if not
         ----------
@@ -354,6 +366,45 @@ class Task_module:
         else:
             print("perception as false")
             return ""
+        
+    def get_person_description(self)->dict:
+        """
+        Input: 
+        Output: dict with the description of the person {"status":(happy,neutral,sad,angry),"gender":("Man","Woman"),"age":(int),"race":(race of the person)}
+        ----------
+        Returns a dict with the description of the person
+        """
+        attributes={}
+        if self.perception:
+            try:
+                response = self.get_person_description_proxy()
+                attributes = {"status":response.status,"gender":response.gender,"age":int(response.age),"race":response.attributes}
+                return attributes
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return {}
+        else:
+            print("perception as false")
+            return {}
+        
+    def pose_srv(self,camera_name:str)->bool:
+        """
+        Input: camera_name
+        Output: True if the service was called correctly, False if not
+        ----------
+        Saves the pose of the person in front of the camera
+        """
+        if self.perception:
+            try:
+                approved = self.pose_srv_proxy(camera_name)
+                return approved.approved
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("perception as false")
+            return False
+
 
     def qr_read(self,timeout:float)->str:
         """
@@ -375,7 +426,29 @@ class Task_module:
         else:
             print("perception as false")
             return ""
-        
+
+    def set_model(self,model_name:str)->bool:
+        """
+        Input: model name -> "default" || "objects"
+        Output: True if the service was called correctly, False if not
+        ----------
+        Sets the model to use for the object recognition.
+        classes by model:
+        default: ["person","bench","backpack","handbag","suitcase","bottle","cup","fork","knife","spoon","bowl","chair","couch","bed","laptop"]
+        #TODO: verify objcets
+        objects: ['masterchef can', 'bag', 'ball', 'banana', 'bleach cleanser', 'bottle', 'bowl', 'chair', 'cloth', 'cracker box', 'dress', 'drink', 'footwear', 'fruit', 'gelatin box', 'jacket', 'jeans', 'lemon', 'milk', 'mug', 'mustard bottle', 'pitcher base', 'potted meat can', 'pudding box', 'shirt', 'short', 'skirt', 'snack', 'spoon', 'strawberry', 'sugar box', 'tomato soup can', 'tuna fish can']
+        """
+        if self.perception:
+            try:
+                approved = self.set_model_proxy(model_name)
+                return approved.approved
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("perception as false")
+            return False
+
     ################### SPEECH SERVICES ###################
 
     def talk(self,text:str,language="English",wait=True,animated=False)->bool:
@@ -685,6 +758,30 @@ class Task_module:
         else:
             print("manipulation as false")
             return False
+   ############ MANIPULATION SERVICES ###############
+
+    def saveState(self, name:str)->bool:
+        """
+        Input: state as name
+        Output: True if the state was created or False if is not
+        ---------
+        Saves the current state of the robot's joints to a CSV file
+        """
+        if self.manipulation:
+            try:
+                name_msg = String()
+                name_msg.data = name
+                save_state= self.saveState_proxy(name_msg)
+                if save_state:
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("manipulation as false")
+            return False
         
     def execute_trayectory(self,trayectory:str)->bool:
         """
@@ -699,6 +796,30 @@ class Task_module:
                 if approved=="OK":
                     return True
                 else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("manipulation as false")
+            return False
+
+    def goToState(self, name:str)->bool:
+        """
+        Input: state to be executed.
+        Output: True after the robot moves.
+        ---------
+        Performs a series of actions to move the robot's arms to a desired configuration defined by joint_group_positions.
+        """
+        if self.manipulation:
+            try:
+                name_msg = String()
+                name_msg.data = name
+                go_to_state= self.goToState_proxy(name_msg)
+                if go_to_state:
+                    return True
+                else:
+                    print('ccannot move')
                     return False
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
