@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-from transitions import Machine
+from transitions import Machine #pylint: disable=import-error
 from task_module import Task_module as tm
-from perception_msgs.msg import get_labels_msg
+from perception_msgs.msg import get_labels_msg #pylint: disable=import-error
 from geometry_msgs.msg import Twist, PoseWithCovarianceStamped
-from robot_toolkit_msgs.msg import touch_msg, animation_msg
-from robot_toolkit_msgs.srv import point_at_srv, get_segmentation3D_srv, point_at_srvRequest
-from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srvss
+from robot_toolkit_msgs.msg import touch_msg, animation_msg #pylint: disable=import-error
+from robot_toolkit_msgs.srv import point_at_srv, get_segmentation3D_srv, point_at_srvRequest #pylint: disable=import-error
+from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srvss #pylint: disable=import-error
 import ConsoleFormatter
 import rospy
 import os
@@ -86,7 +86,7 @@ class STORING_GROCERIES(object):
 
         self.selected_object = ""
         self.actual_obj_cat = "Uncategorized"
-        self.num_sections = 6
+        self.num_sections = 3
         self.isTouched = False
         self.sensorFront = False
         self.sensorMiddle = False
@@ -100,37 +100,43 @@ class STORING_GROCERIES(object):
         # 'stored_objects' lista con los objetos que ya estan en el gabinete
         # 'contain_objects' objetos que deben ser almacenados en la categoria
         self.cabinet_sections = {
-            'Packaged Dry Goods':{
+            'cleaning supplies':{
+                'name_individual': "cleanning supply",
                 'section': -1,
                 'y_approx': -1,
                 'stored_objects': [],
-                'contain_objects': ['cracker box', 'sugar box', 'pudding box', 'gelatin box', 'cereal box'],
+                'contain_objects': ['cleanser'],
             },
-            'Canned Goods':{
+            'drinks':{
+                'name_individual': 'drink',
                 'section': -1,
                 'y_approx': -1,
                 'stored_objects': [],
-                'contain_objects': ['meat can', 'coffee can', 'fish can', 'chips can'],
+                'contain_objects': ['milk', 'juice', 'bottle', 'drink'],
             },
-            'Fresh Fruits':{
+            'food':{
+                'name_individual': 'food',
                 'section': -1,
                 'y_approx': -1,
                 'stored_objects': [],
-                'contain_objects': ['banana', 'strawberry', 'apple', 'lemon', 'peach', 'pear', 'orange', 'plum', 'fruit'],
+                'contain_objects': ['tuna', 'tomato_soup', 'spam', 'mustard', 'jello', 'coffee_grounds', 'sugar'],
             },
-            'Dairy':{
+            'fruits':{
+                'name_individual': 'fruit',
                 'section': -1,
                 'y_approx': -1,
                 'stored_objects': [],
-                'contain_objects': ['milk']
+                'contain_objects': ['banana', 'fruit']
             },
-            'Drinks':{
+            'snacks':{
+                'name_individual': 'snack',
                 'section': -1,
                 'y_approx': -1,
                 'stored_objects': [],
-                'contain_objects': ['bottle', 'soda'] #TODO: verify if soda is in the dataset
+                'contain_objects': ['cheezit','snack']
             },
             'Uncategorized':{
+                'name_individual': 'object',
                 'section': -1,
                 'y_approx': -1,
                 'stored_objects': [],
@@ -198,7 +204,7 @@ class STORING_GROCERIES(object):
                 cat = self.categorize_object(object_info['label'])
                 self.cabinet_sections[cat]['section'] = 0
                 self.cabinet_sections[cat]['y_approx'] = object_info['y']
-                self.cabinet_sections[cat]['stored_objects'].push(object_info['label'])
+                self.cabinet_sections[cat]['stored_objects'].insert(object_info['label'])
                 stored = True
                 self.objects_stored += 1
                 processed_cats += 1
@@ -208,7 +214,7 @@ class STORING_GROCERIES(object):
                         if abs(info_category['y_approx'] - object_info['y']) < max_diff:
                             if object_info['label'] not in info_category['contain_objects']:
                                 self.cabinet_sections[category]['contain_objects'].append(object_info['label'])
-                            self.cabinet_sections[category]['stored_objects'].push(object_info['label'])
+                            self.cabinet_sections[category]['stored_objects'].insert(object_info['label'])
                             stored = True
                             self.objects_stored += 1
                             self.cabinet_sections[category]['y_approx'] = (self.cabinet_sections[category]['y_approx'] + object_info['y'])/2
@@ -216,7 +222,7 @@ class STORING_GROCERIES(object):
                     cat = self.categorize_object(object_info['label'])
                     self.cabinet_sections[cat]['section'] = processed_cats
                     self.cabinet_sections[cat]['y_approx'] = object_info['y']
-                    self.cabinet_sections[cat]['stored_objects'].push(object_info['label'])
+                    self.cabinet_sections[cat]['stored_objects'].insert(object_info['label'])
                     stored = True
                     self.objects_stored += 1
                     processed_cats += 1
@@ -350,7 +356,7 @@ class STORING_GROCERIES(object):
         rospy.sleep(3)
         self.tm.talk("Thank you for your help","English",wait=False)
         self.objects_stored += 1
-        destine_section["stored_objects"].push(self.selected_object)
+        destine_section["stored_objects"].insert(self.selected_object)
         self.object_stored()
 
     def on_enter_RECOGCABINETCATEGORIES(self):

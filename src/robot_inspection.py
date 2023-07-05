@@ -56,7 +56,7 @@ class ROBOT_INSPECTION(object):
         # ROS Callbacks
         print(self.consoleFormatter.format("Waiting for /touch", "WARNING"))
         subscriber_touch= rospy.Subscriber("/touch", touch_msg, self.callback_touch)
-        subscriber_sonar= rospy.Subscriber("/sonar_front", Range, self.callback_sonar)
+        subscriber_sonar= rospy.Subscriber("/sonar/front", Range, self.callback_sonar)
 
         ##################### ROS CALLBACK VARIABLES #####################
         self.touch = 0
@@ -71,7 +71,7 @@ class ROBOT_INSPECTION(object):
             self.touch = 0
 
     def callback_sonar(self,data):
-        if(data.range > 0.8):
+        if(data.range > 0.5):
             self.sonar = True
         else:
             self.sonar = False
@@ -82,8 +82,12 @@ class ROBOT_INSPECTION(object):
         self.tm.talk("Please open the door to begin the task","English")
         self.tm.set_current_place("init_living_room")
         # Sonar front
-        if self.sonar:
-            self.beggining()
+        while not self.sonar:
+            print("Waiting for door to open ",self.sonar )
+            time.sleep(0.2)
+        self.tm.talk("The door has been opened","English")
+
+        self.beggining()
                 
     def on_enter_GO2INSPECTION(self):
         print(self.consoleFormatter.format("GO2INSPECTION", "HEADER"))

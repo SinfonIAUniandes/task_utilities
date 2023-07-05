@@ -98,17 +98,17 @@ class RECEPTIONIST(object):
         self.labels ={}
         ##################### GLOBAL VARIABLES #####################
 
-        self.initial_place = "init_receptionist"
+        self.initial_place ="init_living_room"
         self.sinfonia_url_img="https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"
         self.img_dimensions = (320,240)
         self.recognize_person_counter = 0
-        self.all_persons = {"Charlie":{"name":"Charlie","age":"25","drink":"Whiskey","gender":"Man","pronoun":"he"}}
+        self.all_persons = {"John":{"name":"John","age":"21","drink":"Milk","gender":"Man","pronoun":"he"}}
         self.introduced_persons = []
         self.actual_person={}
         self.old_person = ""
         self.failed_saving_face=False
         self.angle_index = 0
-        self.chair_angles = [135,160,190]
+        self.chair_angles = [135,160,190,220]
         self.checked_chair_angles = []
         self.empty_chair_angles = []
     
@@ -120,7 +120,7 @@ class RECEPTIONIST(object):
         heights = data.heights
         ids = data.ids
         for i in range(len(labels)):
-            if int(self.img_dimensions[0]*0.2)<x_coordinates[i]<int(self.img_dimensions[0]*0.8):
+            if int(self.img_dimensions[0]*0.2)<x_coordinates[i]<int(self.img_dimensions[0]*0.8) and widths[i]>130:
                 self.labels[labels[i]] = {"x":x_coordinates[i],"y":y_coordinates[i],"w":widths[i],"h":heights[i],"id":ids[i]}
 
     def categorize_age(self,age):
@@ -145,7 +145,7 @@ class RECEPTIONIST(object):
         self.tm.set_current_place(self.initial_place)
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        self.tm.turn_camera("front_camera","custom",1,15) 
+        self.tm.turn_camera("front_camera","custom",2,10) 
         self.awareness_srv(False)
         self.tm.go_to_place("door_living_room")
         self.beggining()
@@ -188,7 +188,6 @@ class RECEPTIONIST(object):
             self.actual_person["gender"]=attributes["gender"]
             self.actual_person["race"]=attributes["race"]
             self.actual_person["pronoun"]= "he" if  attributes["gender"] == "Man" else "she"
-            self.actual_person["age_category"]=self.categorize_age(attributes["age"])
             self.all_persons[self.actual_person["name"]] = self.actual_person
             self.move_head_srv("default")  
             self.failed_saving_face=False
@@ -223,8 +222,8 @@ class RECEPTIONIST(object):
     
     def on_enter_LOOK4PERSON(self):
         print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
-        # El robot ya fue a todas las posiciones de personas
-        if len(self.checked_chair_angles)==len(self.chair_angles or len(self.introduced_persons)==len(self.all_persons)):
+        # El robot ya fue a todas las posiciones de personas o introdujo a todas las personas
+        if (len(self.checked_chair_angles)==len(self.chair_angles)) or (len(self.introduced_persons)==len(self.all_persons)):
             if len(self.introduced_persons)==len(self.all_persons):
                 print(self.consoleFormatter.format("INTRODUCED_EVERYONE", "OKGREEN"))
                 self.introduced_everyone()
@@ -248,7 +247,6 @@ class RECEPTIONIST(object):
             while time.time()-t1<5:
                 if "person" in self.labels:
                     self.tm.talk("Recognizing person","English")
-                    self.empty_chair_angles.remove(self.checked_chair_angles[-1])
                     self.person_found()
                     break
             self.person_not_found()
@@ -262,11 +260,12 @@ class RECEPTIONIST(object):
             self.recognize_person_counter+=1
         self.recognize_person_counter=0
         if person_name not in self.introduced_persons and person_name in self.all_persons:
+            self.empty_chair_angles.remove(self.checked_chair_angles[-1])
             person_introduce = self.all_persons[person_name]
             print("Person introduce: ",person_introduce)
             #TODO manipulacion animations/poses
             self.animations_publisher.publish("animations","Gestures/TakePlace_2")
-            self.tm.talk(f' {self.actual_person["name"]} I introduce to you {person_name}. {person_introduce["pronoun"]} is a {person_introduce["gender"]}. {person_name} is around {person_introduce["age"]} years old and likes to drink {person_introduce["drink"]}'.format(self.actual_person["name"],person_name,person_introduce["pronoun"],person_introduce["age_category"],person_introduce["gender"],person_introduce["drink"]),"English")
+            self.tm.talk(f' {self.actual_person["name"]} I introduce to you {person_name}. {person_introduce["pronoun"]} is a {person_introduce["gender"]}. {person_name} is around {person_introduce["age"]} years old and likes to drink {person_introduce["drink"]}',"English")
             self.introduced_persons.append(person_name)
         self.introduced_old_person()
     
