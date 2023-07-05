@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-from transitions import Machine
+from transitions import Machine #pylint: disable=import-error
 from task_module import Task_module as tm
-from perception_msgs.msg import get_labels_msg
+from std_srvs.srv import SetBool
+from perception_msgs.msg import get_labels_msg #pylint: disable=import-error
 from geometry_msgs.msg import Twist, PoseWithCovarianceStamped
-from robot_toolkit_msgs.msg import touch_msg, animation_msg
-from robot_toolkit_msgs.srv import point_at_srv, get_segmentation3D_srv, point_at_srvRequest
-from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srvss
+from robot_toolkit_msgs.msg import touch_msg, animation_msg #pylint: disable=import-error
+from robot_toolkit_msgs.srv import point_at_srv, get_segmentation3D_srv, point_at_srvRequest #pylint: disable=import-error
+from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv #pylint: disable=import-error
 import ConsoleFormatter
 import rospy
 import os
@@ -24,7 +25,7 @@ class STORING_GROCERIES(object):
         # Definir los estados posibles del semáforo
         self.task_name = "storing_groceries"
         states = ['INIT', 'GO2TABLE', 'LOOK4OBJECT', 'REQHELPGRAB', 'GO2CABINET', 'RECOGCABINETCATEGORIES', 'REQHELPSTORE', 'END']
-        self.tm = tm(perception=True, speech=True, manipulation=False, navigation=True)
+        self.tm = tm(perception=True, speech=True, manipulation=True, navigation=False)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
@@ -43,7 +44,7 @@ class STORING_GROCERIES(object):
         # Crear la máquina de estados
         self.machine = Machine(model=self, states=states, transitions=transitions, initial='STORING_GROCERIES')
         # {'trigger': 'arrived_cabinet_first_time', 'source': 'GO2CABINET', 'dest': 'RECOGCABINETCATEGORIES'},
-        self.machine.add_transition(trigger='arrived_cabinet_first_time', source='GO2CABINET', dest='RECOGCABINETCATEGORIES', after='arrived_cabinet', conditions=['is_first_time'])
+        self.machine.add_transition(trigger='arrived_cabinet', source='GO2CABINET', dest='RECOGCABINETCATEGORIES', conditions=['is_first_time'])
 
         self.machine.add_transition(trigger='object_stored', source='REQHELPSTORE', dest='END', conditions=['all_objects_stored'])
         rospy_check = threading.Thread(target=self.check_rospy)
@@ -73,9 +74,8 @@ class STORING_GROCERIES(object):
         print(self.consoleFormatter.format("Waiting for /perception_utilities/get_labels_publisher", "WARNING"))
         self.get_labels_publisher = rospy.Subscriber("/perception_utilities/get_labels_publisher", get_labels_msg, self.callback_get_labels)
 
-        # ROS Publishers
-        print(self.consoleFormatter.format("Waiting for /animations", "WARNING"))
-        self.animations_publisher = rospy.Publisher("/animations", animation_msg, queue_size = 1)
+        
+        
 
         ##################### ROS CALLBACK VARIABLES #####################
         self.labels ={}
@@ -86,7 +86,7 @@ class STORING_GROCERIES(object):
 
         self.selected_object = ""
         self.actual_obj_cat = "Uncategorized"
-        self.num_sections = 6
+        self.num_sections = 3
         self.isTouched = False
         self.sensorFront = False
         self.sensorMiddle = False
@@ -204,7 +204,7 @@ class STORING_GROCERIES(object):
                 cat = self.categorize_object(object_info['label'])
                 self.cabinet_sections[cat]['section'] = 0
                 self.cabinet_sections[cat]['y_approx'] = object_info['y']
-                self.cabinet_sections[cat]['stored_objects'].push(object_info['label'])
+                self.cabinet_sections[cat]['stored_objects'].insert(0,object_info['label'],0)
                 stored = True
                 self.objects_stored += 1
                 processed_cats += 1
@@ -214,7 +214,7 @@ class STORING_GROCERIES(object):
                         if abs(info_category['y_approx'] - object_info['y']) < max_diff:
                             if object_info['label'] not in info_category['contain_objects']:
                                 self.cabinet_sections[category]['contain_objects'].append(object_info['label'])
-                            self.cabinet_sections[category]['stored_objects'].push(object_info['label'])
+                            self.cabinet_sections[category]['stored_objects'].insert(0,object_info['label'])
                             stored = True
                             self.objects_stored += 1
                             self.cabinet_sections[category]['y_approx'] = (self.cabinet_sections[category]['y_approx'] + object_info['y'])/2
@@ -222,7 +222,7 @@ class STORING_GROCERIES(object):
                     cat = self.categorize_object(object_info['label'])
                     self.cabinet_sections[cat]['section'] = processed_cats
                     self.cabinet_sections[cat]['y_approx'] = object_info['y']
-                    self.cabinet_sections[cat]['stored_objects'].push(object_info['label'])
+                    self.cabinet_sections[cat]['stored_objects'].insert(0,object_info['label'])
                     stored = True
                     self.objects_stored += 1
                     processed_cats += 1
@@ -235,20 +235,20 @@ class STORING_GROCERIES(object):
 
 
     def all_objects_stored(self):
-        if len(self.objects_stored) >= len(self.objects_to_store):
+        if self.objects_stored >= len(self.objects_to_store):
             return True
         return False
 
     def is_first_time(self):
-        if len (self.objects_stored) == 0:
+        if self.objects_stored == 0:
             return True
         return False
 
     def on_enter_INIT(self):
-        self.autonomous_life_srv(False)
+        #self.autonomous_life_srv(False)
         self.tm.talk("I am going to do the storing groceries task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        self.tm.turn_camera("front_camera","custom",1,15)
+        #self.tm.turn_camera("front_camera","custom",1,15)
         self.awareness_srv(False)
         self.init_go2table()
 
@@ -261,6 +261,8 @@ class STORING_GROCERIES(object):
 
     def on_enter_LOOK4OBJECT(self):
         print(self.consoleFormatter.format("LOOK4OBJECT", "HEADER"))
+        self.tm.go_to_pose("down_head",0.1)
+        self.tm.set_model("objects")
         self.tm.start_recognition("front_camera")
         self.tm.talk("I am looking for an object","English",wait=False)
         self.labels = {}
@@ -273,8 +275,10 @@ class STORING_GROCERIES(object):
 
         if self.is_first_time():
             self.objects_to_store = len(self.labels)
-        posible_objects = ['cracker box', 'sugar box', 'pudding box', 'gelatin box', 'meat can', 'coffe can', 'fish can', 'chips can', 'banana', 'strawberry', 'apple', 'lemon', 'peach', 'pear', 'orange', 'plum', 'milk', 'cereal box']
-        self.selected_object = random.choice([obj for obj in self.labels["labels"] if obj in posible_objects])
+        posible_objects = ['cleanser', 'milk', 'juice', 'bottle', 'drink', 'tuna', 'tomato_soup', 'spam', 'mustard', 'jello', 'coffee_grounds', 'sugar', 'banana', 'fruit','cheezit','snack']
+        if len(self.labels) == 0:
+            rospy.sleep(5)
+        self.selected_object = random.choice([obj["label"] for obj in self.labels.values() if obj["label"] in posible_objects])
         self.actual_obj_cat = self.categorize_object(self.selected_object)
         self.tm.talk("I found a "+self.selected_object,"English",wait=False)
         self.labels = {}
@@ -282,8 +286,9 @@ class STORING_GROCERIES(object):
     
     def on_enter_REQHELPGRAB(self):
         print(self.consoleFormatter.format("REQHELPGRAB", "HEADER"))
-        if self.selected_object == "cereal box":
+        if self.selected_object == "cheezit":
             self.tm.go_to_pose('box', 0.2)
+            self.tm.go_to_pose('open_both_hands')
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready touch my head","English",wait=False)
             while not self.isTouched:
@@ -292,7 +297,7 @@ class STORING_GROCERIES(object):
             rospy.sleep(2)
             self.tm.go_to_pose('close_both_hands', 0.2)
             rospy.sleep(1)
-        elif self.selected_object == "fruit":
+        elif self.selected_object == "spam":
             self.tm.go_to_pose('small_object_right_hand', 0.2)
             self.tm.go_to_pose('open_right_hand', 0.2)
             rospy.sleep(2)
@@ -301,13 +306,22 @@ class STORING_GROCERIES(object):
                 rospy.sleep(0.05)
             self.tm.go_to_pose('close_right_hand', 0.2)
             rospy.sleep(1)
-        else:
+        elif self.selected_object == "cleanser":
+            self.tm.go_to_pose('pringles', 0.1)
+            self.tm.go_to_pose('open_both_hands', 0.2)
+            rospy.sleep(2)
+            self.tm.talk("Could you place the "+self.selected_object+" in my hands, please?, when you are ready touch my head","English",wait=False)
+            while not self.isTouched:
+                rospy.sleep(0.05)
+            self.tm.go_to_pose('close_both_hands', 0.2)
+            rospy.sleep(1)
+        elif self.selected_object != "":
             self.tm.go_to_pose('bottle', 0.2)
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready touch my head","English",wait=False)
             while not self.isTouched:
                 rospy.sleep(0.05)
-            self.tm.go_to_pose('take_bottle', 0.2)
+            self.tm.go_to_pose('close_both_hands', 0.2)
             rospy.sleep(1)
 
         self.object_grabbed()
@@ -327,16 +341,17 @@ class STORING_GROCERIES(object):
             put_in = "inside the empty drawer at the bottom"
         else:
             put_in = "beside the "+destine_section["stored_objects"][0]
-        if self.selected_object == "cereal box":
+        if self.selected_object == "cheezit":
             self.tm.talk("Could you take the "+self.selected_object+" from my hands?", "English",wait=False)
             self.tm.talk("When you are ready to grab the "+ self.selected_object + " touch my head","English",wait=False)
             while not self.isTouched:
                 rospy.sleep(0.05)
+            self.tm.go_to_pose('open_both_hands', 0.1)
             self.tm.go_to_pose('box', 0.05)
             rospy.sleep(2)
             self.tm.go_to_pose('standard', 0.2)
             rospy.sleep(1)
-        elif self.selected_object == "fruit":
+        elif self.selected_object == "spam":
             self.tm.talk("Could you take the "+self.selected_object+" from my right hand?", "English",wait=False)
             self.tm.talk("When you are ready to grab the "+ self.selected_object + " touch my head","English",wait=False)
             while not self.isTouched:
@@ -356,7 +371,7 @@ class STORING_GROCERIES(object):
         rospy.sleep(3)
         self.tm.talk("Thank you for your help","English",wait=False)
         self.objects_stored += 1
-        destine_section["stored_objects"].push(self.selected_object)
+        destine_section["stored_objects"].insert(0, self.selected_object)
         self.object_stored()
 
     def on_enter_RECOGCABINETCATEGORIES(self):
