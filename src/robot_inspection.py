@@ -2,6 +2,7 @@
 from transitions import Machine
 from task_module import Task_module as tm
 from std_msgs.msg import Bool
+from sensor_msgs.msg import Range
 import ConsoleFormatter
 import time
 import random
@@ -35,15 +36,15 @@ class ROBOT_INSPECTION(object):
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
         self.task_name = "robot inspection"
-        states = ['INIT', 'GO2TABLE', 'TOUCHING', 'GO2DOOR']
+        states = ['INIT', 'GO2INSPECTION', 'TOUCHING', 'GO2EXIT']
         self.tm = tm(perception = False, speech=True,manipulation=False, navigation=True)
         self.tm.initialize_node("robot_inspection")
         # Definir las transiciones permitidas entre los estados
         transitions = [
             {'trigger': 'start', 'source': 'ROBOT_INSPECTION', 'dest': 'INIT'},
-            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'GO2TABLE'},
-            {'trigger': 'waiting', 'source': 'GO2TABLE', 'dest': 'TOUCHING'},
-            {'trigger': 'endings', 'source': 'TOUCHING', 'dest': 'GO2DOOR'}
+            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'GO2INSPECTION'},
+            {'trigger': 'waiting', 'source': 'GO2INSPECTION', 'dest': 'TOUCHING'},
+            {'trigger': 'endings', 'source': 'TOUCHING', 'dest': 'GO2EXIT'}
         ]
         
         # Crear la máquina de estados
@@ -55,9 +56,11 @@ class ROBOT_INSPECTION(object):
         # ROS Callbacks
         print(self.consoleFormatter.format("Waiting for /touch", "WARNING"))
         subscriber_touch= rospy.Subscriber("/touch", touch_msg, self.callback_touch)
+        subscriber_sonar= rospy.Subscriber("/sonar_front", Range, self.callback_sonar)
 
         ##################### ROS CALLBACK VARIABLES #####################
         self.touch = 0
+        self.sonar = False
 
         ##################### GLOBAL VARIABLES #####################
 
@@ -66,17 +69,27 @@ class ROBOT_INSPECTION(object):
             self.touch = 1
         else:
             self.touch = 0
+
+    def callback_sonar(self,data):
+        if(data.range > 0.8):
+            self.sonar = True
+        else:
+            self.sonar = False
                 
     def on_enter_INIT(self):
         self.tm.talk("I am going to do the  "+ self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        self.beggining()
+        self.tm.talk("Please open the door to begin the task","English")
+        self.tm.set_current_place("init_living_room")
+        # Sonar front
+        if self.sonar:
+            self.beggining()
                 
-    def on_enter_GO2TABLE(self):
-        print(self.consoleFormatter.format("GO2TABLE", "HEADER"))
-        self.tm.talk("I am going to the table position","English",wait=False)
-        self.tm.go_to_place("table")
-        self.tm.talk("I'm in the table position","English",wait=False)
+    def on_enter_GO2INSPECTION(self):
+        print(self.consoleFormatter.format("GO2INSPECTION", "HEADER"))
+        self.tm.talk("I am going to the inspection position","English",wait=False)
+        self.tm.go_to_place("study")
+        self.tm.talk("I'm in the inspection position","English",wait=False)
         self.waiting()
     
     def on_enter_TOUCHING(self):
@@ -87,10 +100,10 @@ class ROBOT_INSPECTION(object):
         self.tm.talk("My head has been touched","English",wait=False)
         self.endings()
 
-    def on_enter_GO2DOOR(self):
-        print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
-        self.tm.talk("I am going to the door position","English",wait=False)
-        self.tm.go_to_place("door")
+    def on_enter_GO2EXIT(self):
+        print(self.consoleFormatter.format("GO2EXIT", "HEADER"))
+        self.tm.talk("I am going to the exit position","English",wait=False)
+        self.tm.go_to_place("init_study")
         self.tm.talk("Robot inspection completed","English", wait=False)
         os._exit(os.EX_OK)     
         
