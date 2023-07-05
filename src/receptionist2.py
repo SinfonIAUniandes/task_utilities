@@ -108,9 +108,11 @@ class RECEPTIONIST(object):
         self.old_person = ""
         self.failed_saving_face=False
         self.angle_index = 0
-        self.chair_angles = [135,160,190,220]
+        self.chair_angles = [127,163,193,235]
         self.checked_chair_angles = []
         self.empty_chair_angles = []
+        self.first_time = True
+        self.host_name = "John"
     
     def callback_get_labels(self,data):
         labels = data.labels
@@ -254,19 +256,33 @@ class RECEPTIONIST(object):
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
         person_name = ""
-        while person_name == "" and self.recognize_person_counter<3:
-            person_name = self.tm.recognize_face(3)
-            print("saw: "+person_name)
-            self.recognize_person_counter+=1
-        self.recognize_person_counter=0
-        if person_name not in self.introduced_persons and person_name in self.all_persons:
+        if self.first_time:
+            self.first_time=False
+            person_name = self.host_name
             self.empty_chair_angles.remove(self.checked_chair_angles[-1])
             person_introduce = self.all_persons[person_name]
             print("Person introduce: ",person_introduce)
-            #TODO manipulacion animations/poses
             self.animations_publisher.publish("animations","Gestures/TakePlace_2")
-            self.tm.talk(f' {self.actual_person["name"]} I introduce to you {person_name}. {person_introduce["pronoun"]} is a {person_introduce["gender"]}. {person_name} is around {person_introduce["age"]} years old and likes to drink {person_introduce["drink"]}',"English")
-            self.introduced_persons.append(person_name)
+            self.tm.talk(f' {self.actual_person["name"]} I introduce to you {person_name}. {person_introduce["pronoun"]} is a {person_introduce["gender"]}. {person_name} is around {person_introduce["age"]} years old and likes to drink {person_introduce["drink"]}',"English", wait=False)
+            suecceded = self.tm.save_face(person_name, 7)
+            while not suecceded:
+                self.tm.talk(f' {person_name}, I am going to take some pictures of you please look at me ',"English", wait=False)
+                self.tm.save_face(person_name, 7)
+        else:
+            while person_name == "" and self.recognize_person_counter<3:
+                person_name = self.tm.recognize_face(3)
+                print("saw: "+person_name)
+                self.recognize_person_counter+=1
+            self.recognize_person_counter=0
+            if person_name not in self.introduced_persons and person_name in self.all_persons:
+                self.empty_chair_angles.remove(self.checked_chair_angles[-1])
+                person_introduce = self.all_persons[person_name]
+                print("Person introduce: ",person_introduce)
+                #TODO manipulacion animations/poses
+                self.animations_publisher.publish("animations","Gestures/TakePlace_2")
+                self.tm.talk(f' {self.actual_person["name"]} I introduce to you {person_name}. {person_introduce["pronoun"]} is a {person_introduce["gender"]}. {person_name} is around {person_introduce["age"]} years old and likes to drink {person_introduce["drink"]}',"English")
+                self.introduced_persons.append(person_name)
+        
         self.introduced_old_person()
     
     def on_enter_LOOK4CHAIR(self):
