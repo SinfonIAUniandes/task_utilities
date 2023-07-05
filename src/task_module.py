@@ -736,6 +736,27 @@ class Task_module:
             print("perception as false")
             return False
         
+    def add_place(self,name:str,persist=0,edges=[])->bool:
+        """
+        Input: name, edges, persist
+        Output: True if the service was called correctly, False if not
+        ----------
+        Adds a place to the graph
+        """
+        if self.navigation:
+            try:
+                approved = self.add_place_proxy(name,persist,edges)
+                if approved=="approved":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("navigation as false")
+            return False
+        
     ############ MANIPULATION SERVICES ###############    
     
     def go_to_pose(self,pose:str,velocity=0.05)->bool:

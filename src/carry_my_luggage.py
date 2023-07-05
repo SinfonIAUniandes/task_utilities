@@ -90,7 +90,7 @@ class CML(object):
         self.pose = ""
         self.touch = False
         ##################### GLOBAL VARIABLES #####################
-        self.initial_place="init"
+        self.place_counter=0
 
     def callback_pose(self,data):
         self.pose = data.data
@@ -104,7 +104,8 @@ class CML(object):
     def on_enter_INIT(self):
         print(self.consoleFormatter.format("INIT", "HEADER"))
         self.tm.show_image("sinfonia")
-        self.tm.set_current_place(self.initial_place)
+        self.tm.add_place("place"+str(self.place_counter))
+        self.place_counter+=1
         self.tm.talk("I am going to do the carry my luggage task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.turn_camera("front_camera","custom",1,15) 
@@ -122,7 +123,7 @@ class CML(object):
         self.tm.talk("Make sure your arms appear in my tablet","English")
         possible_options = ["Pointing to the left","Pointing to the right"]
         t1 = time.time()
-        while self.pose not in possible_options and time.time()-t1<5:
+        while self.pose not in possible_options and time.time()-t1<8:
             time.sleep(0.05)
         if self.pose == "Pointing to the left":
             self.tm.talk("I am going to grab the bag on my left","English")
