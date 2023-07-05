@@ -16,7 +16,7 @@ from std_srvs.srv import SetBool
 from navigation_msgs.srv import constant_spin_srv
 from perception_msgs.msg import get_labels_msg
 from navigation_msgs.msg import simple_feedback_msg
-from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv,Tshirt_color_srv
+from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv
 from robot_toolkit_msgs.msg import animation_msg
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion
@@ -85,12 +85,7 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("Waiting for pytoolkit/autononumusLife...", "WARNING"))
         rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
         self.autonomous_life_srv = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
-
-        print(self.consoleFormatter.format("Waiting for pytoolkit/Tshirt_color", "WARNING"))
-        rospy.wait_for_service("/pytoolkit/ALPerception/Tshirt_color_srv")
-        self.Tshirt_color_srv = rospy.ServiceProxy("/pytoolkit/ALPerception/Tshirt_color_srv",Tshirt_color_srv)
-        
-        
+                
         # ROS subscribers (perception)
         print(self.consoleFormatter.format("Waiting for /perception_utilities/get_labels_publisher", "WARNING"))
         self.get_labels_publisher = rospy.Subscriber("/perception_utilities/get_labels_publisher", get_labels_msg, self.callback_get_labels)
@@ -103,20 +98,19 @@ class RECEPTIONIST(object):
         self.labels ={}
         ##################### GLOBAL VARIABLES #####################
 
-        self.initial_place = "init_living_room"
+        self.initial_place = "init_receptionist"
         self.sinfonia_url_img="https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"
         self.img_dimensions = (320,240)
         self.recognize_person_counter = 0
-        self.all_persons = {"Charlie":{"name":"Charlie","age":"25","drink":"Whiskey","gender":"Man","pronoun":"he","Tshirt":"white"}}
+        self.all_persons = {"Charlie":{"name":"Charlie","age":"25","drink":"Whiskey","gender":"Man","pronoun":"he"}}
         self.introduced_persons = []
         self.actual_person={}
         self.old_person = ""
         self.failed_saving_face=False
         self.angle_index = 0
-        self.chair_angles = [160,190]
+        self.chair_angles = [135,160,190]
         self.checked_chair_angles = []
         self.empty_chair_angles = []
-
     
     def callback_get_labels(self,data):
         labels = data.labels
@@ -185,7 +179,6 @@ class RECEPTIONIST(object):
             self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
         succed = self.tm.save_face(self.actual_person["name"],5)
         attributes = self.tm.get_person_description()
-        Tshirt = self.Tshirt_color_srv()
         print("attributes: ",attributes)
         # attributes = {"age":25,"gender":"Male","race":"White"}
         print("succed ",succed)
@@ -194,7 +187,6 @@ class RECEPTIONIST(object):
             self.actual_person["age"]=attributes["age"]
             self.actual_person["gender"]=attributes["gender"]
             self.actual_person["race"]=attributes["race"]
-            self.actual_person["Tshirt"]= Tshirt
             self.actual_person["pronoun"]= "he" if  attributes["gender"] == "Man" else "she"
             self.actual_person["age_category"]=self.categorize_age(attributes["age"])
             self.all_persons[self.actual_person["name"]] = self.actual_person
@@ -210,14 +202,14 @@ class RECEPTIONIST(object):
     def on_enter_GO2LIVING(self):
         print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
         self.tm.talk("Please {}, follow me to the living room".format(self.actual_person["name"]),"English",wait=False)
-        self.tm.go_to_place("living_room")
+        self.tm.go_to_place("receptionist")
         self.arrived_to_point()
 
     def on_enter_INTRODUCE_NEW(self):
         print(self.consoleFormatter.format("INTRODUCE_NEW", "HEADER"))
         self.tm.talk("Please {}, stand besides me".format(self.actual_person["name"]),"English")
         time.sleep(2)
-        self.tm.talk(f'Hello everyone, this is {self.actual_person["name"]}, {self.actual_person["pronoun"]} is a {self.actual_person["gender"]}. {self.actual_person["pronoun"]} is wearing a {self.actual_person["Tshirt"]} shirt. {self.actual_person["name"]} is around {self.actual_person["age"]} years old and {self.actual_person["pronoun"]} likes to drink {self.actual_person["drink"]}',"English")
+        self.tm.talk(f'Hello everyone, this is {self.actual_person["name"]}, {self.actual_person["pronoun"]} is a {self.actual_person["gender"]}.  {self.actual_person["pronoun"]} is around {self.actual_person["age"]} years old and {self.actual_person["pronoun"]} likes to drink {self.actual_person["drink"]}',"English")
         #Turns on recognition and looks for  person
         self.tm.start_recognition("front_camera")
         # Reiniciar las variables de presentacion de personas y sillas
@@ -274,7 +266,7 @@ class RECEPTIONIST(object):
             print("Person introduce: ",person_introduce)
             #TODO manipulacion animations/poses
             self.animations_publisher.publish("animations","Gestures/TakePlace_2")
-            self.tm.talk(f' {self.actual_person["name"]} I introduce to you {person_name}. {person_name} is a {person_introduce["gender"]}. {person_introduce["pronoun"]} is wearing a {person_introduce["Tshirt"]} shirt. {person_name} is around {person_introduce["age"]} years old and likes to drink {person_introduce["drink"]}'.format(self.actual_person["name"],person_name,person_introduce["pronoun"],person_introduce["age_category"],person_introduce["gender"],person_introduce["drink"]),"English")
+            self.tm.talk(f' {self.actual_person["name"]} I introduce to you {person_name}. {person_introduce["pronoun"]} is a {person_introduce["gender"]}. {person_name} is around {person_introduce["age"]} years old and likes to drink {person_introduce["drink"]}'.format(self.actual_person["name"],person_name,person_introduce["pronoun"],person_introduce["age_category"],person_introduce["gender"],person_introduce["drink"]),"English")
             self.introduced_persons.append(person_name)
         self.introduced_old_person()
     

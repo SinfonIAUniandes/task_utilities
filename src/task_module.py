@@ -17,7 +17,7 @@ from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
 
 from speech_utilities_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest
 
-from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,get_person_description_srv,pose_srv
+from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,get_person_description_srv,start_pose_recognition_srv
 
 from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
@@ -77,7 +77,7 @@ class Task_module:
 
             print(self.consoleFormatter.format("Waiting for perception_utilities/pose_srv...", "WARNING"))
             rospy.wait_for_service("/perception_utilities/pose_srv")
-            self.pose_srv_proxy = rospy.ServiceProxy("/perception_utilities/pose_srv", pose_srv)
+            self.pose_srv_proxy = rospy.ServiceProxy("/perception_utilities/pose_srv", start_pose_recognition_srv)
 
             print(self.consoleFormatter.format("Waiting for perception_utilities/set_model_recognition...", "WARNING"))
             rospy.wait_for_service("perception_utilities/set_model_recognition_srv")
@@ -738,7 +738,7 @@ class Task_module:
         
     ############ MANIPULATION SERVICES ###############    
     
-    def go_to_pose(self,pose:str)->bool:
+    def go_to_pose(self,pose:str,velocity=0.05)->bool:
         """
         Input: pose options ->("bowl","box","cylinder","medium_object", "small_object_left_hand","small_object_right_hand","tray","head_up","head_down","head_default")
         Output: True if the service was called correctly, False if not
@@ -747,7 +747,7 @@ class Task_module:
         """
         if self.manipulation:
             try:
-                approved = self.go_to_pose_proxy(pose)
+                approved = self.go_to_pose_proxy(pose,velocity)
                 if approved=="OK":
                     return True
                 else:

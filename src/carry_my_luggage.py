@@ -17,7 +17,7 @@ from std_msgs.msg import String
 from navigation_msgs.srv import constant_spin_srv
 from perception_msgs.msg import get_labels_msg
 from navigation_msgs.msg import simple_feedback_msg
-from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv
+from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv, misc_tools_srv
 from robot_toolkit_msgs.msg import animation_msg,touch_msg
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion
@@ -71,6 +71,9 @@ class CML(object):
         rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
         self.autonomous_life_srv = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
         
+        print(self.consoleFormatter.format("Waiting for robot_toolkit/misc_tools_srv...", "WARNING"))
+        rospy.wait_for_service("/robot_toolkit/misc_tools_srv")
+        self.misc_tools_srv = rospy.ServiceProxy("/robot_toolkit/misc_tools_srv",misc_tools_srv)
 
         print(self.consoleFormatter.format("Waiting for /perception_utilities/pose_publisher", "WARNING"))
         self.pose_publisher = rospy.Subscriber("/perception_utilities/pose_publisher", String, self.callback_pose)
@@ -90,8 +93,7 @@ class CML(object):
         self.initial_place="init"
 
     def callback_pose(self,data):
-        print(data)
-        self.pose = data
+        self.pose = data.data
 
     def callback_touch(self,data):
         if("head" in data.name and data.state == True):
@@ -117,14 +119,17 @@ class CML(object):
         print(self.consoleFormatter.format("CHOOSE_BAG", "HEADER"))
         self.tm.show_topic("/perception_utilities/pose_image_publisher")
         self.tm.talk("Please, choose a bag, signal the bag you want me to grab","English")
+        self.tm.talk("Make sure your arms appear in my tablet","English")
         possible_options = ["Pointing to the left","Pointing to the right"]
         t1 = time.time()
         while self.pose not in possible_options and time.time()-t1<5:
             time.sleep(0.05)
         if self.pose == "Pointing to the left":
+            self.tm.talk("I am going to grab the bag on my left","English")
             self.tm.go_to_place("left_bag")
             self.bag_chosen()
         elif self.pose == "Pointing to the right":
+            self.tm.talk("I am going to grab the bag on my right","English")
             self.tm.go_to_place("right_bag")   
             self.bag_chosen() 
         else:
@@ -137,6 +142,7 @@ class CML(object):
         self.tm.talk("Please place the bag in my hand, when you are ready touch my head","English")
         while not self.touch:
             time.sleep(0.05)
+        self.tm.go_to_pose("close_right_hand")
         self.tm.talk("Thank you","English")
         self.bag_grabbed()
 
@@ -146,15 +152,17 @@ class CML(object):
         #TODO 
         self.tm.go_to_place("outside")
         self.tm.talk("Could you pick up your bag?","English")
-        self.tm.talk("Touch my head when when tou had picked up your bag","English")
+        self.tm.go_to_pose("open_right_hand")
+        self.tm.talk("Touch my head when when you had picked up your bag","English")
         while not self.touch:
             time.sleep(0.05)
         self.tm.talk("Thank you","English")
         self.tm.execute_trayectory("place_right_arm")
+        self.return_home()
 
     def on_enter_RETURN_TO_HOUSE(self):
         print(self.consoleFormatter.format("RETURN_TO_HOUSE", "HEADER"))
-        self.tm.talk("Returing home","English")
+        self.tm.talk("Returning home","English")
         self.tm.go_to_place("door")
 
     def check_rospy(self):
