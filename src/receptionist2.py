@@ -256,6 +256,7 @@ class RECEPTIONIST(object):
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
         person_name = ""
+        # TODO Si hay un falso positivo la maqunina de estados se ve a la gran puta mierda
         if self.first_time:
             self.first_time=False
             person_name = self.host_name
@@ -268,6 +269,7 @@ class RECEPTIONIST(object):
             while not suecceded:
                 self.tm.talk(f' {person_name}, I am going to take some pictures of you please look at me ',"English", wait=False)
                 self.tm.save_face(person_name, 7)
+            self.introduced_persons.append(person_name)
         else:
             while person_name == "" and self.recognize_person_counter<3:
                 person_name = self.tm.recognize_face(3)
