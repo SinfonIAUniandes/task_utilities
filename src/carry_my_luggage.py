@@ -82,9 +82,7 @@ class CML(object):
         print(self.consoleFormatter.format("Waiting for /touch", "WARNING"))
         subscriber_touch= rospy.Subscriber("/touch", touch_msg, self.callback_touch)
 
-        # ROS Publishers
-        print(self.consoleFormatter.format("Waiting for /animations", "WARNING"))
-        self.animations_publisher = rospy.Publisher("/animations", animation_msg, queue_size = 1)
+
 
         ##################### ROS CALLBACK VARIABLES #####################
         self.pose = ""
