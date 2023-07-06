@@ -31,10 +31,10 @@ class SERVE_BREAKFAST(object):
         
         self.machine = Machine(model=self, states=self.STATES, transitions=self.TRANSITIONS, initial='INIT')
 
-        self.enableTouch_srv = rospy.ServiceProxy('robot_toolkit/misc_tools_srv', misc_tools_srv)
-        misc_request = misc_tools_srvRequest()
-        misc_request.data.command = "enable_Sall"
-        self.enableTouch_srv.call(misc_request)
+        #self.enableTouch_srv = rospy.ServiceProxy('robot_toolkit/misc_tools_srv', misc_tools_srv)
+        #misc_request = misc_tools_srvRequest()
+        #misc_request.data.command = "enable_all"
+        #self.enableTouch_srv.call(misc_request)
         self.isTouched = False
 
         self.setMoveArms_srv = rospy.ServiceProxy('pytoolkit/ALMotion/set_move_arms_enabled_srv', set_move_arms_enabled_srv)
@@ -89,6 +89,7 @@ class SERVE_BREAKFAST(object):
             self.tm.go_to_pose('medium_object', 0.1)
             rospy.sleep(2)
             self.tm.talk("Can you place the "+self.objects[self.object_i]+" inside my arms, please?, when you are ready touch my head")
+            # TODO ready wait word
             while not self.isTouched:
                 rospy.sleep(0.1)
             
