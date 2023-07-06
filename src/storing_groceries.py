@@ -297,6 +297,7 @@ class STORING_GROCERIES(object):
         self.object_found_categorized()
     
     def on_enter_REQHELPGRAB(self):
+        res = False
         hotword_req = hot_word_srvRequest()
         hotword_req.key = "ready"
         hotword_req.threshold = 0.5
@@ -337,7 +338,7 @@ class STORING_GROCERIES(object):
 
         elif self.selected_object == "cleanser":
             self.tm.go_to_pose('pringles', 0.1)
-            self.tm.go_to_pose('open_both_hands', 0.2)
+            self.tm.go_to_pose('almost_open_both_hands', 0.2)
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=False)
             
@@ -348,8 +349,8 @@ class STORING_GROCERIES(object):
                 self.tm.talk("Remember you need to say ready to confirm that the object is located","English")
 
         elif self.selected_object == "milk":
-            self.tm.go_to_pose('bottle', 0.1)
-            self.tm.go_to_pose('open_both_hands', 0.2)
+            self.tm.go_to_pose('master', 0.1)
+            self.tm.go_to_pose('almost_open_both_hands', 0.2)
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=False)
             
@@ -363,8 +364,8 @@ class STORING_GROCERIES(object):
             rospy.sleep(1)
 
         elif self.selected_object == "tuna":
-            self.tm.go_to_pose('bottle', 0.1)
             self.tm.go_to_pose('small_object_right_hand', 0.2)
+            self.tm.go_to_pose('open_right_hand', 0.2)
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=False)
             
@@ -378,8 +379,8 @@ class STORING_GROCERIES(object):
             rospy.sleep(1)
 
         elif self.selected_object == "tomato_soup":
-            self.tm.go_to_pose('bottle', 0.1)
             self.tm.go_to_pose('small_object_right_hand', 0.2)
+            self.tm.go_to_pose('open_right_hand', 0.2)
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=False)
             
@@ -393,8 +394,8 @@ class STORING_GROCERIES(object):
             rospy.sleep(1)
 
         elif self.selected_object == "mustard":
-            self.tm.go_to_pose('bottle', 0.1)
-            self.tm.go_to_pose('small_object_right_hand', 0.2)
+            self.tm.go_to_pose('pringles', 0.1)
+            self.tm.go_to_pose('almost_open_both_hands', 0.2)
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=False)
             
@@ -408,8 +409,8 @@ class STORING_GROCERIES(object):
             rospy.sleep(1)
 
         elif self.selected_object == "jello":
-            self.tm.go_to_pose('bottle', 0.1)
             self.tm.go_to_pose('small_object_right_hand', 0.2)
+            self.tm.go_to_pose('almost_open_right_hand', 0.2)
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=False)
             
@@ -423,8 +424,8 @@ class STORING_GROCERIES(object):
             rospy.sleep(1)
 
         elif self.selected_object == "apple":
-            self.tm.go_to_pose('bottle', 0.1)
             self.tm.go_to_pose('small_object_right_hand', 0.2)
+            self.tm.go_to_pose('open_both_hands', 0.2)
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=False)
             
@@ -438,8 +439,8 @@ class STORING_GROCERIES(object):
             rospy.sleep(1)
         
         elif self.selected_object == "orange":
-            self.tmgo_to_pose('bottle', 0.1)
             self.tm.go_to_pose('small_object_right_hand', 0.2)
+            self.tm.go_to_pose('open_both_hands', 0.2)
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=False)
             
@@ -453,8 +454,8 @@ class STORING_GROCERIES(object):
             rospy.sleep(1)
 
         elif self.selected_object == "banana":
-            self.tm.go_to_pose('bottle', 0.1)
             self.tm.go_to_pose('small_object_right_hand', 0.2)
+            self.tm.go_to_pose('almost_open_right_hand', 0.2)
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=False)
             
@@ -468,8 +469,8 @@ class STORING_GROCERIES(object):
             rospy.sleep(1)
 
         elif self.selected_object == "lemon":
-            self.tm.go_to_pose('bottle', 0.1)
             self.tm.go_to_pose('small_object_right_hand', 0.2)
+            self.tm.go_to_pose('open_both_hands', 0.2)
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=False)
             
@@ -480,8 +481,8 @@ class STORING_GROCERIES(object):
                 self.tm.talk("Remember you need to say ready to confirm that the object is located","English")
 
         elif self.selected_object == "pera":
-            self.tm.go_to_pose('bottle', 0.1)
             self.tm.go_to_pose('small_object_right_hand', 0.2)
+            self.tm.go_to_pose('open_both_hands', 0.2)
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=False)
             
@@ -495,8 +496,8 @@ class STORING_GROCERIES(object):
             rospy.sleep(1)
 
         elif self.selected_object == "peach":
-            self.tm.go_to_pose('bottle', 0.1)
             self.tm.go_to_pose('small_object_right_hand', 0.2)
+            self.tm.go_to_pose('open_both_hands', 0.2)
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=False)
             
@@ -510,8 +511,8 @@ class STORING_GROCERIES(object):
             rospy.sleep(1)
 
         elif self.selected_object == "sugar":
-            self.tm.go_to_pose('bottle', 0.1)
             self.tm.go_to_pose('small_object_right_hand', 0.2)
+            self.tm.go_to_pose('almost_open_right_object', 0.2)
             rospy.sleep(2)
             self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=False)
             
@@ -539,33 +540,36 @@ class STORING_GROCERIES(object):
         hotword_req.key = "ready"
         hotword_req.threshold = 0.5
         hotword_req.timeout = 5
-        
         print(self.consoleFormatter.format("REQHELPSTORE", "HEADER"))
+        
         destine_section = self.cabinet_sections[self.actual_obj_cat]
-        put_in = ""
-        if len(destine_section["stored_objects"]) == 0:
-            put_in = "inside the empty drawer at the bottom"
+        if(destine_section["section"] == 1):
+            self.tm.execute_trayectory("place_right_arm")
         else:
-            put_in = "beside the "+destine_section["stored_objects"][0]
-        if self.selected_object in posible_objects:
-            self.tm.talk("Could you take the "+self.selected_object+" from my hands?", "English",wait=False)
-            self.tm.talk("When you are ready to grab the "+ self.selected_object + " say ready","English",wait=False)
-            
-            res = self.hotword_client.call(hotword_req)
-            while not res:
-                res =  self.hotword_client.call(hotword_req)
-                rospy.sleep(2)
-                self.tm.talk("Remember you need to say ready to confirm that the object is caught","English")
+            put_in = ""
+            if len(destine_section["stored_objects"]) == 0:
+                put_in = "inside the empty drawer at the bottom"
+            else:
+                put_in = "beside the "+destine_section["stored_objects"][0]
+            if self.selected_object in posible_objects:
+                self.tm.talk("Could you take the "+self.selected_object+" from my hands?", "English",wait=False)
+                self.tm.talk("When you are ready to grab the "+ self.selected_object + " say ready","English",wait=False)
+                
+                res = self.hotword_client.call(hotword_req)
+                while not res:
+                    res =  self.hotword_client.call(hotword_req)
+                    rospy.sleep(2)
+                    self.tm.talk("Remember you need to say ready to confirm that the object is caught","English")
 
-            self.tm.go_to_pose('open_both_hands', 0.1)
+                self.tm.go_to_pose('open_both_hands', 0.1)
+                rospy.sleep(3)
+                self.tm.go_to_pose('standard', 0.2)
+                rospy.sleep(1)
+
+
+            self.tm.talk("Can you please put the"+ self.selected_object + put_in, "English",wait=False)
             rospy.sleep(3)
-            self.tm.go_to_pose('standard', 0.2)
-            rospy.sleep(1)
-
-
-        self.tm.talk("Can you please put the"+ self.selected_object + put_in, "English",wait=False)
-        rospy.sleep(3)
-        self.tm.talk("Thank you for your help","English",wait=False)
+            self.tm.talk("Thank you for your help","English",wait=False)
         self.objects_stored += 1
         destine_section["stored_objects"].insert(0, self.selected_object)
         self.object_stored()
