@@ -526,7 +526,7 @@ class STORING_GROCERIES(object):
             rospy.sleep(1)
 
         self.object_grabbed()
-¡
+
     def on_enter_GO2CABINET(self):
         print(self.consoleFormatter.format("GO2CABINET", "HEADER"))
         self.tm.talk("I am going to the cabinet position","English",wait=False)
