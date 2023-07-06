@@ -36,7 +36,7 @@ class GPSR(object):
         # Definir los estados posibles del semáforo
         self.task_name = "GPSR"
         states = ['INIT', 'WAIT4GUEST', 'GPSR', 'GO2GPSR']
-        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=True)
+        self.tm = tm(perception = True,speech=True,manipulation=True, navigation=True, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
@@ -55,13 +55,14 @@ class GPSR(object):
         rospy_check.start()
 
         ############################# GLOBAL VARIABLES #############################
-        self.location = "door"
+        self.location = "door_living_room"
 
-    
     def on_enter_INIT(self):
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.turn_camera("front_camera","custom",1,15) 
+        self.tm.start_recognition("front_camera")
+        self.tm.go_to_pose("default_head")
         self.beggining()
 
     def on_enter_GPSR(self):

@@ -61,17 +61,17 @@ def generate_code(task_input: str)-> str:
     - The code cannot include the original codebase interface, it is only for using its functions
     - Remember to initialize and dispose of every sensor in case you need them, for example calling `self.tm.turn_camera("front_camera","custom",1,15)`
     - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
-    - Add prints to your code to notify the user of what is happening
+    - Add prints to each step you do 
+    - You are in the "door_living_room", for every different location you have to navigate to the location first
     - You are allowed to do ros topic callbacks of the given topics
     - The robot start always in the "door" spot and it must go and move to other places if needed
     - Make sure to call and execute the functions created
     - AVAILABLE PLACES TO NAVIGATE: living_room, study, bedroom, kitchen, door
-    - DO NOT USE set_current_place to navigate, instead use go_to_place
     - FIRST THE ROBOT WILL NAVIGATE TO THE LOCATION OF THE TASK, THEN THE REST OF THE TASK
     - One location at a time, first the robot will navigate to one location, then the rest of the task
     - REMEMBER TO THINK STEP BY STEP WHAT YOU NEED TO DO TO COMPLETE THE TASK BEFORE YOU GENERATE CODE
     - THEN GENERATE THE CODE THAT COMPLETES THE TASK USING THE CODEBASE INTERFACE. JUST ONE CODEBOX IS NEEDED
-    - SAYS WITH SPEECH MODULE WHEN YOU START DOING SOMETHING AND WHEN YOU FINISH DOING SOMETHING
+    - SAY WITH SPEECH MODULE WHEN YOU START DOING SOMETHING AND WHEN YOU FINISH DOING SOMETHING
     - MANDATORY: USE THE SPEECH MODULE TO SAY WHAT YOU ARE DOING
 
     # Task Description:
@@ -92,6 +92,6 @@ if __name__ == "__main__":
     task = "Please Tell me the name of the person in the kitchen"
     print(task)
     code = generate_code(task)
-    #print(code)
+    # print(code)
 
 

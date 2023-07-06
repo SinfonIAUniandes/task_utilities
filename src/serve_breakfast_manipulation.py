@@ -51,10 +51,10 @@ class SERVE_BREAKFAST(object):
         self.object_i = 0
 
         self.object_instructions = {
-            "bowl":{"grap_place":"bowl_grap_place", "drop_place":"bowl_drop_place", "forward_distance":0.35, "backward_distance":0.35},
-            "spoon":{"grap_place":"spoon_grap_place", "drop_place":"spoon_drop_place", "forward_distance":0.4, "backward_distance":0.4},
-            "cereal box":{"grap_place":"cereal_box_grap_place", "drop_place":"cereal_box_drop_place", "forward_distance":0.35, "backward_distance":0.35},
-            "milk":{"grap_place":"milk_grap_place", "drop_place":"milk_drop_place", "forward_distance":0.35, "backward_distance":0.35}
+            "bowl":{"grap_place":"breakfast_90", "drop_place":"breakfast_180", "forward_distance":0.35, "backward_distance":0.35},
+            "spoon":{"grap_place":"breakfast_90", "drop_place":"breakfast_180", "forward_distance":0.4, "backward_distance":0.4},
+            "cereal box":{"grap_place":"breakfast_90", "drop_place":"breakfast_180", "forward_distance":0.35, "backward_distance":0.35},
+            "milk":{"grap_place":"breakfast_90", "drop_place":"breakfast_180", "forward_distance":0.35, "backward_distance":0.35}
         }
 
         self.rate = rospy.Rate(10)

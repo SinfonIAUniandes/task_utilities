@@ -40,7 +40,7 @@ class CARRY_MY_LUGGAGE(object):
                             {'trigger': 'go_back', 'source': 'FOLLOW_YOU', 'dest': 'GO_BACK'},
                             {'trigger': 'end', 'source': 'GO_BACK', 'dest': 'END'}]
         
-        self.machine = Machine(model=self, states=self.STATES, transitions=self.TRANSITIONS, initial='INIT')
+        self.machine = Machine(model=self, states=self.STATES, transitions=self.TRANSITIONS, initial='CARRY_MY_LUGGAGE')
 
         self.setMoveArms_srv = rospy.ServiceProxy('pytoolkit/ALMotion/set_move_arms_enabled_srv', set_move_arms_enabled_srv)
         self.securityDistance_srv = rospy.ServiceProxy('pytoolkit/ALMotion/set_security_distance_srv', set_security_distance_srv)
@@ -66,7 +66,7 @@ class CARRY_MY_LUGGAGE(object):
 
         # --------------- Subscribers ---------------
         self.posePublisherSubscriber = rospy.Subscriber('perception_utilities/pose_publisher', String, self.posePublisherCallback)
-
+        self.headSensorSubscriber = rospy.Subscriber('/touch', touch_msg, self.callback_head_sensor_subscriber)
         # --------------- Variables Absolutas --------------- 
         self.isBagAtTheLeft = False
         self.bagSelectedLeft = False
@@ -74,6 +74,7 @@ class CARRY_MY_LUGGAGE(object):
         self.bagSelectedRight = False
         self.save_places=False
         self.place_counter=0
+        self.isTouched = False
         self.closest_person = {'id':None, 'width':None, 'height':None, 'x':None, 'y':None, 'status':None}
         self.rate = rospy.Rate(10)
         rospy_check = threading.Thread(target=self.check_rospy)
@@ -82,11 +83,12 @@ class CARRY_MY_LUGGAGE(object):
 
     # --------------- Funciones ON_ENTER ---------------
     def on_enter_INIT(self):
+        print(self.consoleFormatter.format("INIT", "HEADER"))
         self.tm.talk("Hello, I am ready to carry your luggage")
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.start_recognition("front_camera")
         self.tm.pose_srv("front_camera")
-        self.tm.show_topic("/perception_utilities/pose_image_publisher")
+        time.sleep(1)
         self.tm.add_place("place"+str(self.place_counter))
         self.place_counter+=1
         self.awareness_srv(False)
@@ -94,11 +96,16 @@ class CARRY_MY_LUGGAGE(object):
 
 
     def on_enter_LOOK_FOR_BAG(self):
+        print(self.consoleFormatter.format("LOOK_FOR_BAG", "HEADER"))
         self.isBagAtTheLeft = False
         self.isBagAtTheRight = False
-        self.tm.talk("I am looking for the bag you want me to carry, please point to it")
-        while self.isBagAtTheLeft == False or self.isBagAtTheRight == False:
-            self.rate.sleep()
+        self.tm.show_image("https://steamuserimages-a.akamaihd.net/ugc/941712200376608618/779F3940B9610C85543AAC2F2BCEE7E451410DD9/?imw=512&&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=false")
+        self.move_head_srv("default")
+        self.tm.talk("I am looking for the bag you want me to carry, please point to it, raise your hand clearly. Just like you see in my tablet")
+        start_time = rospy.get_time()
+        while self.isBagAtTheLeft == False and self.isBagAtTheRight == False and (rospy.get_time() - start_time) < 25.0:
+            rospy.sleep(0.05)
+        print("Signaled")
         if self.isBagAtTheLeft == True:
             self.bagSelectedLeft = True
             self.tm.talk("I found your bag to my left")
@@ -107,39 +114,49 @@ class CARRY_MY_LUGGAGE(object):
             self.bagSelectedRight = True    
             self.tm.talk("I found your bag to my right")
             self.tm.go_to_pose("small_object_right_hand", 0.1)
+        else:
+            self.isBagAtTheLeft = True
+            self.bagSelectedLeft = True
+            self.tm.talk("I found your bag to my left")
+            self.tm.go_to_pose("small_object_left_hand", 0.1)
+
         
         self.move_to_bag()
 
     def on_enter_MOVE_TO_BAG(self):
+        print(self.consoleFormatter.format("MOVE_TO_BAG", "HEADER"))
         self.setMoveArms_srv.call(True, True)
+        self.tm.show_image("https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png")
         if self.isBagAtTheLeft:
             self.tm.talk("Im moving right",wait=False)
-            self.tm.go_to_relative_point(1.0, -0.3, 0)
+            self.tm.go_to_relative_point(0.2, 0.5, 0)
         elif self.isBagAtTheRight:
             self.tm.talk("Im moving right",wait=False)
-            self.tm.go_to_relative_point(1.0, 0.3, 0)
+            self.tm.go_to_relative_point(0.2, -0.5, 0)
         self.grab_bag()
         
     def on_enter_GRAB_BAG(self):
+        print(self.consoleFormatter.format("GRAB_BAG", "HEADER"))
         self.setMoveArms_srv.call(False, False)
         if self.bagSelectedRight:
             self.tm.go_to_pose("small_object_right_hand", 0.1)
         else:
             self.tm.go_to_pose("small_object_left_hand", 0.1)
         self.tm.talk("Please place the bag in my hand, when you have finished say ready!","English")
-        answer = self.hot_word_srv("ready", 0.5, 10)
-        if answer:
-            if self.bagSelectedRight:
-                self.tm.go_to_pose("close_right_hand")
-            else:
-                self.tm.go_to_pose("close_left_hand")
-            self.tm.talk("Thank you","English")
-            self.follow_you()
+        rospy.sleep(7)
+        # answer = self.hot_word_srv("ready",0.5,6)
+        # if answer:
+        if self.bagSelectedRight:
+            self.tm.go_to_pose("close_right_hand")
         else:
-            self.grab_bag_again()
+            self.tm.go_to_pose("close_left_hand")
+        self.tm.talk("Thank you","English")
+        self.follow_you()
+        # else:
+        #     self.grab_bag_again()
             
     def on_enter_FOLLOW_YOU(self):
-        self.tm.spin_srv(180)
+        print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
         rospy.sleep(3)
         self.tm.talk("Please stand in front me so I can follow you")
         while self.closest_person['status'] != 'ok':
@@ -148,12 +165,16 @@ class CARRY_MY_LUGGAGE(object):
             elif self.closest_person['status'] == 'close':
                 self.tm.talk("You are too close")
         self.tm.talk("Perfect! Walk slow, Please try to keep this distance while I follow you")
-        self.tm.talk("When you want me to follow you, please say ready! If you want me to stop say stop!")
+        self.tm.talk("If you want me to stop please touch my head!")
+        rospy.sleep(3)
         self.tm.talk("Go ahead, I am following you")
         self.follow_you_srv.call(True)
-        time.sleep(3)
+        time.sleep(10)
         self.save_places=True
-        answer = self.hot_word_srv("ready", 0.5, 1000)
+        # answer = self.hot_word_srv("stop", 0.5, 1000000)
+        while self.isTouched == False:
+            rospy.sleep(0.1)
+            print("Following")
         save_place_thread = threading.Thread(target=self.save_place)
         save_place_thread.start()
         self.save_place=False
@@ -165,12 +186,12 @@ class CARRY_MY_LUGGAGE(object):
             self.tm.go_to_pose("open_left_hand")
         rospy.sleep(5)
         self.tm.talk("Thank you for using my services, have a nice day!")
-        self.tm.talk("I am going back to my initial position")
         self.setMoveArms_srv.call(True, True)
         self.go_back()
 
         
     def on_enter_GO_BACK(self):
+        print(self.consoleFormatter.format("GO_BACK", "HEADER"))
         self.tm.talk("I am going back to my initial position")
         self.tm.go_to_place("place0")
         self.tm.talk("carry my luggage task completed succesfully")
@@ -181,16 +202,18 @@ class CARRY_MY_LUGGAGE(object):
         while self.save_places:
             self.tm.add_place("place"+str(self.place_counter),edges=["place"+str(self.place_counter-1)])
             self.place_counter+=1
+            self.move_head_srv("up")
             #Guardar cada 3 segundos
-            time.sleep(3)
+            time.sleep(10)
 
 
     def posePublisherCallback(self, msg):
-        print(msg)
-        if msg.data == "Pointing_to_the_left":
+        if msg.data == "Pointing to the left":
             self.isBagAtTheLeft = True
-        elif msg.data == "Pointing_to_the_right":
+        elif msg.data == "Pointing to the right":
             self.isBagAtTheRight = True
+        elif "up" in msg.data:
+            self.isBagAtTheCenter = True
 
     def callback_get_labels_subscriber(self, msg):
         self.labels = {}
@@ -210,12 +233,19 @@ class CARRY_MY_LUGGAGE(object):
                 closest_person['y'] = y_coordinates_msg[label]
                 if closest_person['width'] < 130:
                     closest_person['status'] = "far"
-                elif closest_person['width'] < 220:
+                elif closest_person['width'] > 220:
                     closest_person['status'] = "close"
                 else:
                     closest_person['status'] = "ok"    
         self.closest_person = closest_person           
 
+    def run(self):
+        while not rospy.is_shutdown():
+            self.zero()
+    
+    def callback_head_sensor_subscriber(self, msg:touch_msg):
+        if "head" in msg.name:
+            self.isTouched=msg.state
     
     def check_rospy(self):
         while not rospy.is_shutdown():
