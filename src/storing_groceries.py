@@ -240,10 +240,7 @@ class STORING_GROCERIES(object):
                     processed_cats += 1
 
             processed_labels += 1
-
-        print(self.consoleFormatter.format("Sections categorized", "OKGREEN"))
-        print(self.consoleFormatter.format("Sections: "+str(self.cabinet_sections), "OKGREEN"))
-        self.cabinet_sections_recognized()
+            
 
 
     def all_objects_stored(self):
@@ -577,6 +574,11 @@ class STORING_GROCERIES(object):
     def on_enter_RECOGCABINETCATEGORIES(self):
         print(self.consoleFormatter.format("RECOGCABINETCATEGORIES", "HEADER"))
         self.tm.talk("Recognizing cabinet categories","English",wait=False)
+        self.categorize_sections()
+        print(self.consoleFormatter.format("Sections categorized", "OKGREEN"))
+        print(self.consoleFormatter.format("Sections: "+str(self.cabinet_sections), "OKGREEN"))
+        self.cabinet_sections_recognized()
+        
 
 
     def on_enter_END(self):
