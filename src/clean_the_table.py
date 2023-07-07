@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-from transitions import Machine
+from transitions import Machine #pylint: disable=import-error
 from task_module import Task_module as tm
-from perception_msgs.msg import get_labels_msg
+from perception_msgs.msg import get_labels_msg #pylint: disable=import-error
 from geometry_msgs.msg import Twist, PoseWithCovarianceStamped
-from robot_toolkit_msgs.msg import touch_msg, animation_msg
-from robot_toolkit_msgs.srv import point_at_srv, set_move_arms_enabled_srv, point_at_srvRequest, set_security_distance_srv,  misc_tools_srv, misc_tools_srvRequest, set_angle_srv, set_angle_srvRequest, set_open_close_hand_srv, set_open_close_hand_srvRequest, set_security_distance_srvRequest
+from robot_toolkit_msgs.msg import touch_msg, animation_msg #pylint: disable=import-error
+from robot_toolkit_msgs.srv import point_at_srv, set_move_arms_enabled_srv, point_at_srvRequest, set_security_distance_srv,  misc_tools_srv, misc_tools_srvRequest, set_angle_srv, set_angle_srvRequest, set_open_close_hand_srv, set_open_close_hand_srvRequest, set_security_distance_srvRequest #pylint: disable=import-error
 import ConsoleFormatter
 import rospy
 import os
@@ -27,7 +27,7 @@ class CLEAN_THE_TABLE(object):
 
         transitions = [{'trigger': 'start', 'source': 'CTT', 'dest': 'INIT'},
                        {'trigger': 'go2kitchen', 'source': 'INIT', 'dest': 'GO2KITCHEN'},
-                       {'trigger': 'go_grab_place', 'source': 'GO2KITCHEN', 'dest': 'GO_GRAB_PLACE'}
+                       {'trigger': 'go_grab_place', 'source': 'GO2KITCHEN', 'dest': 'GO_GRAB_PLACE'},
                        {'trigger': 'grab_object', 'source': 'GO_GRAB_PLACE', 'dest': 'GO_POSE_OBJECT'},
                        {'trigger': 'grab_object_again', 'source': 'GO_GRAB_PLACE', 'dest': 'GO_GRAB_PLACE'},
                        {'trigger': 'drop_place', 'source': 'GO_POSE_OBJECT', 'dest': 'GO_DROP_PLACE'},
@@ -36,7 +36,7 @@ class CLEAN_THE_TABLE(object):
                        {'trigger': 'again', 'source': 'DROP_OBJECT', 'dest': 'GO_GRAB_PLACE'},
                        {'trigger': 'end', 'source': 'DROP_OBJECT', 'dest': 'END'}]
  
-         self.machine = Machine(model=self, states=self.STATES, transitions=self.TRANSITIONS, initial='INIT')
+        self.machine = Machine(model=self, states=self.STATES, transitions=self.TRANSITIONS, initial='INIT')
 
         self.enableTouch_srv = rospy.ServiceProxy('robot_toolkit/misc_tools_srv', misc_tools_srv)
         misc_request = misc_tools_srvRequest()
@@ -135,7 +135,7 @@ class CLEAN_THE_TABLE(object):
 
             elif(self.labels == "dish"):
                 self.tm.talk("I have found the dish")
-¡               self.tm.go_to_pose("bowl")
+                self.tm.go_to_pose("bowl")
                 self.object = "bowl"
                 self.centinel = False
         
@@ -167,7 +167,7 @@ class CLEAN_THE_TABLE(object):
             else:
                 break
         
-        if times_i==2:
+        if self.times_i==2:
             self.tm.execute_trayectory("place_left_arm")
             self.tm.talk("Object placed in dishwasher")
             self.tm.execute_trayectory("place_right_arm")
@@ -177,7 +177,7 @@ class CLEAN_THE_TABLE(object):
 
         self.tm.go_to_relative_point(-self.object_instructions[self.object]["backward_distance"], 0, 0)
         self.setMoveArms_srv.call(True, True)
-        if times_i < 6:
+        if self.times_i < 6:
             self.tm.talk("I am ready for grabbing the next object")
             self.again()
         else:

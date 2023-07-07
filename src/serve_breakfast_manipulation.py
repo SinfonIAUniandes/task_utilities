@@ -8,7 +8,6 @@ import ConsoleFormatter
 from transitions import Machine
 from nav_msgs.msg import Odometry
 from task_module import Task_module as tm
-from perception_msgs.msg import get_labels_msg
 from robot_toolkit_msgs.msg import touch_msg
 from robot_toolkit_msgs.srv import set_move_arms_enabled_srv, set_security_distance_srv,  misc_tools_srv, misc_tools_srvRequest, set_security_distance_srvRequest
 
@@ -16,7 +15,7 @@ from robot_toolkit_msgs.srv import set_move_arms_enabled_srv, set_security_dista
 class SERVE_BREAKFAST(object):
     def __init__(self) -> None:
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
-        self.tm = tm(navigation=True, manipulation=True, perception=True, speech=True)
+        self.tm = tm(navigation=True, manipulation=True, speech=True)
         self.tm.initialize_node('serve_breakfast')
 
         self.STATES = ['INIT', 'GO_GRAB_PLACE', 'LOOK_FOR_OBJECT' ,'GRAB_OBJECT', 'GO_DROP_PLACE', 'DROP_OBJECT', 'END']
@@ -29,13 +28,7 @@ class SERVE_BREAKFAST(object):
                             {'trigger': 'again', 'source': 'DROP_OBJECT', 'dest': 'GO_GRAB_PLACE'},
                             {'trigger': 'end', 'source': 'DROP_OBJECT', 'dest': 'END'}]
         
-        self.machine = Machine(model=self, states=self.STATES, transitions=self.TRANSITIONS, initial='INIT')
-
-        #self.enableTouch_srv = rospy.ServiceProxy('robot_toolkit/misc_tools_srv', misc_tools_srv)
-        #misc_request = misc_tools_srvRequest()
-        #misc_request.data.command = "enable_all"
-        #self.enableTouch_srv.call(misc_request)
-        self.isTouched = False
+        self.machine = Machine(model=self, states=self.STATES, transitions=self.TRANSITIONS, initial='SERVE_BREAKFAST')
 
         self.setMoveArms_srv = rospy.ServiceProxy('pytoolkit/ALMotion/set_move_arms_enabled_srv', set_move_arms_enabled_srv)
 
@@ -43,18 +36,16 @@ class SERVE_BREAKFAST(object):
         self.securityDistance_srv.call(set_security_distance_srvRequest(0.01))
         
         # Subscribers
-        self.getLabelsSubscriber = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscribers)
-        self.headSensorSubscriber = rospy.Subscriber('/touch', touch_msg, self.callback_head_sensor_subscriber)
         self.currentPoseOdomSuscriber = rospy.Subscriber('/odom', Odometry, self.callback_odom_subscriber)
         
         self.objects = ['bowl', 'spoon', 'cereal box', 'milk']
         self.object_i = 0
 
         self.object_instructions = {
-            "bowl":{"grap_place":"breakfast_90", "drop_place":"breakfast_180", "forward_distance":0.35, "backward_distance":0.35},
-            "spoon":{"grap_place":"breakfast_90", "drop_place":"breakfast_180", "forward_distance":0.4, "backward_distance":0.4},
-            "cereal box":{"grap_place":"breakfast_90", "drop_place":"breakfast_180", "forward_distance":0.35, "backward_distance":0.35},
-            "milk":{"grap_place":"breakfast_90", "drop_place":"breakfast_180", "forward_distance":0.35, "backward_distance":0.35}
+            "bowl":{"grap_place":"breakfast_90_0", "drop_place":"breakfast_180_0", "forward_distance":0.9, "backward_distance":0.9},
+            "spoon":{"grap_place":"breakfast_90_0", "drop_place":"breakfast_180_1", "forward_distance":0.9, "backward_distance":0.9},
+            "cereal box":{"grap_place":"breakfast_90_0", "drop_place":"breakfast_180_0", "forward_distance":0.9, "backward_distance":0.9},
+            "milk":{"grap_place":"breakfast_90_0", "drop_place":"breakfast_180_2", "forward_distance":0.9, "backward_distance":0.9}
         }
 
         self.rate = rospy.Rate(10)
@@ -77,8 +68,8 @@ class SERVE_BREAKFAST(object):
     def on_enter_LOOK_FOR_OBJECT(self):
         self.tm.start_recognition("front_camera")
         self.tm.talk("I am looking for the "+self.objects[self.object_i])
-        while self.objects[self.object_i] not in self.labels:
-            rospy.sleep(0.1)
+        rospy.sleep(5)
+        self.tm.go_to_pose("default_head")
         self.tm.talk("I have found the "+self.objects[self.object_i])
         self.grab_object()
 
@@ -86,32 +77,32 @@ class SERVE_BREAKFAST(object):
     def on_enter_GRAB_OBJECT(self):
         self.setMoveArms_srv.call(False, False)
         if self.objects[self.object_i] == "bowl":
-            self.tm.go_to_pose('medium_object', 0.1)
+            #self.tm.go_to_pose('medium_object', 0.1)
+            self.tm.execute_trayectory('request_help_both_arms')
+            self.tm.go_to_pose('almost_open_both_hands', 0.1)
             rospy.sleep(2)
             self.tm.talk("Can you place the "+self.objects[self.object_i]+" inside my arms, please?, when you are ready touch my head")
             # TODO ready wait word
-            while not self.isTouched:
-                rospy.sleep(0.1)
+            rospy.sleep(5)
             
-        elif self.objects[self.object_i] == "spoon":
+        elif self.objects[self.object_i] == "spoon" or self.objects[self.object_i] == "cereal box" or self.objects[self.object_i] == "milk":
             self.tm.go_to_pose('small_object_right_hand', 0.1)
             rospy.sleep(2)
             self.tm.talk("Can you place the "+self.objects[self.object_i]+" inside my hand, please?, when you are ready touch my head")
-            while not self.isTouched:
-                rospy.sleep(0.1)
+            rospy.sleep(5)
             self.tm.go_to_pose('close_right_hand', 0.2)
             rospy.sleep(1)
 
-        elif self.objects[self.object_i] == "cereal" or self.objects[self.object_i] == "milk":
-            self.tm.go_to_pose('box', 0.2)
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.objects[self.object_i]+" between my hands, please?, when you are ready touch my head")
-            while not self.isTouched:
-                rospy.sleep(0.1)
-            self.tm.go_to_pose('cylinder', 0.1)
-            rospy.sleep(2)
-            self.tm.go_to_pose('close_both_hands', 0.2)
-            rospy.sleep(1)
+        #elif self.objects[self.object_i] == "cereal" or self.objects[self.object_i] == "milk":
+        #    self.tm.go_to_pose('box', 0.2)
+        #    rospy.sleep(2)
+        #    self.tm.talk("Could you place the "+self.objects[self.object_i]+" between my hands, please?, when you are ready touch my head")
+        #    while not self.isTouched:
+        #        rospy.sleep(0.1)
+        #   self.tm.go_to_pose('cylinder', 0.1)
+        #    rospy.sleep(2)
+        #    self.tm.go_to_pose('close_both_hands', 0.2)
+        #    rospy.sleep(1)
 
         self.go_drop_place()
 
@@ -122,6 +113,8 @@ class SERVE_BREAKFAST(object):
         self.drop_object()
 
     def on_enter_DROP_OBJECT(self):
+        self.tm.go_to_defined_angle_srv()
+        # TODO prints en todos los estados para saver que vergas esta pasando
         self.tm.talk("I am going to place the "+self.objects[self.object_i]+" on the table")
         previousPosition = self.currentPositionOdom.position
         decreaseDistance = 0
@@ -132,7 +125,7 @@ class SERVE_BREAKFAST(object):
                 decreaseDistance += 0.05
             else:
                 break
-        if self.objects[self.object_i] == "spoon":
+        if self.objects[self.object_i] == "spoon" or self.objects[self.object_i] == "cereal box" or self.objects[self.object_i] == "milk":
             self.tm.execute_trayectory("place_right_arm")
         else:
             self.tm.execute_trayectory("place_both_arms")
@@ -149,25 +142,6 @@ class SERVE_BREAKFAST(object):
         self.tm.talk("I have finished serving breakfast, thank you for your help")
         return
 
-    def callback_get_labels_subscribers(self, msg):
-        labels_msg = msg.labels
-        x_coordinates_msg = msg.x_coordinates
-        y_coordinates_msg = msg.y_coordinates
-        for label in range(len(labels_msg)):
-            self.labels[labels_msg[label]] = (x_coordinates_msg[label], y_coordinates_msg[label])
-
-    def callback_head_sensor_subscriber(self, msg:touch_msg):
-        if msg.name == "head_rear":
-            sensorRear = msg.state
-        elif msg.state == "head_middle":
-            sensorMiddle = msg.state
-        elif msg.state == "head_front":
-            sensorFront = msg.state
-        if sensorFront or sensorMiddle or sensorRear:
-            self.isTouched=True
-        else:
-            self.isTouched=False
-
     def calculateEuclideanDistance(self, xPoint1, yPoint1, xPoint2, yPoint2):
         return np.linalg.norm(np.array([xPoint1, yPoint1])-np.array([xPoint2, yPoint2]))
     
@@ -179,6 +153,10 @@ class SERVE_BREAKFAST(object):
             rospy.sleep(0.1)
         print(self.consoleFormatter.format("Shutting down", "FAIL"))
         os._exit(os.EX_OK)
+    
+    def run(self):
+        while not rospy.is_shutdown():
+            self.zero()
 
 if __name__ == "__main__":
     sm = SERVE_BREAKFAST()
