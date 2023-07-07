@@ -163,7 +163,6 @@ class STICKLER_RULES(object):
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.turn_camera("bottom_camera","custom",1,15)
         self.tm.go_to_place("living_room")
-        self.tm.wait_go_to_place()
         self.beggining()
 
     # ============================== LOOK4 STATES ==============================
