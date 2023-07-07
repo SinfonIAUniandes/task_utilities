@@ -662,6 +662,8 @@ class Task_module:
                     while not self.isTouched:
                         rospy.sleep(0.1)
                         print('I am following a person')
+                    self.follow_you_proxy(False)
+                    self.talk("Finished following")
                     return True
                 else:
                     print('Error following a person')
