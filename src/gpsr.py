@@ -36,7 +36,7 @@ class GPSR(object):
         # Definir los estados posibles del semáforo
         self.task_name = "GPSR"
         states = ['INIT', 'WAIT4GUEST', 'GPSR', 'GO2GPSR']
-        self.tm = tm(perception = True,speech=True,manipulation=True, navigation=True, pytoolkit=True)
+        self.tm = tm(perception = True,speech=True,manipulation=True, navigation=False, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
@@ -68,7 +68,8 @@ class GPSR(object):
     def on_enter_GPSR(self):
         print(self.consoleFormatter.format("GPSR", "HEADER"))
         self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Talk to me now: ","English")
-        task = self.tm.speech2text_srv()
+        task = self.tm.speech2text_srv("gpsr",10,True)
+        task = task.replace('/n')
         code = gen.generate_code(task)
         start_index = code.find("```")+3
         end_index = code.rfind("```")
@@ -76,8 +77,11 @@ class GPSR(object):
         print(code)
 
         self.tm.talk("I will: "+task,"English")
+        try:
+            exec(code)
+        except:
+            self.tm.talk("I cannot do this task: "+task,"English")
         
-        exec(code)
 
     def on_enter_GO2GPSR(self):
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
@@ -85,19 +89,11 @@ class GPSR(object):
         self.tm.go_to_place(self.location)
         self.go_to_gpsr()
 
-                
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
-        self.tm.start_recognition("front_camera")
-        #TODO mostrar el topico de yolo en la pantalla
         self.tm.talk("Waiting for guests","English")
-        self.tm.look_for_object("person",True)
         self.tm.wait_for_object(-1)
-        #TODO apagar el topico de yolo en la pantalla
-        self.tm.start_recognition("")
-        self.tm.look_for_object("",True)
         self.person_arrived()
-        
 
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo

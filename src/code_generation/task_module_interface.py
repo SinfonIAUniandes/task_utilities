@@ -13,9 +13,9 @@ from std_srvs.srv import Trigger, TriggerRequest
 
 # from robot_toolkit_msgs.msg import speech_msg
 
-from speech_utilities_msgs.srv import q_a_speech_srv, talk_speech_srv, saveAudio_srv, q_a_speech_srvRequest, talk_speech_srvRequest, saveAudio_srvRequest
+from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, q_a_speech_srvRequest, talk_speech_srvRequest, saveAudio_srvRequest, speech2text_srv
 
-from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest
+from perception_msgs.srv import  set_model_recognition_srv,set_model_recognition_srvRequest
 
 from manipulation_msgs.srv import SaveState, SaveStateRequest, GoToState, GoToStateRequest
 
@@ -39,10 +39,18 @@ class Task_module:
         """
         Input:
         object_name: label of the object to look for options -> classes names depends of the actual model (see set_model service)
-        timeout: time in seconds to look for the object while spinning
+        timeout: time in seconds to look for the object while spinning ()
         Output: True if the object was found, False if not
         ----------
         Spins while looking for <object_name> for <timeout> seconds while spinning at 15 deg/s
+        """
+        
+    def count_objects(self,object_name:str)->int:
+        """
+        Input: object_name, classes names depends of the actual model (see set_model service)
+        Output: Number of objects seen when rotating 360
+        ----------
+        Spins 360 degrees and then returns the number of objects of <object_name> seen
         """
 
     def set_model(self,model_name:str)->bool:
@@ -95,7 +103,7 @@ class Task_module:
     def go_to_place(self,place_name:str, graph=1, wait=True)->bool:
         """
         Input: 
-        place_name: options -> ("door","living_room")
+        place_name: options -> ("bed", "dishwasher", "dining_table", "dinning_room", "sink", "bedroom", "desk", "kitchen", "door", "cleaning_stuff", "living_room")
         graph: 0 no graph || 1 graph
         wait: True (waits until the robot reaches) || False (doesn't wait)
         Output: True if the service was called correctly, False if not
@@ -103,13 +111,13 @@ class Task_module:
         Goes to place_name
         """
 
-    def follow_you(self, start:bool)->bool:
+    def follow_you(self)->bool:
         """
-        Input:
-        start: True start following || False stops following
+        Input: 
         Output: True if the service was called correctly, False if not
         ----------
-        Follows the person in front of the robot until the service is called again with start=False
+        Follows the person in front of the robot until the person touches the head of the robot,
+        the service finishes by its own
         """
 
     def add_place(self,name:str,persist=0,edges=[])->bool:
@@ -121,22 +129,6 @@ class Task_module:
         """
 
     ############ MANIPULATION SERVICES ###############    
-    
-    def go_to_pose(self,pose:str)->bool:
-        """
-        Input: pose options ->("bowl","box","cylinder","medium_object", "small_object_left_hand","small_object_right_hand","tray","head_up","head_down","head_default")
-        Output: True if the service was called correctly, False if not
-        ----------
-        Goes to pose with hands or head
-        """
-
-    def execute_trayectory(self,trayectory:str)->bool:
-        """
-        Input: trayectory options ->("place_both_arms","place_left_arm","place_right_arm")
-        Output: True if the service was called correctly, False if not
-        ----------
-        Executes trayectory with the hands
-        """
         
     def grasp_object(self,object_name:str)->bool:
         """
@@ -144,6 +136,14 @@ class Task_module:
         Output: True if the service was called correctly, False if not
         ----------
         Grasp the <object_name>
+        """
+    
+    def leave_object(self,object_name:str)->bool:
+        """
+        Input: object_name
+        Output: True if the service was called correctly, False if not
+        ----------
+        Leave the <object_name>
         """
 
     ################ PYTOOLKIT ################
@@ -163,12 +163,3 @@ class Task_module:
         ----------
         Sets the autonomous life of the robot
         """
-     
-    ################ SUBSCRIBER CALLBACKS ################
-
-    def callback_look_for_object(self,data):
-        self.object_found=data.data
-        return data
-
-    def callback_simple_feedback_subscriber(self, msg):
-        self.navigation_status = msg.navigation_status

@@ -13,9 +13,11 @@ from std_srvs.srv import Trigger, TriggerRequest, SetBool
 
 from robot_toolkit_msgs.srv import tablet_service_srv
 
+from robot_toolkit_msgs.msg import touch_msg
+
 from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
 
-from speech_utilities_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest, hot_word_srvRequest
+from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest, hot_word_srvRequest
 
 from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,get_person_description_srv,start_pose_recognition_srv
 
@@ -37,6 +39,7 @@ class Task_module:
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         ################### GLOBAL VARIABLES ###################
         self.object_found = False
+        self.isTouched = False
         self.navigation_status =0
 
         self.perception= perception
@@ -108,6 +111,7 @@ class Task_module:
 
         self.navigation = navigation
         if navigation:
+            
             print(self.consoleFormatter.format("Waiting for NAVIGATION services...","WARNING"))
 
             print(self.consoleFormatter.format("Waiting for navigation_utilities/set_current_place...", "WARNING"))
@@ -352,6 +356,31 @@ class Task_module:
         else:
             print("perception, manipulation or navigation as false")
 
+    def count_objects(self,object_name:str)->int:
+        """
+        Input: object_name, classes names depends of the actual model (see set_model service)
+        Output: Number of objects seen when rotating 360
+        ----------
+        Spins 360 degrees and then returns the number of objects of <object_name> seen
+        """
+        if self.perception and self.navigation and self.manipulation:
+            try:
+                counter=0
+                self.go_to_pose("default_head")
+                self.look_for_object(object_name,ignore_already_seen=True)
+                self.constant_spin_srv(15)
+                t1 = time.time()
+                while time.time()-t1<22:
+                    if self.object_found:
+                        counter+=1
+                self.robot_stop_srv()
+                return counter
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("perception, manipulation or navigation as false")
+
 
     def save_face(self,name:str,num_pics=5)->bool:
         """
@@ -476,6 +505,9 @@ class Task_module:
         else:
             print("perception as false")
             return False
+        
+    
+
 
     ################### SPEECH SERVICES ###################
 
@@ -613,20 +645,28 @@ class Task_module:
             print("navigation as false")
             return False
         
-    def follow_you(self, start:bool)->bool:
+    def follow_you(self)->bool:
         """
         Input: 
-        start: True start following || False stops following
+        start: Start to follow a person
         Output: True if the service was called correctly, False if not
         ----------
-        Follows the person in front of the robot until the service is called again with start=False
+        Follows the person in front of the robot until the person touches the head of the robot
         """
+        rospy.Subscriber('/touch', touch_msg, self.callback_head_sensor_subscriber)
         if self.navigation:
             try:
-                approved = self.follow_you_proxy(start)
+                approved = self.follow_you_proxy(True)
                 if approved=="approved":
+                    self.talk("When you want me to stop please touch my head","English",wait=True)
+                    while not self.isTouched:
+                        rospy.sleep(0.1)
+                        print('I am following a person')
+                    self.follow_you_proxy(False)
+                    self.talk("Finished following")
                     return True
                 else:
+                    print('Error following a person')
                     return False
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
@@ -749,7 +789,7 @@ class Task_module:
                 print("Waiting to reach the place")
                 finish=False
                 response = False
-                subscriber = self.simpleFeedbackSubscriber = rospy.Subscriber('/navigation_utilities/simple_feedback', simple_feedback_msg, self.callback_simple_feedback_subscriber)
+                self.simpleFeedbackSubscriber = rospy.Subscriber('/navigation_utilities/simple_feedback', simple_feedback_msg, self.callback_simple_feedback_subscriber)
                 while not finish:
                     rospy.sleep(0.05)
                     if self.navigation_status == 2:
@@ -889,94 +929,31 @@ class Task_module:
         """
         if self.manipulation:
             try:
-                sleep_default = 2
-
-                res = False
-                hotword_req = hot_word_srvRequest()
-                hotword_req.key = self.hotword_key
-                hotword_req.threshold = 0.6
-                hotword_req.timeout = 3
-
-                default_grab_right_hand =  {
-                    "poses_before":[("small_object_right_hand",0.2),("open_right_hand",0.2)],
-                    "sleep_before":sleep_default,
-                    "poses_after":[("close_right_hand",0.2)],
-                    "sleep_after":sleep_default
-                }
-                default_grab_left_hand =  {
-                    "poses_before":[("small_object_left_hand",0.2),("open_left_hand",0.2)],
-                    "sleep_before":sleep_default,
-                    "poses_after":[("close_left_hand",0.2)],
-                    "sleep_after":sleep_default
-                }
-
-                default_grab_right_hand_almost_open =  {
-                        "poses_before":[("small_object_right_hand",0.2),("almost_open_right_hand",0.2)],
-                        "sleep_before":sleep_default,
-                        "poses_after":[("close_right_hand",0.2)],
-                        "sleep_after":sleep_default
-                    }
-
-                default_medium_object_both_hands = {
-                        "poses_before":[("pringles",0.1),("almost_open_both_hands",0.2)],
-                        "sleep_before":sleep_default,
-                        "poses_after":[("close_both_hands",0.2)],
-                        "sleep_after":sleep_default
-                }
-
-                default_box_both_hands = {
-                        "poses_before":[("box",0.2),("open_both_hands",0.2)],
-                        "sleep_before":sleep_default,
-                        "poses_after":[("cilynder",0.1),("close_both_hands",0.2)],
-                        "sleep_after":sleep_default
-                }
-
-                #TODO: add grasping for the rest of the objects
-                how_to_grasp = {
-                    #"bottle","cup","fork","knife","spoon","bowl"
-                    #"mug", "bowl", "coffee_grounds",
-                    "tomato_soup": default_grab_right_hand_almost_open,
-                    "sugar": default_grab_right_hand_almost_open,
-
-                    "spam": default_grab_right_hand,
-                    "tuna": default_grab_right_hand,
-                    "jello": default_grab_right_hand,
-
-                    "fruits": default_grab_right_hand,
-                    "apple": default_grab_right_hand,
-                    "lemon": default_grab_right_hand,
-                    "orange": default_grab_right_hand,
-                    "peach": default_grab_right_hand,
-                    "pear": default_grab_right_hand,
-                    "plum": default_grab_right_hand,
-                    "strawberry": default_grab_right_hand,
-
-                    "cleanser": default_medium_object_both_hands,
-                    "mustard": default_medium_object_both_hands,
-
-                    "cheezit": default_box_both_hands,
-                    }
-
-                if object_name in how_to_grasp:
-                    print("Grasping object: ", object_name)
-                    for pose,vel in how_to_grasp[object_name]["poses_before"]:
-                        self.goToState(pose,vel)
-                        rospy.sleep(how_to_grasp[object_name]["sleep_before"])
-
-                    self.tm.talk("Could you place the "+object_name+" in my hands, please?, when you are ready say ready","English",wait=True)
-                    res = self.hotword_client.call(hotword_req)
-                    if not res:
-                        self.tm.talk("I did not hear you, please try again","English",wait=True)
-                        res = self.hotword_client.call(hotword_req)
-
-                    for pose,vel in how_to_grasp[object_name]["poses_after"]:
-                        self.goToState(pose,vel)
-                        rospy.sleep(how_to_grasp[object_name]["sleep_after"])
-                    print("Object grasped: ", object_name)
-                    return True
-                else:
-                    print("Object grasp information not found: ", object_name)
-                    return False
+                self.execute_trayectory("request_help_both_arms")
+                self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=True)
+                rospy.sleep(9)
+                self.go_to_pose("almost_open_both_hands")
+                return True
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+                return False
+        else:
+            print("manipulation as false")
+            return False
+        
+    def leave_object(self,object_name:str)->bool:
+        """
+        Input: object_name
+        Output: True if the service was called correctly, False if not
+        ----------
+        Leave the <object_name>
+        """
+        if self.manipulation:
+            try:
+                self.talk("Please pick up the "+object_name,"English",wait=True)
+                rospy.sleep(7)
+                self.execute_trayectory("place_both_arms")            
+                return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
                 return False
@@ -1082,4 +1059,8 @@ class Task_module:
 
     def callback_simple_feedback_subscriber(self, msg):
         self.navigation_status = msg.navigation_status
+
+    def callback_head_sensor_subscriber(self, msg):
+        if "head" in msg.name:
+            self.isTouched=msg.state
 
