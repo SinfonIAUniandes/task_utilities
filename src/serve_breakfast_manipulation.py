@@ -56,21 +56,19 @@ class SERVE_BREAKFAST(object):
 
     def on_enter_INIT(self):
         self.tm.talk("I am going to serve breakfast")
-        self.tm.turn_camera("front_camera", "custom", 1, 15)
         self.start()
 
     def on_enter_GO_GRAB_PLACE(self):
         navigation_grap_place = self.object_instructions[self.objects[self.object_i]]["grap_place"]
         self.tm.talk("I am navigating to the "+navigation_grap_place)
         self.tm.go_to_place(navigation_grap_place)
+        self.tm.go_to_defined_angle_srv(0)
         self.look_for_object()
 
     def on_enter_LOOK_FOR_OBJECT(self):
-        self.tm.start_recognition("front_camera")
-        self.tm.talk("I am looking for the "+self.objects[self.object_i])
+        self.tm.talk("I am ready for grabbing the "+self.objects[self.object_i])
         rospy.sleep(5)
         self.tm.go_to_pose("default_head")
-        self.tm.talk("I have found the "+self.objects[self.object_i])
         self.grab_object()
 
 
@@ -83,13 +81,19 @@ class SERVE_BREAKFAST(object):
             rospy.sleep(2)
             self.tm.talk("Can you place the "+self.objects[self.object_i]+" inside my arms, please?, when you are ready touch my head")
             # TODO ready wait word
-            rospy.sleep(5)
+            rospy.sleep(7)
             
         elif self.objects[self.object_i] == "spoon" or self.objects[self.object_i] == "cereal box" or self.objects[self.object_i] == "milk":
+            if self.objects[self.object_i] == "cereal box":
+                self.tm.show_image("cereal_pose")
+                self.tm.talk("Put the ceral box just as I am showing you in my tablet")
+
+
+                
             self.tm.go_to_pose('small_object_right_hand', 0.1)
             rospy.sleep(2)
             self.tm.talk("Can you place the "+self.objects[self.object_i]+" inside my hand, please?, when you are ready touch my head")
-            rospy.sleep(5)
+            rospy.sleep(7)
             self.tm.go_to_pose('close_right_hand', 0.2)
             rospy.sleep(1)
 
@@ -110,6 +114,7 @@ class SERVE_BREAKFAST(object):
         navigation_drop_place = self.object_instructions[self.objects[self.object_i]]["drop_place"]
         self.tm.talk("I am navigating to the "+navigation_drop_place)
         self.tm.go_to_place(navigation_drop_place)
+        self.tm.go_to_defined_angle_srv(180)
         self.drop_object()
 
     def on_enter_DROP_OBJECT(self):
@@ -126,7 +131,11 @@ class SERVE_BREAKFAST(object):
             else:
                 break
         if self.objects[self.object_i] == "spoon" or self.objects[self.object_i] == "cereal box" or self.objects[self.object_i] == "milk":
-            self.tm.execute_trayectory("place_right_arm")
+            if self.objects[self.object_i] == "cereal box":
+                self.tm.execute_trayectory('place_right_cereal')
+                self.tm.go_to_relative_point(0,-0.1,0)
+                self.tm.execute_trayectory("place_right_arm")
+           
         else:
             self.tm.execute_trayectory("place_both_arms")
         self.tm.go_to_relative_point(-self.object_instructions[self.objects[self.object_i]]["backward_distance"], 0, 0)
