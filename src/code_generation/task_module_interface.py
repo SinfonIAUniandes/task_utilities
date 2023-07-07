@@ -13,9 +13,9 @@ from std_srvs.srv import Trigger, TriggerRequest
 
 # from robot_toolkit_msgs.msg import speech_msg
 
-from speech_utilities_msgs.srv import q_a_speech_srv, talk_speech_srv, saveAudio_srv, q_a_speech_srvRequest, talk_speech_srvRequest, saveAudio_srvRequest
+from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, q_a_speech_srvRequest, talk_speech_srvRequest, saveAudio_srvRequest, speech2text_srv
 
-from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest
+from perception_msgs.srv import  set_model_recognition_srv,set_model_recognition_srvRequest
 
 from manipulation_msgs.srv import SaveState, SaveStateRequest, GoToState, GoToStateRequest
 
@@ -35,79 +35,36 @@ class Task_module:
         """
     ################### PERCEPTION SERVICES ###################
 
-    def turn_camera(self,camera_name:str,command="custom",resolution=1,fps=15)->bool:
+    def find_object(self,object_name:str, timeout=25)->bool:
         """
         Input:
-        camera_name: "front_camera" || "bottom_camera" || "depth_camera"
-        command: "enable" || "disable" || "custom"
-        resolution: RGB (0-4) DEPTH (0-1)
-        fps: 1-30
-        Output: True if the service was called correctly, False if not
+        object_name: label of the object to look for options -> classes names depends of the actual model (see set_model service)
+        timeout: time in seconds to look for the object while spinning ()
+        Output: True if the object was found, False if not
         ----------
-        Turns on/off camera_name, if command is custom, it sets the resolution and fps
+        Spins while looking for <object_name> for <timeout> seconds while spinning at 15 deg/s
         """
         
-    def publish_filtered_image(self,filter_name:str,camera_name:str)->bool:
+    def count_objects(self,object_name:str)->int:
         """
-        Input:
-        filter_name: "face" || "qr" 
-        camera_name: "front_camera" || "bottom_camera"
+        Input: object_name, classes names depends of the actual model (see set_model service)
+        Output: Number of objects seen when rotating 360
+        ----------
+        Spins 360 degrees and then returns the number of objects of <object_name> seen
+        """
+
+    def set_model(self,model_name:str)->bool:
+        """
+        Input: model name -> "default" || "objects" || "fruits"
         Output: True if the service was called correctly, False if not
         ----------
-        Publishes the filtered image from camera_name with filter_name
-        """
- 
-    def start_recognition(self,camera_name:str)->bool:
-        """
-        Input:
-        camera_name: "front_camera" || "bottom_camera"
-        Output: True if the service was called correctly, False if not
-        ----------
-        Starts recognition for <camera_name>, if <camera_name> is empty, it shuts down all recognition
+        Sets the model to use for the object recognition.
+        classes by model:
+        default: ["person","bench","backpack","handbag","suitcase","bottle","cup","fork","knife","spoon","bowl","chair","couch","bed","laptop"]
+        objects: ["spam"(carne enlatada), "cleanser", "sugar", "jello"(gelatina roja), "mug", "tuna", "bowl", "tomato_soup", "footwear", "banana", "mustard", "coffee_grounds", "cheezit"]
+        fruits: ["apple", "lemon", "orange", "peach", "pear", "plum","strawberry"]
         """
 
-    def look_for_object(self,object_name:str,ignore_already_seen:bool)->bool:
-        """
-        Input:
-        object_name: label of the object to look for options -> ("person","bench","backpack","handbag","suitcase","bottle","cup","fork","knife","spoon","bowl","chair","couch","bed","laptop")
-        ignore_already_seen: True->ignore objects already seen || False->don't ignore objects already seen
-        Output: True if the service was called correctly, False if not
-        ----------
-        Looks for object_name in the current get_labels topic, publishes T/F in look_for_object_publisher
-        """
-
-    def wait_for_object(self,timeout:float)->bool:
-        """
-        Input: timeout in seconds || -1 for infinite
-        Output: True->Found || False->Timeout/Fail
-        ----------
-        Waits for object to be found for a max of <timeout> seconds
-        """
-
-    def save_face(self,name:str,num_pics=5)->bool:
-        """
-        Input: name, num_pics
-        Output: True if the service was called correctly, False if not
-        ----------
-        Saves num_pics of the face of the person with name and its encodings
-        """
-
-    def recognize_face(self, num_pics=3)->str:
-        """
-        Input: num_pics of the face to recognize
-        Output: name of the recognized person
-        ----------
-        Recognizes the face of the person with <num_pics>
-        """
-
-    def qr_read(self,timeout:float)->str:
-        """
-        Input: timeout in seconds
-        Output: "text" read from qr || "" if timeout or fail
-        ----------
-        Reads a qr code for a max of <timeout> seconds
-        """
-        
     ################### SPEECH SERVICES ###################
 
     def talk(self,text:str,language="English",wait=True,animated=False)->bool:
@@ -143,32 +100,17 @@ class Task_module:
 
     ################### NAVIGATION SERVICES ###################
 
-    
-    def set_current_place(self,place_name:str)->bool:
-        """
-        Input: place_name 
-        Output: True if the service was called correctly, False if not
-        ----------
-        Sets the place of the robot to the coordinates of the place specified in
-        the request message, then it clears the global costmap.
-        """
-
-    def go_to_relative_point(self,x:float,y:float,theta:float)->bool:
-        """
-        Input: x, y, theta
-        Output: True if the service was called correctly, False if not
-        ----------
-        Sends the robot to the coordinates (in meters relative to the robot and rotates theta angle (raidans) relative)
-        specified in the request message.
-        """
-
     def go_to_place(self,place_name:str, graph=1, wait=True)->bool:
         """
-        Input: place_name options -> ("door","living_room"), graph
+        Input: 
+        place_name: options -> ("bed", "dishwasher", "dining_table", "dinning_room", "sink", "bedroom", "desk", "kitchen", "door", "cleaning_stuff", "living_room")
+        graph: 0 no graph || 1 graph
+        wait: True (waits until the robot reaches) || False (doesn't wait)
         Output: True if the service was called correctly, False if not
         ----------
         Goes to place_name
         """
+<<<<<<< HEAD
 
     def robot_stop_srv(self)->bool:
         """
@@ -193,48 +135,27 @@ class Task_module:
         ----------
         Goes to defined angle
         """
+=======
+>>>>>>> d9e45e8f1418e85aed2b8477f151baf4891bcbcb
 
-    def get_route_guidance_srv(self, place_name: str):
+    def follow_you(self)->bool:
         """
-        Input: place_name
+        Input: 
         Output: True if the service was called correctly, False if not
         ----------
-        Gives instruction in steps to get to the <place_name>
+        Follows the person in front of the robot until the person touches the head of the robot,
+        the service finishes by its own
         """
 
-    def constant_spin_srv(self,velocity:float)->bool:
+    def add_place(self,name:str,persist=0,edges=[])->bool:
         """
-        Input: None
+        Input: name, edges, persist
         Output: True if the service was called correctly, False if not
         ----------
-        Starts constant spin at a <velocity> in degrees/sec (5-25)
+        Adds a place to the graph
         """
 
-    def wait_go_to_place(self)->bool:
-        """
-        Input: None
-        Output: True if the service was called correctly, False if not
-        ----------
-        Waits for the robot to reach the place when navigating
-        """
-        
     ############ MANIPULATION SERVICES ###############    
-    
-    def go_to_pose(self,pose:str)->bool:
-        """
-        Input: pose options ->("bowl","box","cylinder","medium_object", "small_object_left_hand","small_object_right_hand","tray","head_up","head_down","head_default")
-        Output: True if the service was called correctly, False if not
-        ----------
-        Goes to pose with hands or head
-        """
-
-    def execute_trayectory(self,trayectory:str)->bool:
-        """
-        Input: trayectory options ->("place_both_arms","place_left_arm","place_right_arm")
-        Output: True if the service was called correctly, False if not
-        ----------
-        Executes trayectory with the hands
-        """
         
     def grasp_object(self,object_name:str)->bool:
         """
@@ -243,46 +164,11 @@ class Task_module:
         ----------
         Grasp the <object_name>
         """
-
-    ################ PYTOOLKIT ################
-
-    def show_topic(self, topic:str)->bool:
+    
+    def leave_object(self,object_name:str)->bool:
         """
-        Input: topic
+        Input: object_name
         Output: True if the service was called correctly, False if not
         ----------
-        Displays the topic on the screen of the robot
-        """    
-        
-    def show_image(self, image_path:str)->bool:
+        Leave the <object_name>
         """
-        Input: image_path or allreade saved image options -> ("sinfonia")
-        Output: True if the service was called correctly, False if not
-        ----------
-        Displays the image on the screen of the robot
-        """
-
-    def set_awareness(self, state:bool)->bool:
-        """
-        Input: True turn on || False turn off
-        Output: True if the service was called correctly, False if not
-        ----------
-        Sets the awareness of the robot
-        """
-
-    def set_autonomous_life(self, state:bool)->bool:
-        """
-        Input: True turn on || False turn off
-        Output: True if the service was called correctly, False if not
-        ----------
-        Sets the autonomous life of the robot
-        """
-     
-    ################ SUBSCRIBER CALLBACKS ################
-
-    def callback_look_for_object(self,data):
-        self.object_found=data.data
-        return data
-
-    def callback_simple_feedback_subscriber(self, msg):
-        self.navigation_status = msg.navigation_status
