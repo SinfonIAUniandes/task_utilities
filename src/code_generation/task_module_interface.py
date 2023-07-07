@@ -169,28 +169,6 @@ class Task_module:
         ----------
         Goes to place_name
         """
-        
-    #TODO
-    # def follow_you_srv(self, place_name: str)->bool:
-    #     """
-    #     Input: place_name
-    #     Output: True if the service was called correctly, False if not
-    #     ----------
-    #     Guides person to <place_name>, when person goes far stops and waits
-    #     """
-    #     if self.navigation:
-    #         try:
-    #             approved = self.follow_you_proxy(place_name)
-    #             if approved=="approved":
-    #                 return True
-    #             else:
-    #                 return False
-    #         except rospy.ServiceException as e:
-    #             print("Service call failed: %s"%e)
-    #             return False
-    #     else:
-    #         print("navigation as false")
-    #         return False
 
     def robot_stop_srv(self)->bool:
         """
