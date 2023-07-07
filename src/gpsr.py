@@ -68,7 +68,8 @@ class GPSR(object):
     def on_enter_GPSR(self):
         print(self.consoleFormatter.format("GPSR", "HEADER"))
         self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Talk to me now: ","English")
-        task = self.tm.speech2text_srv()
+        task = self.tm.speech2text_srv("gpsr",10,True)
+        task = task.replace('/n')
         code = gen.generate_code(task)
         start_index = code.find("```")+3
         end_index = code.rfind("```")
