@@ -44,8 +44,8 @@ class CLEAN_THE_TABLE(object):
         self.enableTouch_srv.call(misc_request)
         self.isTouched = False
 
+        # Set security distance 
         self.setMoveArms_srv = rospy.ServiceProxy('pytoolkit/ALMotion/set_move_arms_enabled_srv', set_move_arms_enabled_srv)
-
         self.securityDistance_srv = rospy.ServiceProxy('pytoolkit/ALMotion/set_security_distance_srv', set_security_distance_srv)
         self.securityDistance_srv.call(set_security_distance_srvRequest(0.01))
         
@@ -54,6 +54,7 @@ class CLEAN_THE_TABLE(object):
         self.headSensorSubscriber = rospy.Subscriber('/touch', touch_msg, self.callback_head_sensor_subscriber)
         self.currentPoseOdomSuscriber = rospy.Subscriber('/odom', Odometry, self.callback_odom_subscriber)
         
+        # Variables de estado
         self.object = ""
         self.times_i = 0
         self.centinel = True
@@ -74,7 +75,7 @@ class CLEAN_THE_TABLE(object):
     def on_enter_INIT(self):
         self.tm.set_current_place(self.initial_place)
         self.autonomous_life_srv(False)
-        self.tm.talk("I am going to do clean the table task","English")
+        self.tm.talk("I am going to do "+str(self.task_name),"English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.awareness_srv(False)
