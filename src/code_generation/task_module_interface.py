@@ -145,21 +145,3 @@ class Task_module:
         ----------
         Leave the <object_name>
         """
-
-    ################ PYTOOLKIT ################
-
-    def set_awareness(self, state:bool)->bool:
-        """
-        Input: True turn on || False turn off
-        Output: True if the service was called correctly, False if not
-        ----------
-        Sets the awareness of the robot
-        """
-
-    def set_autonomous_life(self, state:bool)->bool:
-        """
-        Input: True turn on || False turn off
-        Output: True if the service was called correctly, False if not
-        ----------
-        Sets the autonomous life of the robot
-        """

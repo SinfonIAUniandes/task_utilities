@@ -11,8 +11,7 @@ from std_srvs.srv import Trigger, TriggerRequest, SetBool
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import tablet_service_srv
-
+from robot_toolkit_msgs.srv import set_move_arms_enabled_srv, set_security_distance_srv,  misc_tools_srv, misc_tools_srvRequest, set_security_distance_srvRequest, tablet_service_srv
 from robot_toolkit_msgs.msg import touch_msg
 
 from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
@@ -182,6 +181,7 @@ class Task_module:
         if pytoolkit:
             print(self.consoleFormatter.format("Waiting for PYTOOLKIT services...","WARNING"))
 
+            self.setMoveArms_srv = rospy.ServiceProxy('pytoolkit/ALMotion/set_move_arms_enabled_srv', set_move_arms_enabled_srv)
             print(self.consoleFormatter.format("Waiting for pytoolkit/awareness...", "WARNING"))
             rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
             self.awareness_proxy = rospy.ServiceProxy("/pytoolkit/ALBasicAwareness/set_awareness_srv",SetBool)
@@ -929,6 +929,7 @@ class Task_module:
         """
         if self.manipulation:
             try:
+                self.setMoveArms_srv.call(False, False)
                 self.execute_trayectory("request_help_both_arms")
                 self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=True)
                 rospy.sleep(9)
@@ -952,7 +953,8 @@ class Task_module:
             try:
                 self.talk("Please pick up the "+object_name,"English",wait=True)
                 rospy.sleep(7)
-                self.execute_trayectory("place_both_arms")            
+                self.execute_trayectory("place_both_arms") 
+                self.setMoveArms_srv.call(True, True)           
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
@@ -991,7 +993,8 @@ class Task_module:
         ----------
         Displays the image on the screen of the robot
         """
-        images = {"sinfonia":"https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"}
+        images = {"sinfonia":"https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png",
+                  "cereal_pose":"https://cdn.discordapp.com/attachments/754111872399048707/1126798434070970408/WhatsApp_Image_2023-07-07_at_10.52.20_AM.jpg"}
         if self.pytoolkit:
             try:
                 url = image_path

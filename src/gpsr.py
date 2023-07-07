@@ -36,7 +36,7 @@ class GPSR(object):
         # Definir los estados posibles del semáforo
         self.task_name = "GPSR"
         states = ['INIT', 'WAIT4GUEST', 'GPSR', 'GO2GPSR']
-        self.tm = tm(perception = True,speech=True,manipulation=True, navigation=False, pytoolkit=True)
+        self.tm = tm(perception = True,speech=True,manipulation=True, navigation=True, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
@@ -45,7 +45,6 @@ class GPSR(object):
             {'trigger': 'go_to_gpsr', 'source': 'GO2GPSR', 'dest': 'WAIT4GUEST'},
             {'trigger': 'person_arrived', 'source': 'WAIT4GUEST', 'dest': 'GPSR'},
             {'trigger': 'GPSR_done', 'source': 'GPSR', 'dest': 'GO2GPSR'}
-
         ]
         
         # Crear la máquina de estados
@@ -55,11 +54,13 @@ class GPSR(object):
         rospy_check.start()
 
         ############################# GLOBAL VARIABLES #############################
-        self.location = "door_living_room"
+        self.location = "bookshelf"
 
     def on_enter_INIT(self):
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
+        self.tm.go_to_place("bookshelf")
+        self.tm.go_to_defined_angle_srv(0)
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.start_recognition("front_camera")
         self.tm.go_to_pose("default_head")
@@ -67,13 +68,11 @@ class GPSR(object):
 
     def on_enter_GPSR(self):
         print(self.consoleFormatter.format("GPSR", "HEADER"))
-        self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Talk to me now: ","English")
+        self.tm.look_for_object("")
+        self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. Talk to me now: ","English")
         task = self.tm.speech2text_srv("gpsr",10,True)
-        task = task.replace('/n')
+        print("task",task)
         code = gen.generate_code(task)
-        start_index = code.find("```")+3
-        end_index = code.rfind("```")
-        code = code[start_index:end_index].strip()[7:]
         print(code)
 
         self.tm.talk("I will: "+task,"English")
@@ -81,17 +80,19 @@ class GPSR(object):
             exec(code)
         except:
             self.tm.talk("I cannot do this task: "+task,"English")
-        
+        self.GPSR_done()
 
     def on_enter_GO2GPSR(self):
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
         self.tm.talk("I am going to the GPSR location","English")
         self.tm.go_to_place(self.location)
+        self.tm.go_to_defined_angle_srv(0)
         self.go_to_gpsr()
 
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
         self.tm.talk("Waiting for guests","English")
+        self.tm.look_for_object("person")
         self.tm.wait_for_object(-1)
         self.person_arrived()
 
