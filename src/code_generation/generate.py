@@ -24,11 +24,13 @@ def generate_text(text_prompt, system_message=None, model="gpt-3.5-turbo-16k", t
     )
     answer =prediction['choices'][0]['message']['content']
     pattern = r'```python(.*?)\n```'
-    code = ((re.search(pattern, answer, re.DOTALL)).group(1)).strip()
+    try:
+        code = ((re.search(pattern, answer, re.DOTALL)).group(1)).strip()
+    except:
+        code = """self.tm.talk("I cannot do this command")"""
     #print answer without code
     print(answer)
     return code
-
 
 def get_task_module_code()-> str:
     global codebase
@@ -36,7 +38,6 @@ def get_task_module_code()-> str:
         with open(os.path.join(os.path.dirname(__file__), "task_module_interface.py"), "r") as f:
             codebase = f.read()
     return codebase
-
 
 def generate_code(task_input: str)-> str:
 
@@ -61,7 +62,7 @@ def generate_code(task_input: str)-> str:
     - The code cannot include the original codebase interface, it is only for using its functions
     - Remember to initialize and dispose of every sensor in case you need them, for example calling `self.tm.turn_camera("front_camera","custom",1,15)`
     - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
-    - Add prints to each step you do 
+    - You can ask as much you want to the people, for example peoples name, age, drink, etc
     - You are in the "door_living_room", for every different location you have to navigate to the location first
     - You are allowed to do ros topic callbacks of the given topics
     - The robot start always in the "door" spot and it must go and move to other places if needed
@@ -73,6 +74,7 @@ def generate_code(task_input: str)-> str:
     - THEN GENERATE THE CODE THAT COMPLETES THE TASK USING THE CODEBASE INTERFACE. JUST ONE CODEBOX IS NEEDED
     - SAY WITH SPEECH MODULE WHEN YOU START DOING SOMETHING AND WHEN YOU FINISH DOING SOMETHING
     - MANDATORY: USE THE SPEECH MODULE TO SAY WHAT YOU ARE DOING
+    - MANDATORY: IF YOU BELIEVE THE GIVEN TASK CANNOT BE DONE, JUST RETURN A PYTHON CODE SPEAKING "I CANNOT DO THAT TASK"
 
     # Task Description:
 
@@ -89,7 +91,7 @@ def generate_code(task_input: str)-> str:
 
 if __name__ == "__main__":
     openai.api_key = os.environ["OPENAI_API_KEY"]
-    task = "Please Tell me the name of the person in the kitchen"
+    task = "Tell me how many fruits there are on the sink"
     print(task)
     code = generate_code(task)
     # print(code)

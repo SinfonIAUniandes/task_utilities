@@ -76,8 +76,11 @@ class GPSR(object):
         print(code)
 
         self.tm.talk("I will: "+task,"English")
+        try:
+            exec(code)
+        except:
+            self.tm.talk("I cannot do this task: "+task,"English")
         
-        exec(code)
 
     def on_enter_GO2GPSR(self):
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
@@ -85,19 +88,11 @@ class GPSR(object):
         self.tm.go_to_place(self.location)
         self.go_to_gpsr()
 
-                
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
-        self.tm.start_recognition("front_camera")
-        #TODO mostrar el topico de yolo en la pantalla
         self.tm.talk("Waiting for guests","English")
-        self.tm.look_for_object("person",True)
         self.tm.wait_for_object(-1)
-        #TODO apagar el topico de yolo en la pantalla
-        self.tm.start_recognition("")
-        self.tm.look_for_object("",True)
         self.person_arrived()
-        
 
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo
