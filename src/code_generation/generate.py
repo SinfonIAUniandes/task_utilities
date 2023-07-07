@@ -6,7 +6,7 @@ import re
 
 codebase = """"""
 
-def generate_text(text_prompt, system_message=None, model="gpt-3.5-turbo", temperature=0):
+def generate_text(text_prompt, system_message=None, model="gpt-3.5-turbo-16k", temperature=0):
 
     messages = [
         {"role": "user", "content": text_prompt}
@@ -25,7 +25,8 @@ def generate_text(text_prompt, system_message=None, model="gpt-3.5-turbo", tempe
     answer =prediction['choices'][0]['message']['content']
     pattern = r'```python(.*?)\n```'
     code = ((re.search(pattern, answer, re.DOTALL)).group(1)).strip()
-
+    #print answer without code
+    print(answer)
     return code
 
 
@@ -46,6 +47,8 @@ def generate_code(task_input: str)-> str:
 
     text_prompt = f"""
     You are a Pepper robot, given a task description and an interface of the codebase (it only describes what each function does). You must generate the code that completes the task using the codebase interface.
+    For the given task, you must generate the code that completes the task using the codebase interface.
+    Think step by step what you need to do to complete the task before you generate code. Then generate the code that completes the task using the codebase interface.
 
     # Details about the code to generate:
     - The code must be written in python and the output will be executed directly
@@ -58,12 +61,19 @@ def generate_code(task_input: str)-> str:
     - The code cannot include the original codebase interface, it is only for using its functions
     - Remember to initialize and dispose of every sensor in case you need them, for example calling `self.tm.turn_camera("front_camera","custom",1,15)`
     - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
-    - Add prints to your code to notify the user of what is happening
+    - Add prints to each step you do 
+    - You are in the "door_living_room", for every different location you have to navigate to the location first
     - You are allowed to do ros topic callbacks of the given topics
     - The robot start always in the "door" spot and it must go and move to other places if needed
     - Make sure to call and execute the functions created
+    - AVAILABLE PLACES TO NAVIGATE: living_room, study, bedroom, kitchen, door
+    - FIRST THE ROBOT WILL NAVIGATE TO THE LOCATION OF THE TASK, THEN THE REST OF THE TASK
+    - One location at a time, first the robot will navigate to one location, then the rest of the task
+    - REMEMBER TO THINK STEP BY STEP WHAT YOU NEED TO DO TO COMPLETE THE TASK BEFORE YOU GENERATE CODE
+    - THEN GENERATE THE CODE THAT COMPLETES THE TASK USING THE CODEBASE INTERFACE. JUST ONE CODEBOX IS NEEDED
+    - SAY WITH SPEECH MODULE WHEN YOU START DOING SOMETHING AND WHEN YOU FINISH DOING SOMETHING
+    - MANDATORY: USE THE SPEECH MODULE TO SAY WHAT YOU ARE DOING
 
-    
     # Task Description:
 
     {task_input}
@@ -79,8 +89,9 @@ def generate_code(task_input: str)-> str:
 
 if __name__ == "__main__":
     openai.api_key = os.environ["OPENAI_API_KEY"]
-    task = "Identify and save the face of the people available in kitchen and living-room location"
+    task = "Please Tell me the name of the person in the kitchen"
+    print(task)
     code = generate_code(task)
-    print(code)
+    # print(code)
 
 

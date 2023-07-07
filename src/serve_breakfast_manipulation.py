@@ -85,7 +85,7 @@ class SERVE_BREAKFAST(object):
             # TODO ready wait word
             rospy.sleep(5)
             
-        elif self.objects[self.object_i] == "spoon" or self.objects[self.object_i] == "cereal" or self.objects[self.object_i] == "milk":
+        elif self.objects[self.object_i] == "spoon" or self.objects[self.object_i] == "cereal box" or self.objects[self.object_i] == "milk":
             self.tm.go_to_pose('small_object_right_hand', 0.1)
             rospy.sleep(2)
             self.tm.talk("Can you place the "+self.objects[self.object_i]+" inside my hand, please?, when you are ready touch my head")
@@ -113,6 +113,7 @@ class SERVE_BREAKFAST(object):
         self.drop_object()
 
     def on_enter_DROP_OBJECT(self):
+        self.tm.go_to_defined_angle_srv()
         # TODO prints en todos los estados para saver que vergas esta pasando
         self.tm.talk("I am going to place the "+self.objects[self.object_i]+" on the table")
         previousPosition = self.currentPositionOdom.position
@@ -124,7 +125,7 @@ class SERVE_BREAKFAST(object):
                 decreaseDistance += 0.05
             else:
                 break
-        if self.objects[self.object_i] == "spoon" or self.objects[self.object_i] == "cereal" or self.objects[self.object_i] == "milk":
+        if self.objects[self.object_i] == "spoon" or self.objects[self.object_i] == "cereal box" or self.objects[self.object_i] == "milk":
             self.tm.execute_trayectory("place_right_arm")
         else:
             self.tm.execute_trayectory("place_both_arms")
