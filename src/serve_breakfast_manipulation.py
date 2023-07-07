@@ -118,7 +118,6 @@ class SERVE_BREAKFAST(object):
         self.drop_object()
 
     def on_enter_DROP_OBJECT(self):
-        self.tm.go_to_defined_angle_srv()
         # TODO prints en todos los estados para saver que vergas esta pasando
         self.tm.talk("I am going to place the "+self.objects[self.object_i]+" on the table")
         previousPosition = self.currentPositionOdom.position

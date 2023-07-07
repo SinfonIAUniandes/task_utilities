@@ -9,5 +9,5 @@ from std_msgs.msg import Int32, String
 
 tm = tm.Task_module(pytoolkit=True)
 tm.initialize_node("test_node")
-tm.show_image("cereal_pose")
+tm.show_image("sinfonia")
 
