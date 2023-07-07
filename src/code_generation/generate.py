@@ -69,7 +69,7 @@ def generate_code(task_input: str)-> str:
     - Meeting a person means greeting the person
     - TALKING IN EVERY STEP TO THE USER IS MANDATORY
     - Make sure to call and execute the functions created
-    - AVAILABLE PLACES TO NAVIGATE: "bed", "dishwasher", "dining_table", "dinning_room", "sink", "bedroom", "desk", "kitchen", "door", "cleaning_stuff", "living_room"
+    - AVAILABLE PLACES TO NAVIGATE: "bed","dishwasher","kitchen_table","dining_room","sink","desk","entrance","cleaning_stuff","bedside_table","shelf_bedroom","trashbin","pantry","refrigerator",cabinet","tv_stand","storage_rack","side_table","sofa","bookshelf"
     - PLACES THAR ARE NOT PART OF THE AVAILABLE PLACES TO NAVIGATE ARE NOT ALLOWED IN FOLLOW YOU
     - FIRST THE ROBOT WILL NAVIGATE TO THE LOCATION OF THE TASK, THEN THE REST OF THE TASK
     - One location at a time, first the robot will navigate to one location, then the rest of the task
