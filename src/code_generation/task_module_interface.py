@@ -102,8 +102,8 @@ class Task_module:
 
     def go_to_place(self,place_name:str, graph=1, wait=True)->bool:
         """
-        Input: 
-        place_name: options -> ("bed", "dishwasher", "dining_table", "dinning_room", "sink", "bedroom", "desk", "kitchen", "door", "cleaning_stuff", "living_room")
+        Input:
+        place_name: options -> ("bed","dishwasher","kitchen_table","dining_room","sink","desk","entrance","cleaning_stuff","bedside_table","shelf_bedroom","trashbin","pantry","refrigerator",cabinet","tv_stand","storage_rack","side_table","sofa","bookshelf")
         graph: 0 no graph || 1 graph
         wait: True (waits until the robot reaches) || False (doesn't wait)
         Output: True if the service was called correctly, False if not
