@@ -110,7 +110,6 @@ class Task_module:
         ----------
         Goes to place_name
         """
-<<<<<<< HEAD
 
     def robot_stop_srv(self)->bool:
         """
@@ -135,8 +134,6 @@ class Task_module:
         ----------
         Goes to defined angle
         """
-=======
->>>>>>> d9e45e8f1418e85aed2b8477f151baf4891bcbcb
 
     def follow_you(self)->bool:
         """
