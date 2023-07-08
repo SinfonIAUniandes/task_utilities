@@ -92,7 +92,7 @@ class Task_module:
 
     def q_a_speech(self, tag:str)->str:
         """
-        Input: tag in lowercase: options -> ("age", "name", "drink")
+        Input: tag in lowercase: options -> ("age", "name", "drink", "gender")
         Output: answer
         ----------
         Returns a specific answer for predefined questions.
