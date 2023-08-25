@@ -1,19 +1,35 @@
 import openai
 from src.code_generation.generate_utils import generate_openai, get_task_module_code
 
-## TODO: Get a working OpenAI API key
 
-def generate_code(task_input: str)-> str:
+def generate_task_steps(task_input:str)->str:
+    system_message = """You are a professional scheduler and planner for a robot called Pepper. Your tasks will consist of indicating what steps should a robot take to complete a given task."""
 
-    ## TODO: Get the codebase from the task module
+    text_prompt = f"""
+    Think step by step what you need to do to complete the task. Then generate the steps that the robot must take to complete it.
+    - If you believe you cannot accomplish the task, just say "Step #: I cannot do that task". Where # is the number of the step you cannot do. After that, the robot should not have any more steps.
+    - Do not try to solve the aforementioned impossible task.
+
+    # Details about how the planning must look like:
+    -
+
+    # Task Description:
+
+    {task_input}
+
+    """
+
+    return generate_openai(text_prompt, system_message=system_message)
+
+def generate_exec(steps:str)-> str:
+
     task_module_code = get_task_module_code()
 
     system_message = """You are a code generation AI model for a robot called Pepper."""
 
     text_prompt = f"""
-    You are a Pepper robot, given a task description and an interface of the codebase (it only describes what each function does). You must generate the code that completes the task using the codebase interface.
+    You are a Pepper robot, given a step definition and an interface of the codebase (it only describes what each function does). You must generate the code that completes the specified steps using the codebase interface.
     For the given task, you must generate the code that completes the task using the codebase interface.
-    Think step by step what you need to do to complete the task before you generate code. Then generate the code that completes the task using the codebase interface.
 
     # Details about the code to generate:
     - The code must be written in python and the output will be executed directly
@@ -32,26 +48,28 @@ def generate_code(task_input: str)-> str:
     - The robot start always in the "door" spot and it must go and move to other places if needed
     - Meeting a person means greeting the person
     - Talking in every step to the user is mandatory
-    - Make sure to call and execute the functions created
+    - Make sure to call and execute the functions from the codebase
     - **Available places to navigate**: "bed","dishwasher","kitchen_table","dining_room","sink","desk","entrance","cleaning_stuff","bedside_table","shelf_bedroom","trashbin","pantry","refrigerator",cabinet","tv_stand","storage_rack","side_table","sofa","bookshelf"
     - You cannot go to places that aren't listed above.
     - One location at a time, first the robot will navigate to one location, then the rest of the task
-    - Speak with the speech module when you start doing something and when you finish doing something
     - MANDATORY: Use the speech module to tell the user your current action
-    - MANDATORY: If you believe the given task cannot be done, just return code where the robot speaks: "I cannot do that task"
 
-    # Task Description:
-
-    {task_input}
+    # Task steps:
+    {steps}
 
     # Codebase Interface:
 
     {task_module_code}
 
     # Code to generate:
-    """
 
+    """
     return generate_openai(text_prompt, system_message=system_message)
+
+def generate_code(task:str)->str:
+    steps = generate_task_steps(task)
+    code = generate_exec(steps)
+    return code
 
 if __name__ == "__main__":
     openai.api_key = "YOUR_API_KEY"
@@ -60,4 +78,3 @@ if __name__ == "__main__":
     #task = input("Write the task: ")
     print(task)
     generate_code(task)
-
