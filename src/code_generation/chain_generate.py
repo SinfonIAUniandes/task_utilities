@@ -5,7 +5,7 @@ def generate_task_steps(task_input:str)->str:
     system_message = """You are a professional scheduler and planner for a general purpose service robot called Pepper. Your task will consist of indicating what steps should a robot take to complete a given task."""
     text_prompt = f"""
     Think step by step what you need to do to complete the task. Then generate the steps that the robot must take to complete it.
-    # - If you believe you cannot accomplish the task, just say "Step #: I cannot do that task". Where # is the number of the step you cannot do. After that, the robot should not have any more steps.
+    - If you believe you cannot accomplish the task, just say "Step #: I cannot do that task". Where # is the number of the step you cannot do. After that, the robot should not have any more steps.
     - Do not try to solve the aforementioned impossible task.
     - Do not generate code, just steps.
 
@@ -76,7 +76,7 @@ def generate_code(task:str)->str:
 if __name__ == "__main__":
     openai.api_key = "YOUR_API_KEY"
 
-    task = "Could you enter the living room, locate the fruits, and hand it to Elizabeth at the dining table. Fruits: apple"
+    task = "Could you bring me a glass of water?"
     #task = input("Write the task: ")
     print(task)
     print(generate_code(task))
