@@ -1,5 +1,5 @@
 import openai
-from .generate_utils import generate_openai, get_task_module_code
+from generate_utils import generate_openai, get_task_module_code
 
 ## TODO: Get a working OpenAI API key
 
