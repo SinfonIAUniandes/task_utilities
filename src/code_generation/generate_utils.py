@@ -30,7 +30,7 @@ def generate_openai(text_prompt, system_message=None, model="gpt-3.5-turbo-16k",
     answer =prediction['choices'][0]['message']['content']
     pattern = r'```python(.*?)\n```'
     try:
-        code = ((re.search(pattern, answer, re.DOTALL)).group(1)).strip()
-    except:
+        code = (re.search(pattern, answer, re.DOTALL).group(1)).strip()
+    except AttributeError:
         code = """self.tm.talk("I cannot do this command")"""
     return code
