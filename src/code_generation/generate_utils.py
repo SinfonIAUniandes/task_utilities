@@ -1,4 +1,5 @@
 import openai
+import tiktoken
 import re
 import os
 
@@ -10,6 +11,12 @@ def get_task_module_code()-> str:
         with open(os.path.join(os.path.dirname(__file__), "task_module_interface.py"), "r") as f:
             codebase = f.read()
     return codebase
+
+def count_tokens(string: str, encoding_name: str = "cl100k_base") -> int:
+    """Returns the number of tokens in a text string."""
+    encoding = tiktoken.get_encoding(encoding_name)
+    num_tokens = len(encoding.encode(string))
+    return num_tokens
 
 def generate_openai(text_prompt, system_message=None, code=True, model="gpt-3.5-turbo-16k", temperature=0):
 

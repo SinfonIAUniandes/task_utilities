@@ -1,6 +1,5 @@
 import openai
-from generate_utils import generate_openai, get_task_module_code
-
+from generate_utils import generate_openai, get_task_module_code, count_tokens
 
 def generate_task_steps(task_input:str)->str:
     system_message = """You are a professional scheduler and planner for a general purpose service robot called Pepper. Your task will consist of indicating what steps should a robot take to complete a given task."""
@@ -18,7 +17,7 @@ def generate_task_steps(task_input:str)->str:
     {task_input}
 
     """
-
+    print(f"Tokens used (Steps): {count_tokens(system_message+text_prompt)}")
     return generate_openai(text_prompt, system_message=system_message, code=False)
 
 def generate_exec(steps:str)-> str:
@@ -64,6 +63,7 @@ def generate_exec(steps:str)-> str:
     # Code to generate:
 
     """
+    print(f"Tokens used (Code): {count_tokens(system_message+text_prompt)}")
     return generate_openai(text_prompt, system_message=system_message)
 
 def generate_code(task:str)->str:
