@@ -44,6 +44,7 @@ def generate_exec(steps:str)-> str:
     - You can ask as much you want to the people, for example peoples name, age, drink, etc
     - You are in the "door_living_room", for every different location you have to navigate to the location first
     - You are allowed to do ros topic callbacks of the given topics
+    - For object recognition include both cases where the object is found and where it is not found
     - The robot start always in the "door" spot and it must go and move to other places if needed
     - Meeting a person means greeting the person
     - Talking in every step to the user is mandatory
