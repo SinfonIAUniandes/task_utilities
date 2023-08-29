@@ -1,5 +1,6 @@
+import os
 import openai
-from generate_utils import generate_openai, get_task_module_code
+from generate_utils import generate_openai, generate_azure, get_task_module_code, load_code_gen_config
 
 ## TODO: Get a working OpenAI API key
 
@@ -52,13 +53,14 @@ def generate_code(task_input: str)-> str:
     # Code to generate:
     """
 
-    return generate_openai(text_prompt, system_message=system_message)
+    if openai.api_version is None:
+        return generate_openai(text_prompt, system_message=system_message)
+    else:
+        return generate_azure(text_prompt, system_message=system_message, deployment_name=os.getenv("OPENAI_DEPLOYMENT_NAME", "gpt-35-turbo"))
 
 if __name__ == "__main__":
-    openai.api_key = "YOUR_API_KEY"
-
+    load_code_gen_config()
     task = "Could you enter to the living room, locate the fruits, and hand it to Elizabeth at the dining table. Fruits: apple"
     #task = input("Write the task: ")
     print(task)
     generate_code(task)
-

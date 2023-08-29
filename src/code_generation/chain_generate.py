@@ -1,5 +1,6 @@
 import openai
-from generate_utils import generate_openai, get_task_module_code, count_tokens
+import os
+from generate_utils import generate_openai, generate_azure, get_task_module_code, count_tokens, load_code_gen_config
 
 def generate_task_steps(task_input:str)->str:
     system_message = """You are a professional scheduler and planner for a general purpose service robot called Pepper. Your task will consist of indicating what steps should a robot take to complete a given task."""
@@ -18,7 +19,10 @@ def generate_task_steps(task_input:str)->str:
 
     """
     print(f"Tokens used (Steps): {count_tokens(system_message+text_prompt)}")
-    return generate_openai(text_prompt, system_message=system_message, code=False)
+    if openai.api_version is None:
+        return generate_openai(text_prompt, system_message=system_message, is_code=False)
+    else:
+        return generate_azure(text_prompt, system_message=system_message, deployment_name=os.getenv("OPENAI_DEPLOYMENT_NAME", "gpt-35-turbo"), is_code=False)
 
 def generate_exec(steps:str)-> str:
 
@@ -65,7 +69,10 @@ def generate_exec(steps:str)-> str:
 
     """
     print(f"Tokens used (Code): {count_tokens(system_message+text_prompt)}")
-    return generate_openai(text_prompt, system_message=system_message)
+    if openai.api_version is None:
+        return generate_openai(text_prompt, system_message=system_message)
+    else:
+        return generate_azure(text_prompt, system_message=system_message, deployment_name=os.getenv("OPENAI_DEPLOYMENT_NAME", "gpt-35-turbo"))
 
 def generate_code(task:str)->str:
     steps = generate_task_steps(task)
@@ -74,7 +81,7 @@ def generate_code(task:str)->str:
     return code
 
 if __name__ == "__main__":
-    openai.api_key = "YOUR_API_KEY"
+    load_code_gen_config()
 
     task = "Could you bring me a glass of water?"
     #task = input("Write the task: ")
