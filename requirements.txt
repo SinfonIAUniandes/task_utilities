@@ -2,3 +2,4 @@ transitions
 openai
 tiktoken
 python-dotenv
+pyflakes
