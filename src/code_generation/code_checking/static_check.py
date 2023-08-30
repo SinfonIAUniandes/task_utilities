@@ -2,7 +2,7 @@ import os
 import subprocess
 
 def static_check(file_content: str):
-    """Check if the generate code is valid according to python syntax."""
+    """Check if the generated code is valid according to python syntax."""
     # Getting the path of the temp folder
     dirname, _ = os.path.split(__file__)
     dirname = os.path.join(dirname, "temp")
