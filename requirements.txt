@@ -3,3 +3,5 @@ openai
 tiktoken
 python-dotenv
 pyflakes
+psycopg2-binary
+sqlalchemy
