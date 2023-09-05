@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from .config import engine
 from .models import PepperTest
-from .validators import is_valid_uuid
+from .utils.validators import is_valid_uuid
 
 def get_test(test_id: str):
     if not is_valid_uuid(test_id):
