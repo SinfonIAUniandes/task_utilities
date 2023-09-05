@@ -6,6 +6,10 @@ from enum import Enum
 class Base(DeclarativeBase):
     pass
 
+class PromptingType(Enum):
+    LONG_STRING = 'LONG_STRING'
+    CHAINING = 'CHAINING'
+
 class ExecutionResults(Enum):
     NOT_EXECUTED = 'NOT_EXECUTED'
     EXECUTED = 'PASSED_AUTOMATIC_EXECUTION'
@@ -21,6 +25,8 @@ class PepperTest(Base):
     __tablename__ = 'pepper_tests'
     id = Column(UUID(as_uuid=True), primary_key=True)
     model_name = Column(ENUM(Model), nullable=False)
+    prompting_type = Column(ENUM(PromptingType), nullable=False)
     task = Column(String(255), nullable=False)
     model_response = Column(JSON, nullable=False)
     task_execution_result = Column(ENUM(ExecutionResults), nullable=False)
+    raised_error = Column(String(255), nullable=True)

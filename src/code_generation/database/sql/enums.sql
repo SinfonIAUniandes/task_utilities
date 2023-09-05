@@ -20,6 +20,16 @@ ALTER TABLE "pepper_tests"
 ADD COLUMN task_execution_result task_execution_result_enum NOT NULL
 DEFAULT 'NOT_EXECUTED';
 
+CREATE TYPE prompting_type_enum AS ENUM {
+  'LONG_STRING',
+  'CHAINING'
+};
+
+ALTER TABLE "pepper_tests"
+ADD COLUMN prompting_type prompting_type_enum NOT NULL
+DEFAULT 'LONG_STRING';
+
+
 /*Operación de peligro*/
 
 DROP TYPE IF EXISTS task_execution_result_enum CASCADE;
