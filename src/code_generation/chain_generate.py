@@ -15,25 +15,33 @@ def load_task_config()->dict:
     return config
 
 def generate_task_steps(task_input:str,config:dict)->str:
-    system_message = """You serve as a professional planner for Pepper, a versatile general-purpose service robot. Your role involves providing precise and detailed instructions on how to accomplish a specific task."""
+    system_message = """You serve as a professional planner for Pepper, a versatile general-purpose service robot. Your role involves providing detailed instructions on how to accomplish a specific task."""
     text_prompt = f"""
+    Output constraints:
     - MANDATORY: Answer in a paragraph describing the process to complete the task.
+    - Just give me the answer, do not include anything else in your answer.
+    - If you believe you cannot accomplish the task, just say "Pepper should say: I cannot do the task because <reason>"
+    - Try to do the most simple solution possible. 
+    - Think as a robot, not as a human. You have access to internet, time, date, etc.
+    - Do not generate code, just a detailed short description.
+    - Do not exceed 80 words in your description.
+    - Do not use specific steps
+
+    Navigation Constraints:
     - **Available places to navigate**: {",".join(config["place_names"])}
     - If the place you need to go is not listed above, you may decide if going to an above place is enough or if you are not able to do the task
     - Asume you are never in the place where you need to go (If you need to go somewhere)
-    - You can ask as much you want to the people if the task is not clear or if you need to know something, for example peoples name, age, drink, etc
-    - Meeting a person means greeting the person
+    - If you need to go back to a place you already visited it is important for you to save that place and this had to be included in the description.
+
+    Perception constraints:
     - For object recognition include both cases where the object is found and where it is not found
     - **Available objects to recognize**: {",".join(config["objects"])}
     - If the object you need to recognize is not listed, you may decide if recognizing an above object is enough or if you are not able to do the task
     - To recognize special persons you may just recognize "person" instead of looking for a specific person
-    - If you need to go back to a place you already visited it is important for you to save that place and this had to be included in the description.
-    - Just give me the answer, do not include anything else in your answer.
-    - If you believe you cannot accomplish the task, just say "I cannot do the task because <reason>"
-    - Do not try to solve the aforementioned impossible task.
-    - Do not generate code, just a detailed short description.
-    - Do not exceed 80 words in your description.
-    - Do not use specific steps
+    
+    Speech constraints:
+    - You can ask as much you want to the people if the task is not clear or if you need to know something, for example peoples name, age, drink, etc
+    - Meeting a person means greeting the person
 
     # Task Description:
 
@@ -94,7 +102,7 @@ def generate_code(task:str)->str:
 if __name__ == "__main__":
     load_code_gen_config()
 
-    task = "Could you please pick up the bottle from the sink, give it to Robin in the sink, and answer a question."
+    task = "What time is it"
     #task = input("Write the task: ")
     print(task)
     print(generate_code(task))
