@@ -24,6 +24,15 @@ from navigation_msgs.msg import simple_feedback_msg
 
 class Task_module:
 
+    def __init__(self, perception=False, speech=False, manipulation=False, navigation=False):
+        """Initializer for the Task_module class
+
+        Args:
+            perception (bool): Enables or disables perception services
+            speech (bool): Enables or disables speech services
+            manipulation (bool): Enables or disables manipulation services
+            navigation (bool): Enables or disables navigation services
+        """
     ################### PERCEPTION SERVICES ###################
 
     def find_object(self,object_name:str, timeout=25)->bool:
@@ -51,6 +60,9 @@ class Task_module:
         ----------
         Sets the model to use for the object recognition.
         classes by model:
+        default: ["person","bench","backpack","handbag","suitcase","bottle","cup","fork","knife","spoon","bowl","chair","couch","bed","laptop"]
+        objects: ["spam"(carne enlatada), "cleanser", "sugar", "jello"(gelatina roja), "mug", "tuna", "bowl", "tomato_soup", "footwear", "banana", "mustard", "coffee_grounds", "cheezit"]
+        fruits: ["apple", "lemon", "orange", "peach", "pear", "plum","strawberry"]
         """
 
     ################### SPEECH SERVICES ###################
@@ -91,7 +103,7 @@ class Task_module:
     def go_to_place(self,place_name:str, graph=1, wait=True)->bool:
         """
         Input:
-        place_name: the name of the place
+        place_name: options -> ("bed","dishwasher","kitchen_table","dining_room","sink","desk","entrance","cleaning_stuff","bedside_table","shelf_bedroom","trashbin","pantry","refrigerator",cabinet","tv_stand","storage_rack","side_table","sofa","bookshelf")
         graph: 0 no graph || 1 graph
         wait: True (waits until the robot reaches) || False (doesn't wait)
         Output: True if the service was called correctly, False if not

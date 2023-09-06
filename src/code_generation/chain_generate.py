@@ -2,16 +2,38 @@ import openai
 import os
 from generate_utils import generate_openai, generate_azure, get_task_module_code, count_tokens, load_code_gen_config
 
-def generate_task_steps(task_input:str)->str:
-    system_message = """You are a professional scheduler and planner for a general purpose service robot called Pepper. Your task will consist of indicating what steps should a robot take to complete a given task."""
-    text_prompt = f"""
-    Think step by step what you need to do to complete the task. Then generate the steps that the robot must take to complete it.
-    - If you believe you cannot accomplish the task, just say "Step #: I cannot do that task". Where # is the number of the step you cannot do. After that, the robot should not have any more steps.
-    - Do not try to solve the aforementioned impossible task.
-    - Do not generate code, just steps.
+CONFIG_PATH = "src/code_generation/config.csv"
 
-    # Details about how the planning must look like:
-    - Step #: <task description>
+def load_task_config()->dict:
+    config = {}
+    with open(CONFIG_PATH,"r") as f:
+        for line in f:
+            splitted_line = line.split(":")
+            key = splitted_line[0]
+            value = splitted_line[1].strip().split(",")
+            config[key] = value
+    return config
+
+def generate_task_steps(task_input:str,config:dict)->str:
+    system_message = """You serve as a professional planner for Pepper, a versatile general-purpose service robot. Your role involves providing precise and detailed instructions on how to accomplish a specific task."""
+    text_prompt = f"""
+    - MANDATORY: Answer in a paragraph describing the process to complete the task.
+    - **Available places to navigate**: {",".join(config["place_names"])}
+    - If the place you need to go is not listed above, you may decide if going to an above place is enough or if you are not able to do the task
+    - Asume you are never in the place where you need to go (If you need to go somewhere)
+    - You can ask as much you want to the people if the task is not clear or if you need to know something, for example peoples name, age, drink, etc
+    - Meeting a person means greeting the person
+    - For object recognition include both cases where the object is found and where it is not found
+    - **Available objects to recognize**: {",".join(config["objects"])}
+    - If the object you need to recognize is not listed, you may decide if recognizing an above object is enough or if you are not able to do the task
+    - To recognize special persons you may just recognize "person" instead of looking for a specific person
+    - If you need to go back to a place you already visited it is important for you to save that place and this had to be included in the description.
+    - Just give me the answer, do not include anything else in your answer.
+    - If you believe you cannot accomplish the task, just say "I cannot do the task because <reason>"
+    - Do not try to solve the aforementioned impossible task.
+    - Do not generate code, just a detailed short description.
+    - Do not exceed 80 words in your description.
+    - Do not use specific steps
 
     # Task Description:
 
@@ -24,42 +46,30 @@ def generate_task_steps(task_input:str)->str:
     else:
         return generate_azure(text_prompt, system_message=system_message, deployment_name=os.getenv("OPENAI_DEPLOYMENT_NAME", "gpt-35-turbo"), is_code=False)
 
-def generate_exec(steps:str)-> str:
+def generate_exec(task:str,config:dict)-> str:
 
     task_module_code = get_task_module_code()
 
     system_message = """You are a code generation AI model for a robot called Pepper."""
 
     text_prompt = f"""
-    You are a Pepper robot, given a step definition and an interface of the codebase (it only describes what each function does). You must generate the code that completes the specified steps using the codebase interface.
-    For the given task, you must generate the code that completes the task using the codebase interface.
+    You are a Pepper robot, given a task definition and an interface of the codebase (it only describes what each function does). You must generate the python code that completes the task using the codebase interface.
 
     # Details about the code to generate:
+    - Always try to complete the task
+    - The task module has allready instantiated as `self.tm = task_module.Task_module(perception = True,speech=True,manipulation=True, navigation=True)` so you should never instantiate it again
+    - Do not use classes, just functions
     - The code must be written in python and the output will be executed directly
-    - The code is going to be executed in a ROS node, so there is no need to initialize ROS
-    - The Task_module class is allready instantiated as `self.tm = task_module.Task_module(perception = True,speech=True,manipulation=True, navigation=True)`
-    - Do not instantiate the Task_module class again
-    - Use only self.tm.<function_name> to call the functions of the codebase interface
-    - Only use the functions of the codebase interface that are needed to complete the task and callbacks of the given ros topics
-    - The initialize_node function is already called for you, you cannot call it again
-    - The code cannot include the original codebase interface, it is only for using its functions
-    - Remember to initialize and dispose of every sensor in case you need them, for example calling `self.tm.turn_camera("front_camera","custom",1,15)`
+    - Always use self.tm.<function_name> to call the functions of the codebase interface
     - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
-    - You can ask as much you want to the people, for example peoples name, age, drink, etc
-    - You are in the "door_living_room", for every different location you have to navigate to the location first
-    - You are allowed to do ros topic callbacks of the given topics
-    - For object recognition include both cases where the object is found and where it is not found
-    - The robot start always in the "door" spot and it must go and move to other places if needed
-    - Meeting a person means greeting the person
-    - Talking in every step to the user is mandatory
-    - Make sure to call and execute the functions from the codebase
-    - **Available places to navigate**: "bed","dishwasher","kitchen_table","dining_room","sink","desk","entrance","cleaning_stuff","bedside_table","shelf_bedroom","trashbin","pantry","refrigerator",cabinet","tv_stand","storage_rack","side_table","sofa","bookshelf"
-    - You cannot go to places that aren't listed above.
-    - One location at a time, first the robot will navigate to one location, then the rest of the task
-    - MANDATORY: Use the speech module to tell the user your current action
+    - Make sure to call and execute the functions from the codebase    
+    - MANDATOY: you must speak in between steps so users know what you are doing
+    - The only available places are: {",".join(config["place_names"])}, if you need to go to a place that is not listed, you may decide if going to a listed above place is enough or if you are not able to do the task
+    - The only available objects are: {",".join(config["objects"])}, if you need to recognize an object that is not listed, you may decide if recognizing a listed object is enough or if you are not able to do the task. Special people could be considered as "person"
+    - Special people could be considered as "person"
 
-    # Task steps:
-    {steps}
+    # Task description:
+    {task}
 
     # Codebase Interface:
 
@@ -75,15 +85,16 @@ def generate_exec(steps:str)-> str:
         return generate_azure(text_prompt, system_message=system_message, deployment_name=os.getenv("OPENAI_DEPLOYMENT_NAME", "gpt-35-turbo"))
 
 def generate_code(task:str)->str:
-    steps = generate_task_steps(task)
+    environment_variables = load_task_config()
+    steps = generate_task_steps(task,environment_variables)
     print(steps)
-    code = generate_exec(steps)
+    code = generate_exec(steps,environment_variables)
     return code
 
 if __name__ == "__main__":
     load_code_gen_config()
 
-    task = "Could you bring me a glass of water?"
+    task = "Could you please pick up the bottle from the sink, give it to Robin in the sink, and answer a question."
     #task = input("Write the task: ")
     print(task)
     print(generate_code(task))
