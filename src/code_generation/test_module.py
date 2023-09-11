@@ -6,6 +6,7 @@ import rosservice
 import ConsoleFormatter
 import generate_utils
 import exceptions
+import random
 
 
 from std_msgs.msg import Int32, String, Bool
@@ -55,6 +56,7 @@ class Task_module:
         """
         if object_name not in self.objects:
             raise exceptions.InvalidObjectException(f"Object {object_name} not in the list of objects")
+        return random.choice([True,False])
 
     def count_objects(self,object_name:str)->int:
         """
@@ -63,6 +65,9 @@ class Task_module:
         ----------
         Spins 360 degrees and then returns the number of objects of <object_name> seen
         """
+        if object_name not in self.objects:
+            raise exceptions.InvalidObjectException(f"Object {object_name} not in the list of objects")
+        return random.randint(0,10)
 
     def set_model(self,model_name:str)->bool:
         """
@@ -89,6 +94,9 @@ class Task_module:
         ----------
         Allows the robot to say the input of the service.
         """
+        if language not in self.language:
+            raise exceptions.LanguageNotSupported(f"Language {language} not in the list of languages")
+        return True
 
     def speech2text_srv(self, file_name="prueba",seconds=0,transcription=True)->bool:
         """
@@ -100,6 +108,7 @@ class Task_module:
         ----------
         Allows the robot to save audio and saves it to a file.
         """
+        return "prueba"
 
     def q_a_speech(self, tag:str)->str:
         """
@@ -108,6 +117,12 @@ class Task_module:
         ----------
         Returns a specific answer for predefined questions.
         """
+        if tag not in self.question_tags:
+            raise exceptions.QuestionAnswerTagException(f"Tag {tag} not in the list of question tags")
+        if tag =="age":
+            return "1"
+        else:
+            return "prueba"
 
     ################### NAVIGATION SERVICES ###################
 
@@ -121,6 +136,9 @@ class Task_module:
         ----------
         Goes to place_name
         """
+        if place_name not in self.places:
+            raise exceptions.InvalidLocationException(f"Location {place_name} not in the list of locations")
+        return True
 
     def robot_stop_srv(self)->bool:
         """
@@ -137,6 +155,8 @@ class Task_module:
         ----------
         Spins the robot a number of degrees
         """
+        if degrees < 0 or degrees > 360:
+            raise exceptions.InvalidDegreesException(f"Degrees {degrees} not in the range [0,360]")
 
     def go_to_defined_angle_srv(self, degrees:float):
         """
@@ -145,6 +165,8 @@ class Task_module:
         ----------
         Goes to defined angle
         """
+        if degrees < 0 or degrees > 360:
+            raise exceptions.InvalidDegreesException(f"Degrees {degrees} not in the range [0,360]")
 
     def follow_you(self)->bool:
         """
@@ -162,6 +184,8 @@ class Task_module:
         ----------
         Adds a place to the graph
         """
+        self.places.append(name)
+        return True
 
     ############ MANIPULATION SERVICES ###############
 
@@ -172,6 +196,9 @@ class Task_module:
         ----------
         Grasp the <object_name>
         """
+        if object_name not in self.objects:
+            raise exceptions.InvalidObjectException(f"Object {object_name} not in the list of objects")
+        return True
 
     def leave_object(self,object_name:str)->bool:
         """
@@ -180,3 +207,6 @@ class Task_module:
         ----------
         Leave the <object_name>
         """
+        if object_name not in self.objects:
+            raise exceptions.InvalidObjectException(f"Object {object_name} not in the list of objects")
+        return True
