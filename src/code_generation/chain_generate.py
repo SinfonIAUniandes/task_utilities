@@ -86,7 +86,7 @@ def generate_code(task:str)->str:
     steps = generate_task_steps(task,robot_vars)
     print(steps)
     code = generate_exec(steps,robot_vars)
-    return code
+    return (steps,code)
 
 if __name__ == "__main__":
     load_code_gen_config()

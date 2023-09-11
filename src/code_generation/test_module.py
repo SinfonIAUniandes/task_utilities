@@ -4,6 +4,8 @@ import time
 import rospkg
 import rosservice
 import ConsoleFormatter
+import generate_utils
+import exceptions
 
 
 from std_msgs.msg import Int32, String, Bool
@@ -24,6 +26,12 @@ from navigation_msgs.msg import simple_feedback_msg
 
 class Task_module:
 
+    configuration = generate_utils.load_task_config()
+    places = configuration["place_names"]
+    language = configuration["languages"]
+    question_tags = configuration["question_tags"]
+    objects = configuration["objects"]
+
     def __init__(self, perception=False, speech=False, manipulation=False, navigation=False):
         """Initializer for the Task_module class
 
@@ -35,6 +43,7 @@ class Task_module:
         """
     ################### PERCEPTION SERVICES ###################
 
+    
     def find_object(self,object_name:str, timeout=25)->bool:
         """
         Input:
@@ -44,6 +53,8 @@ class Task_module:
         ----------
         Spins while looking for <object_name> for <timeout> seconds while spinning at 15 deg/s
         """
+        if object_name not in self.objects:
+            raise exceptions.InvalidObjectException(f"Object {object_name} not in the list of objects")
 
     def count_objects(self,object_name:str)->int:
         """
