@@ -44,7 +44,7 @@ class Task_module:
         ----------
         Spins while looking for <object_name> for <timeout> seconds while spinning at 15 deg/s
         """
-        
+
     def count_objects(self,object_name:str)->int:
         """
         Input: object_name, classes names depends of the actual model (see set_model service)
@@ -81,7 +81,7 @@ class Task_module:
 
     def speech2text_srv(self, file_name="prueba",seconds=0,transcription=True)->bool:
         """
-        Input: 
+        Input:
         seconds: 0 for automatic stop || > 0 for seconds to record
         file_name: name of the file
         transcription: True || False
@@ -137,7 +137,7 @@ class Task_module:
 
     def follow_you(self)->bool:
         """
-        Input: 
+        Input:
         Output: True if the service was called correctly, False if not
         ----------
         Follows the person in front of the robot until the person touches the head of the robot,
@@ -152,8 +152,8 @@ class Task_module:
         Adds a place to the graph
         """
 
-    ############ MANIPULATION SERVICES ###############    
-        
+    ############ MANIPULATION SERVICES ###############
+
     def grasp_object(self,object_name:str)->bool:
         """
         Input: object_name
@@ -161,7 +161,7 @@ class Task_module:
         ----------
         Grasp the <object_name>
         """
-    
+
     def leave_object(self,object_name:str)->bool:
         """
         Input: object_name

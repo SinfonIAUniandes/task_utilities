@@ -1,18 +1,7 @@
 import openai
 import os
-from generate_utils import generate_openai, generate_azure, get_task_module_code, count_tokens, load_code_gen_config
+from generate_utils import generate_openai, generate_azure, get_task_module_code, count_tokens, load_code_gen_config, load_task_config
 
-CONFIG_PATH = "src/code_generation/config.csv"
-
-def load_task_config()->dict:
-    config = {}
-    with open(CONFIG_PATH,"r") as f:
-        for line in f:
-            splitted_line = line.split(":")
-            key = splitted_line[0]
-            value = splitted_line[1].strip().split(",")
-            config[key] = value
-    return config
 
 def generate_task_steps(task_input:str,config:dict)->str:
     system_message = """You serve as a professional planner for Pepper, a versatile general-purpose service robot. Your role involves providing detailed instructions on how to accomplish a specific task."""
@@ -21,7 +10,7 @@ def generate_task_steps(task_input:str,config:dict)->str:
     - MANDATORY: Answer in a paragraph describing the process to complete the task.
     - Just give me the answer, do not include anything else in your answer.
     - If you believe you cannot accomplish the task, just say "Pepper should say: I cannot do the task because <reason>"
-    - Try to do the most simple solution possible. 
+    - Try to do the most simple solution possible.
     - Think as a robot, not as a human. You have access to internet, time, date, etc.
     - Do not generate code, just a detailed short description.
     - Do not exceed 80 words in your description.
@@ -38,7 +27,7 @@ def generate_task_steps(task_input:str,config:dict)->str:
     - **Available objects to recognize**: {",".join(config["objects"])}
     - If the object you need to recognize is not listed, you may decide if recognizing an above object is enough or if you are not able to do the task
     - To recognize special persons you may just recognize "person" instead of looking for a specific person
-    
+
     Speech constraints:
     - You can ask as much you want to the people if the task is not clear or if you need to know something, for example peoples name, age, drink, etc
     - Meeting a person means greeting the person
@@ -70,7 +59,7 @@ def generate_exec(task:str,config:dict)-> str:
     - The code must be written in python and the output will be executed directly
     - Always use self.tm.<function_name> to call the functions of the codebase interface
     - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
-    - Make sure to call and execute the functions from the codebase    
+    - Make sure to call and execute the functions from the codebase
     - MANDATOY: you must speak in between steps so users know what you are doing
     - The only available places are: {",".join(config["place_names"])}, if you need to go to a place that is not listed, you may decide if going to a listed above place is enough or if you are not able to do the task
     - The only available objects are: {",".join(config["objects"])}, if you need to recognize an object that is not listed, you may decide if recognizing a listed object is enough or if you are not able to do the task. Special people could be considered as "person"
@@ -93,10 +82,10 @@ def generate_exec(task:str,config:dict)-> str:
         return generate_azure(text_prompt, system_message=system_message, deployment_name=os.getenv("OPENAI_DEPLOYMENT_NAME", "gpt-35-turbo"))
 
 def generate_code(task:str)->str:
-    environment_variables = load_task_config()
-    steps = generate_task_steps(task,environment_variables)
+    robot_vars = load_task_config()
+    steps = generate_task_steps(task,robot_vars)
     print(steps)
-    code = generate_exec(steps,environment_variables)
+    code = generate_exec(steps,robot_vars)
     return code
 
 if __name__ == "__main__":
