@@ -13,6 +13,10 @@ def get_test(test_id: str):
             raise Exception(f"Test with id {test_id} was not found")
         return test
 
+def get_non_executed_tests(limit=10):
+    with Session(bind=engine) as session:
+        tests = session.query(PepperTest).filter(PepperTest.model_response == None).limit(limit).all()
+        return tests
 
 def create_test(test: PepperTest):
     with Session(bind=engine) as session:
