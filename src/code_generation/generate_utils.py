@@ -1,4 +1,3 @@
-from dotenv import load_dotenv
 import openai
 import tiktoken
 import re
@@ -24,7 +23,6 @@ def load_task_config()->dict:
     return TASK_VARS
 
 def load_code_gen_config():
-    load_dotenv()
     openai.api_key = os.getenv("OPENAI_KEY")
     openai.api_base = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
     openai.api_type = os.getenv("OPENAI_API_TYPE", "open_ai")
@@ -43,7 +41,7 @@ def count_tokens(string: str, encoding_name: str = "cl100k_base") -> int:
     num_tokens = len(encoding.encode(string))
     return num_tokens
 
-def generate_openai(text_prompt, system_message=None, is_code=True, model="gpt-3.5-turbo-16k", temperature=0):
+def generate_gpt(text_prompt, system_message=None, is_code=True, model="gpt-3.5-turbo-16k", temperature=0):
 
     messages = [
         {"role": "user", "content": text_prompt}
@@ -54,38 +52,20 @@ def generate_openai(text_prompt, system_message=None, is_code=True, model="gpt-3
             {"role": "system", "content": system_message},
         ] + messages
 
-    prediction = openai.ChatCompletion.create(
-        model=model,
-        temperature=temperature,
-        messages=messages
-    )
-    answer = prediction['choices'][0]['message']['content']
-    if is_code:
-        pattern = r'```python(.*?)\n```'
-        try:
-            code = (re.search(pattern, answer, re.DOTALL).group(1)).strip()
-        except AttributeError:
-            code = """self.tm.talk("I cannot do this command")"""
-        return code
+    if openai.api_version is None:
+        prediction = openai.ChatCompletion.create(
+            model=model,
+            temperature=temperature,
+            messages=messages
+        )
     else:
-        return answer
-
-def generate_azure(text_prompt, system_message=None, deployment_name=None, temperature=0, is_code=True):
-    messages = [
-        {"role": "user", "content": text_prompt}
-    ]
-
-    if system_message:
-        messages = [
-            {"role": "system", "content": system_message},
-        ] + messages
-
-    prediction = openai.ChatCompletion.create(
-        engine=deployment_name,
-        temperature=temperature,
-        messages=messages
-    )
-    answer =prediction['choices'][0]['message']['content']
+        deployment_name=os.getenv("OPENAI_DEPLOYMENT_NAME", "gpt-35-turbo")
+        prediction = openai.ChatCompletion.create(
+            engine=deployment_name,
+            temperature=temperature,
+            messages=messages
+        )
+    answer = prediction['choices'][0]['message']['content']
     if is_code:
         pattern = r'```python(.*?)\n```'
         try:

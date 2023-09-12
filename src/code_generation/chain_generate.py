@@ -1,9 +1,7 @@
-import openai
-import os
-from generate_utils import generate_openai, generate_azure, get_task_module_code, count_tokens, load_code_gen_config, load_task_config
+from generate_utils import generate_gpt, get_task_module_code, count_tokens, load_task_config
+from database.models import Model
 
-
-def generate_task_steps(task_input:str,config:dict)->str:
+def generate_task_steps_gpt(task_input:str,config:dict)->str:
     system_message = """You serve as a professional planner for Pepper, a versatile general-purpose service robot. Your role involves providing detailed instructions on how to accomplish a specific task."""
     text_prompt = f"""
     Output constraints:
@@ -38,12 +36,9 @@ def generate_task_steps(task_input:str,config:dict)->str:
 
     """
     print(f"Tokens used (Steps): {count_tokens(system_message+text_prompt)}")
-    if openai.api_version is None:
-        return generate_openai(text_prompt, system_message=system_message, is_code=False)
-    else:
-        return generate_azure(text_prompt, system_message=system_message, deployment_name=os.getenv("OPENAI_DEPLOYMENT_NAME", "gpt-35-turbo"), is_code=False)
+    return generate_gpt(text_prompt, system_message=system_message, is_code=False)
 
-def generate_exec(task:str,config:dict)-> str:
+def generate_exec_gpt(task:str,config:dict)-> str:
 
     task_module_code = get_task_module_code()
 
@@ -76,22 +71,14 @@ def generate_exec(task:str,config:dict)-> str:
 
     """
     print(f"Tokens used (Code): {count_tokens(system_message+text_prompt)}")
-    if openai.api_version is None:
-        return generate_openai(text_prompt, system_message=system_message)
-    else:
-        return generate_azure(text_prompt, system_message=system_message, deployment_name=os.getenv("OPENAI_DEPLOYMENT_NAME", "gpt-35-turbo"))
+    return generate_gpt(text_prompt, system_message=system_message, is_code=True)
 
-def generate_code(task:str)->str:
+def generate_code(task:str, model: Model)->str:
     robot_vars = load_task_config()
-    steps = generate_task_steps(task,robot_vars)
-    print(steps)
-    code = generate_exec(steps,robot_vars)
-    return (steps,code)
-
-if __name__ == "__main__":
-    load_code_gen_config()
-
-    task = "What time is it"
-    #task = input("Write the task: ")
-    print(task)
-    print(generate_code(task))
+    if model == Model.GPT35:
+        steps = generate_task_steps_gpt(task,robot_vars)
+        code = generate_exec_gpt(steps,robot_vars)
+        return (steps,code)
+    else:
+        pass
+        #TODO: Add llama model code generation

@@ -1,12 +1,8 @@
-import os
-import openai
-from generate_utils import generate_openai, generate_azure, get_task_module_code, load_code_gen_config
+from database.models import Model
+from generate_utils import generate_gpt, get_task_module_code
 
-## TODO: Get a working OpenAI API key
+def generate_code(task_input: str, model: Model)-> str:
 
-def generate_code(task_input: str)-> str:
-
-    ## TODO: Get the codebase from the task module
     task_module_code = get_task_module_code()
 
     system_message = """You are a code generation AI model for a robot called Pepper."""
@@ -52,15 +48,8 @@ def generate_code(task_input: str)-> str:
 
     # Code to generate:
     """
-
-    if openai.api_version is None:
-        return generate_openai(text_prompt, system_message=system_message)
+    if model == Model.GPT35:
+        return generate_gpt(text_prompt, system_message=system_message)
     else:
-        return generate_azure(text_prompt, system_message=system_message, deployment_name=os.getenv("OPENAI_DEPLOYMENT_NAME", "gpt-35-turbo"))
-
-if __name__ == "__main__":
-    load_code_gen_config()
-    task = "Could you enter to the living room, locate the fruits, and hand it to Elizabeth at the dining table. Fruits: apple"
-    #task = input("Write the task: ")
-    print(task)
-    generate_code(task)
+        pass
+        #TODO: Add llama model code generation
