@@ -19,16 +19,15 @@ def evaluate_automated_tests(num_tests:int=10, prompting_type = PromptingType.CH
     for task in tasks:
         description = task.task
         model_response = None
+        t1 = time.time()
         if prompting_type == PromptingType.CHAINING:
-            t1 = time.time()
             steps, code = chain_gen(description, model)
             model_response = json.dumps({"steps": steps, "code": code})
-            t2 = time.time()
         else:
-            t1 = time.time()
             code = gen(description, model)
             model_response = json.dumps({"code": code})
-            t2 = time.time()
+        t2 = time.time()
+
         generation_time = t2-t1
         exception_message = None
         execution = ExecutionResults.NOT_EXECUTED
