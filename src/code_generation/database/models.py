@@ -21,12 +21,27 @@ class Model(Enum):
     GPT35 = 'GPT3.5'
     LLAMA = 'LLAMA2'
 
+class TaskCategory(Enum):
+    GSPR1 = 'GSPR1'
+    GSPR2 = 'GSPR2'
+    GSPR3 = 'GSPR3'
+    EGSPR1 = 'EGSPR1'
+    EGSPR2 = 'EGSPR2'
+    EGSPR3 = 'EGSPR3'
+    EGSPR4 = 'EGSPR4'
+    EGSPR5 = 'EGSPR5'
+    EGSPR6 = 'EGSPR6'
+    EGSPR7 = 'EGSPR7'
+    EGSPR8 = 'EGSPR8'
+    EGSPR9 = 'EGSPR9'
+
 class PepperTest(Base):
     __tablename__ = 'pepper_tests'
     id = Column(UUID(as_uuid=True), primary_key=True)
     model_name = Column(ENUM(Model), nullable=False)
     prompting_type = Column(ENUM(PromptingType), nullable=True)
     task = Column(String(255), nullable=False)
+    task_category = Column(ENUM(TaskCategory), nullable=False)
     model_response = Column(JSON, nullable=True)
     task_execution_result = Column(ENUM(ExecutionResults), nullable=False)
     raised_error = Column(String(255), nullable=True)

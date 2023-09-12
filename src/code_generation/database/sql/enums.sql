@@ -20,15 +20,33 @@ ALTER TABLE "pepper_tests"
 ADD COLUMN task_execution_result task_execution_result_enum NOT NULL
 DEFAULT 'NOT_EXECUTED';
 
-CREATE TYPE prompting_type_enum AS ENUM {
+CREATE TYPE prompting_type_enum AS ENUM (
   'LONG_STRING',
   'CHAINING'
-};
+);
 
 ALTER TABLE "pepper_tests"
 ADD COLUMN prompting_type prompting_type_enum NOT NULL
 DEFAULT 'LONG_STRING';
 
+CREATE TYPE task_category_enum AS ENUM (
+  'GSPR1',
+  'GSPR2',
+  'GSPR3',
+  'EGSPR1',
+  'EGSPR2',
+  'EGSPR3',
+  'EGSPR4',
+  'EGSPR5',
+  'EGSPR6',
+  'EGSPR7',
+  'EGSPR8',
+  'EGSPR9'
+)
+
+ALTER TABLE "pepper_tests"
+ADD COLUMN task_category task_category_enum NOT NULL
+DEFAULT 'GSPR1';
 
 /*Operación de peligro*/
 
