@@ -36,7 +36,7 @@ def evaluate_automated_tests(num_tests:int=10, prompting_type = PromptingType.CH
             execution = ExecutionResults.EXECUTED
         except Exception as e:
             execution = ExecutionResults.EXECUTED_BUT_FAILED
-            exception_message = format_exception(type(e), e, e.__traceback__)
+            exception_message = "".join(format_exception(type(e), e, e.__traceback__))
 
         task.model_response = model_response
         task.task_execution_result = execution
