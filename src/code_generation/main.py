@@ -1,6 +1,7 @@
 from database.config import init_db
 from dotenv import load_dotenv
 from generate_utils import load_code_gen_config
+import test_module
 
 load_dotenv()
 init_db()
@@ -32,6 +33,7 @@ def evaluate_automated_tests(num_tests:int=10, prompting_type = PromptingType.CH
         exception_message = None
         execution = ExecutionResults.NOT_EXECUTED
         try:
+            tm = test_module.Task_module(percception = True, speech = True, manipulation = True, navigation = True)
             exec(code)
             execution = ExecutionResults.EXECUTED
         except Exception as e:
