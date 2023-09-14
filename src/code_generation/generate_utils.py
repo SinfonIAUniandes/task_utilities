@@ -10,6 +10,7 @@ CONFIG_PATH = os.path.join(dirname, "configs/robot_vars.csv")
 TASK_VARS = None
 
 def load_task_config()->dict:
+    global TASK_VARS
     if TASK_VARS is None:
         config = {}
         with open(CONFIG_PATH,"r") as f:
@@ -18,7 +19,6 @@ def load_task_config()->dict:
                 key = splitted_line[0]
                 value = splitted_line[1].strip().split(",")
                 config[key] = value
-        global TASK_VARS
         TASK_VARS = config
     return TASK_VARS
 

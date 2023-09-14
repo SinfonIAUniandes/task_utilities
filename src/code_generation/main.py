@@ -1,7 +1,10 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from database.config import init_db
 from dotenv import load_dotenv
 from generate_utils import load_code_gen_config
-import test_module
 
 load_dotenv()
 init_db()
@@ -12,8 +15,9 @@ import json
 from traceback import format_exception
 from chain_generate import generate_code as chain_gen
 from generate import generate_code as gen
-from database.models import Model, PromptingType, ExecutionResults
-from database.crud import get_non_executed_tests, update_test
+from database.models import Model, PromptingType, ExecutionResults, PepperTest
+from database.crud import get_non_executed_tests, update_test, create_test
+from task_generation.generate import generate_category_tasks
 
 def evaluate_automated_tests(num_tests:int=10, prompting_type = PromptingType.CHAINING, model=Model.GPT35):
     tasks = get_non_executed_tests(num_tests)
@@ -33,9 +37,9 @@ def evaluate_automated_tests(num_tests:int=10, prompting_type = PromptingType.CH
         exception_message = None
         execution = ExecutionResults.NOT_EXECUTED
         try:
-            tm = test_module.Task_module(percception = True, speech = True, manipulation = True, navigation = True)
-            exec(code)
-            execution = ExecutionResults.EXECUTED
+            task_code = """import test_module\ntm = test_module.Task_module(percception = True, speech = True, manipulation = True, navigation = True)\n"""
+            exec(task_code + code)
+            execution = ExecutionResults.PASSED_AUTOMATIC_EXECUTION
         except Exception as e:
             execution = ExecutionResults.EXECUTED_BUT_FAILED
             exception_message = "".join(format_exception(type(e), e, e.__traceback__))
@@ -46,5 +50,14 @@ def evaluate_automated_tests(num_tests:int=10, prompting_type = PromptingType.CH
         task.generation_time_ms = generation_time
         update_test(task)
 
+def create_new_tasks():
+    tasks = generate_category_tasks(10)
+    for task_category in tasks:
+        for task in task_category[0]:
+            description = task
+            category = task_category[1]
+            task = PepperTest(task=description, task_category=category.value)
+            create_test(task)
+
 if __name__ == "__main__":
-    evaluate_automated_tests()
+    create_new_tasks()
