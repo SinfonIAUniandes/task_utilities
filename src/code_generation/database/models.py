@@ -42,5 +42,6 @@ class PepperTest(Base):
     task_category = Column(ENUM(TaskCategory), nullable=False)
     model_response = Column(JSON, nullable=True)
     task_execution_result = Column(ENUM(ExecutionResults), nullable=False, default=ExecutionResults.NOT_EXECUTED.value)
-    raised_error = Column(String(255), nullable=True)
+    exception_traceback = Column(String(255), nullable=True)
+    exception_type = Column(String(255), nullable=True)
     generation_time_ms = Column(Float, nullable=True)

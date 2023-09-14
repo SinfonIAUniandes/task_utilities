@@ -1,29 +1,7 @@
 #!/usr/bin/env python3
-import rospy
-import time
-import rospkg
-import rosservice
-import ConsoleFormatter
 import generate_utils
 import exceptions
 import random
-
-
-from std_msgs.msg import Int32, String, Bool
-from std_srvs.srv import Trigger, TriggerRequest
-
-# All imports from tools
-
-# from robot_toolkit_msgs.msg import speech_msg
-
-from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, q_a_speech_srvRequest, talk_speech_srvRequest, saveAudio_srvRequest, speech2text_srv
-
-from perception_msgs.srv import  set_model_recognition_srv,set_model_recognition_srvRequest
-
-from manipulation_msgs.srv import SaveState, SaveStateRequest, GoToState, GoToStateRequest
-
-from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
-from navigation_msgs.msg import simple_feedback_msg
 
 class Task_module:
 
