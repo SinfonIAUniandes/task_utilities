@@ -13,7 +13,7 @@ load_code_gen_config()
 import time
 import json
 from traceback import format_exception
-from chain_generate import generate_code as chain_gen
+from chain_generate import ChainGenerate
 from generate import generate_code as gen
 from database.models import Model, PromptingType, ExecutionResults, PepperTest
 from database.crud import get_non_executed_tests, update_test, create_test
@@ -25,16 +25,18 @@ class CodeGeneration:
 
     def __init__(self):
         self.tm = test_module.Task_module(perception = True, speech = True, manipulation = True, navigation = True)
-        
+
     def evaluate_automated_tests(self,num_tests:int=10, prompting_type = PromptingType.CHAINING, model=Model.GPT35):
         print("Fetching non executed tests...")
         tasks = get_non_executed_tests(num_tests)
+        print("Creating chain generator...")
+        cg = ChainGenerate()
         for task in tasks:
             description = task.task
             model_response = None
             t1 = time.time()
             if prompting_type == PromptingType.CHAINING:
-                steps, code = chain_gen(description, model)
+                steps, code = cg.generate_code(description, model)
                 model_response = json.dumps({"steps": steps, "code": code})
             else:
                 code = gen(description, model)
@@ -60,7 +62,6 @@ class CodeGeneration:
         print("Finished evaluating tests")
 
     def create_new_tasks(self):
-        
         print("Creating new tasks...")
         tasks = generate_category_tasks(10)
         for task_category in tasks:
@@ -73,5 +74,14 @@ class CodeGeneration:
         print("Created new tasks successfully")
 
 if __name__ == "__main__":
-    cg = CodeGeneration()
-    cg.evaluate_automated_tests(num_tests=5)
+    # Test evaluation
+    #cg = CodeGeneration()
+    #cg.evaluate_automated_tests(num_tests=5)
+
+    # Chain generation testing
+    task = "Please find Taylor in the dining room, answer a question, and locate Isabella in the kitchen."
+    cg = ChainGenerate()
+    entities = cg.extract_entities_gpt(task)
+    print(entities)
+    replaced_entities = cg.replace_semantic_entities_gpt(entities)
+    print(cg.replace_entities_in_task(task, entities, replaced_entities))
