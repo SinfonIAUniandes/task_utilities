@@ -74,4 +74,4 @@ class CodeGeneration:
 
 if __name__ == "__main__":
     cg = CodeGeneration()
-    cg.evaluate_automated_tests()
+    cg.evaluate_automated_tests(num_tests=5)

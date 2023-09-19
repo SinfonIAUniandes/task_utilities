@@ -1,8 +1,27 @@
 from generate_utils import generate_gpt, get_task_module_code, count_tokens, load_task_config
 from database.models import Model
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from database.config import init_db
+from dotenv import load_dotenv
+from generate_utils import load_code_gen_config
+
+load_dotenv()
+init_db()
+load_code_gen_config()
+
+import time
+import json
+from traceback import format_exception
+from generate import generate_code as gen
+from database.models import Model, PromptingType, ExecutionResults, PepperTest
+from database.crud import get_non_executed_tests, update_test, create_test
+from task_generation.generate import generate_category_tasks
 
 def generate_task_steps_gpt(task_input:str,config:dict)->str:
-    system_message = """You serve as a professional planner for Pepper, a versatile general-purpose service robot. Your role involves providing detailed instructions on how to accomplish a specific task."""
+    system_message = """You serve as a professional planner for Pepper, a versatile general-purpose service robot. Your role involves providing detailed instructions on how to accomplish a specific task changing places and object to known places and objects for Pepper."""
     text_prompt = f"""
     Output constraints:
     - MANDATORY: Answer in a paragraph describing the process to complete the task.
@@ -13,17 +32,21 @@ def generate_task_steps_gpt(task_input:str,config:dict)->str:
     - Do not generate code, just a detailed short description.
     - Do not exceed 80 words in your description.
     - Do not use specific steps
-
+    - Change all places and locations to the ones Pepper know, for example, change kitchen (unknown for Pepper) to kitchen_table (know for Pepper)
+    - - Change all objects to the ones Pepper know, for example, change water bottle (unknown for Pepper) to bottle (know for Pepper)
+    
     Navigation Constraints:
-    - **Available places to navigate**: {",".join(config["place_names"])}
+    - **Available places to navigate**: {", ".join(config["place_names"])}
     - If the place you need to go is not listed above, you may decide if going to an above place is enough or if you are not able to do the task
+    - When you give the description make sure to only use places listed here with the exact syntax of the next list: {", ".join(config["place_names"])}
     - Asume you are never in the place where you need to go (If you need to go somewhere)
     - If you need to go back to a place you already visited it is important for you to save that place and this had to be included in the description.
 
     Perception constraints:
     - For object recognition include both cases where the object is found and where it is not found
-    - **Available objects to recognize**: {",".join(config["objects"])}
+    - **Available objects to recognize**: {", ".join(config["objects"])}
     - If the object you need to recognize is not listed, you may decide if recognizing an above object is enough or if you are not able to do the task
+    - When you give the description make sure to only use object listed here with the exact syntax used in the next list: {", ".join(config["objects"])}
     - To recognize special persons you may just recognize "person" instead of looking for a specific person
 
     Speech constraints:
@@ -56,8 +79,8 @@ def generate_exec_gpt(task:str,config:dict)-> str:
     - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
     - Make sure to call and execute the functions from the codebase
     - MANDATOY: you must speak in between steps so users know what you are doing
-    - The only available places are: {",".join(config["place_names"])}, if you need to go to a place that is not listed, you may decide if going to a listed above place is enough or if you are not able to do the task
-    - The only available objects are: {",".join(config["objects"])}, if you need to recognize an object that is not listed, you may decide if recognizing a listed object is enough or if you are not able to do the task. Special people could be considered as "person"
+    - The only available places are: {", ".join(config["place_names"])}, if you need to go to a place that is not listed use the most similar one from the list. Not doing this will result in an error. Use exactly the sintax from the list
+    - The only available objects are: {", ".join(config["objects"])}, if you need to recognize an object that is not listed use the most similar one from the list. Not doing this will result in an error. Use exactly the sintax from the list
     - Special people could be considered as "person"
 
     # Task description:
@@ -82,3 +105,5 @@ def generate_code(task:str, model: Model)->str:
     else:
         pass
         #TODO: Add llama model code generation
+
+# print(generate_code("Look for a person in the dining table, place a plate on the dining table, and guide Jacob from the corridor to the apartment.",Model.GPT35))
