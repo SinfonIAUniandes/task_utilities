@@ -26,7 +26,7 @@ class CodeGeneration:
     def __init__(self):
         self.tm = test_module.Task_module(perception = True, speech = True, manipulation = True, navigation = True)
         
-    def evaluate_automated_tests(num_tests:int=10, prompting_type = PromptingType.CHAINING, model=Model.GPT35):
+    def evaluate_automated_tests(self,num_tests:int=10, prompting_type = PromptingType.CHAINING, model=Model.GPT35):
         print("Fetching non executed tests...")
         tasks = get_non_executed_tests(num_tests)
         for task in tasks:
@@ -59,7 +59,8 @@ class CodeGeneration:
             update_test(task)
         print("Finished evaluating tests")
 
-    def create_new_tasks():
+    def create_new_tasks(self):
+        
         print("Creating new tasks...")
         tasks = generate_category_tasks(10)
         for task_category in tasks:

@@ -15,7 +15,7 @@ def get_test(test_id: str):
 
 def get_non_executed_tests(limit=10):
     with Session(bind=engine) as session:
-        tests = session.query(PepperTest).filter(PepperTest.model_response == None).limit(limit).all()
+        tests = session.query(PepperTest).filter(PepperTest.task_execution_result == "NOT_EXECUTED").limit(limit).all()
         return tests
 
 def create_test(test: PepperTest):
