@@ -28,7 +28,7 @@ def create_test(test: PepperTest):
 
 def update_test(test: PepperTest):
     with Session(bind=engine) as session:
-        test.update()
+        session.add(test)
         session.commit()
         return test
 
