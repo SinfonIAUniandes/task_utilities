@@ -14,7 +14,7 @@ load_code_gen_config()
 
 from database.models import Model
 
-class ChainGenerate:
+class ChainGenerator:
 
     def __init__(self) -> None:
         self.robot_vars = load_task_config()
@@ -128,7 +128,7 @@ class ChainGenerate:
         - Always use self.tm.<function_name> to call the functions of the codebase interface
         - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
         - Make sure to call and execute the functions from the codebase
-        - MANDATOY: you must speak in between steps so users know what you are doing
+        - MANDATORY: you must speak in between steps so users know what you are doing
         - The only available places are: {self.place_names}, if you need to go to a place that is not listed use the most similar one from the list. Not doing this will result in an error. Use exactly the sintax from the list
         - The only available objects are: {self.objects}, if you need to recognize an object that is not listed use the most similar one from the list. Not doing this will result in an error. Use exactly the sintax from the list
         - Special people could be considered as "person"

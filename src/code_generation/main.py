@@ -13,7 +13,7 @@ load_code_gen_config()
 import time
 import json
 from traceback import format_exception
-from chain_generate import ChainGenerate
+from chain_generate import ChainGenerator
 from generate import generate_code as gen
 from database.models import Model, PromptingType, ExecutionResults, PepperTest
 from database.crud import get_non_executed_tests, update_test, create_test
@@ -30,7 +30,7 @@ class CodeGeneration:
         print("Fetching non executed tests...")
         tasks = get_non_executed_tests(num_tests)
         print("Creating chain generator...")
-        cg = ChainGenerate()
+        cg = ChainGenerator()
         for task in tasks:
             description = task.task
             model_response = None
@@ -80,7 +80,7 @@ if __name__ == "__main__":
 
     # Chain generation testing
     task = "Please find Taylor in the dining room, answer a question, and locate Isabella in the kitchen."
-    cg = ChainGenerate()
+    cg = ChainGenerator()
     entities = cg.extract_entities_gpt(task)
     print(entities)
     replaced_entities = cg.replace_semantic_entities_gpt(entities)
