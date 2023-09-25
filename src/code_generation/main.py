@@ -12,6 +12,7 @@ load_code_gen_config()
 
 import time
 import json
+from tqdm import tqdm
 from traceback import format_exception
 from chain_generate import ChainGenerator
 from generate import generate_code as gen
@@ -31,7 +32,9 @@ class CodeGeneration:
         tasks = get_non_executed_tests(num_tests)
         print("Creating chain generator...")
         cg = ChainGenerator()
-        for task in tasks:
+        counter = 1
+        for i in tqdm(range(len(tasks)), desc="Evaluating tests: "):
+            task = tasks[i]
             description = task.task
             model_response = None
             t1 = time.time()
@@ -59,6 +62,7 @@ class CodeGeneration:
             task.task_execution_result = execution
             task.generation_time_ms = generation_time
             update_test(task)
+            counter += 1
         print("Finished evaluating tests")
 
     def create_new_tasks(self):
@@ -79,9 +83,9 @@ if __name__ == "__main__":
     cg.evaluate_automated_tests(num_tests=10)
 
     # Chain generation testing
-    # task = "Get the toiletries from the cupboard, deliver it to Ava in the bedroom, and follow her."
-    # cg = ChainGenerator()
-    # entities = cg.extract_entities_gpt(task)
-    # print(entities)
-    # replaced_entities = cg.replace_semantic_entities_gpt(entities)
-    # print(cg.replace_entities_in_task(task, entities, replaced_entities))
+    #task = "Get the toiletries from the cupboard, deliver it to Ava in the bedroom, and follow her."
+    #cg = ChainGenerator()
+    #entities = cg.extract_entities_gpt(task)
+    #print(entities)
+    #replaced_entities = cg.replace_semantic_entities_gpt(entities)
+    #print(cg.replace_entities_in_task(task, entities, replaced_entities))

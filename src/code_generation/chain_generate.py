@@ -1,4 +1,4 @@
-from generate_utils import generate_gpt, get_task_module_code, count_tokens, load_task_config
+from generate_utils import generate_gpt, get_task_module_code, load_task_config
 from database.models import Model
 import sys
 import os
@@ -59,7 +59,8 @@ class ChainGenerator:
     def replace_entities_in_task(self, task_input:str, input_entities:list, valid_entities:list)->str:
         text_input = f"""
         # Instructions:
-        Replace all given entities in the following task description with their equivalent synonyms from the valid entities list.
+        Replace all given entities in the following task description with their equivalent synonyms from the valid entities list and return a task description with the replaced values.
+        If there isn't anything to replace, return the original task description.
 
         # Input entities:
         {input_entities}
@@ -70,7 +71,10 @@ class ChainGenerator:
         # Task description:
         {task_input}
         """
-        return generate_gpt(text_input, is_code=False)
+        try:
+            return generate_gpt(text_input, is_code=False)
+        except KeyError:
+            return task_input
 
     def generate_task_steps_gpt(self, task_input:str)->str:
         system_message = """You serve as a professional planner for Pepper, a versatile general-purpose service robot. Your role involves providing detailed instructions on how to accomplish a specific task changing places and object to known places and objects for Pepper."""
@@ -110,7 +114,6 @@ class ChainGenerator:
         {task_input}
 
         """
-        print(f"Tokens used (Steps): {count_tokens(system_message+text_prompt)}")
         return generate_gpt(text_prompt, system_message=system_message, is_code=False)
 
     def generate_exec_gpt(self, task:str)-> str:
@@ -145,7 +148,6 @@ class ChainGenerator:
         # Code to generate:
 
         """
-        print(f"Tokens used (Code): {count_tokens(system_message+text_prompt)}")
         return generate_gpt(text_prompt, system_message=system_message, is_code=True)
 
     def generate_code(self, task:str, model: Model)->str:
