@@ -20,6 +20,7 @@ class ChainGenerator:
         self.robot_vars = load_task_config()
         self.place_names = self.robot_vars["place_names"]
         self.objects = self.robot_vars["objects"]
+        self.question_tags = self.robot_vars["question_tags"]
 
     def extract_entities_gpt(self, task:str)->str:
         text_prompt = f"""
@@ -36,8 +37,8 @@ class ChainGenerator:
     def replace_semantic_entities_gpt(self, input_entities:list)->str:
         text_prompt = f"""
         # Instructions:
-        Replace all entities from the following list with their equivalent synonyms from the valid entities list.
-        For example: Replace "Jacob" with "person" or "dining table" with "dining_room".
+        Replace all entities from the following list with equivalent places, objects or q_a from the valid entities list.
+        For example: Replace "Jacob" with "person" or "toilet" with "bathroom".
         Understand entities as places, objects, people, etc.
 
         Requirements:
@@ -51,6 +52,7 @@ class ChainGenerator:
         # Valid entities:
         - Valid Places: {self.place_names}
         - Valid Objects: {self.objects}
+        - Valid Q_A: {self.question_tags}
         """
         return generate_gpt(text_prompt, is_code=False)
 
@@ -153,7 +155,7 @@ class ChainGenerator:
             new_task = self.replace_entities_in_task(task, entities, new_entities)
             steps = self.generate_task_steps_gpt(new_task)
             code = self.generate_exec_gpt(steps)
-            return (steps,code)
+            return (entities,new_entities,new_task,steps,code)
         else:
             pass
             #TODO: Add llama model code generation

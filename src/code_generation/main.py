@@ -36,8 +36,8 @@ class CodeGeneration:
             model_response = None
             t1 = time.time()
             if prompting_type == PromptingType.CHAINING:
-                steps, code = cg.generate_code(description, model)
-                model_response = json.dumps({"steps": steps, "code": code})
+                entities,new_entities,new_task,steps,code = cg.generate_code(description, model)
+                model_response = json.dumps({"entities": entities, "new_entities": new_entities, "new_task": new_task, "steps": steps, "code": code})
             else:
                 code = gen(description, model)
                 model_response = json.dumps({"code": code})
@@ -75,13 +75,13 @@ class CodeGeneration:
 
 if __name__ == "__main__":
     # Test evaluation
-    #cg = CodeGeneration()
-    #cg.evaluate_automated_tests(num_tests=5)
+    cg = CodeGeneration()
+    cg.evaluate_automated_tests(num_tests=10)
 
     # Chain generation testing
-    task = "Please find Taylor in the dining room, answer a question, and locate Isabella in the kitchen."
-    cg = ChainGenerator()
-    entities = cg.extract_entities_gpt(task)
-    print(entities)
-    replaced_entities = cg.replace_semantic_entities_gpt(entities)
-    print(cg.replace_entities_in_task(task, entities, replaced_entities))
+    # task = "Get the toiletries from the cupboard, deliver it to Ava in the bedroom, and follow her."
+    # cg = ChainGenerator()
+    # entities = cg.extract_entities_gpt(task)
+    # print(entities)
+    # replaced_entities = cg.replace_semantic_entities_gpt(entities)
+    # print(cg.replace_entities_in_task(task, entities, replaced_entities))

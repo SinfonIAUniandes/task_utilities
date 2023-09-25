@@ -65,6 +65,7 @@ def generate_gpt(text_prompt, system_message=None, is_code=True, model="gpt-3.5-
             temperature=temperature,
             messages=messages
         )
+    print(prediction)
     answer = prediction['choices'][0]['message']['content']
     if is_code:
         pattern = r'```python(.*?)\n```'
