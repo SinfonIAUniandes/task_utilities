@@ -72,8 +72,11 @@ class CodeGeneration:
             for task in task_category[0]:
                 description = task
                 category = task_category[1]
-                task = PepperTest(task=description, task_category=category.value)
-                create_test(task)
+                task_gpt = PepperTest(task=description, task_category=category.value, model_name=Model.GPT35.value)
+                task_llama = PepperTest(task=description, task_category=category.value, model_name=Model.LLAMA.value)
+
+                create_test(task_gpt)
+                create_test(task_llama)
             print("Created tasks for category: ", category.value)
         print("Created new tasks successfully")
 
