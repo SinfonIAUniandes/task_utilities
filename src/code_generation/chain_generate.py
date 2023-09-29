@@ -1,18 +1,5 @@
 from generate_utils import generate_gpt, get_task_module_code, load_task_config
 from database.models import Model
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from database.config import init_db
-from dotenv import load_dotenv
-from generate_utils import load_code_gen_config
-
-load_dotenv()
-init_db()
-load_code_gen_config()
-
-from database.models import Model
 
 class ChainGenerator:
 

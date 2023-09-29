@@ -18,13 +18,17 @@ def get_non_executed_tests(limit=10):
         tests = session.query(PepperTest).filter(PepperTest.task_execution_result == "NOT_EXECUTED").limit(limit).all()
         return tests
 
+def get_succesfully_executed_tests(limit=10):
+    with Session(bind=engine) as session:
+        tests = session.query(PepperTest).filter(PepperTest.task_execution_result == "PASSED_AUTOMATIC_EXECUTION").limit(limit).all()
+        return tests
+
 def create_test(test: PepperTest):
     with Session(bind=engine) as session:
         session.add(test)
         session.commit()
         session.refresh(test)
         return test
-
 
 def update_test(test: PepperTest):
     with Session(bind=engine) as session:

@@ -37,7 +37,7 @@ class PepperTest(Base):
     __tablename__ = 'pepper_tests'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     model_name = Column(ENUM(Model), nullable=False, default=Model.GPT35.value)
-    prompting_type = Column(ENUM(PromptingType), nullable=True, default=PromptingType.LONG_STRING.value)
+    prompting_type = Column(ENUM(PromptingType), nullable=True, default=PromptingType.CHAINING.value)
     task = Column(String(255), nullable=False)
     task_category = Column(ENUM(TaskCategory), nullable=False)
     model_response = Column(JSON, nullable=True)
