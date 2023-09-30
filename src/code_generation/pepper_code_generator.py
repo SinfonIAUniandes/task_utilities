@@ -57,7 +57,7 @@ class CodeGenerator:
                 description = task
                 category = task_category[1]
                 task_gpt = PepperTest(task=description, task_category=category.value, model_name=Model.GPT35.value)
-                task_llama = PepperTest(task=description, task_category=category.value, model_name=Model.LLAMA.value)
+                task_llama = PepperTest(task=description, task_category=category.value, model_name=Model.LLAMA2.value)
 
                 create_test(task_gpt)
                 create_test(task_llama)

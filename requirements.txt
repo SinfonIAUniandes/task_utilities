@@ -6,3 +6,4 @@ pyflakes
 psycopg2-binary
 sqlalchemy
 tqdm
+console-menu

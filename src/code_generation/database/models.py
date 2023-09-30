@@ -20,7 +20,7 @@ class ExecutionResults(Enum):
 
 class Model(Enum):
     GPT35 = 'GPT35'
-    LLAMA = 'LLAMA2'
+    LLAMA2 = 'LLAMA2'
 
 class TaskCategory(Enum):
     GSPR1 = 'GSPR1'
