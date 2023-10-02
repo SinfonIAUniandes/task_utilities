@@ -49,6 +49,7 @@ class CodeGenerator:
             counter += 1
         print("Finished evaluating tests")
 
+
     def create_new_tasks(self):
         print("Creating new tasks...")
         tasks = generate_category_tasks(10)
