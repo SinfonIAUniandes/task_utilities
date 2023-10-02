@@ -19,7 +19,6 @@ class CodeGenerator:
         tasks = get_non_executed_tests(num_tests)
         print("Creating chain generator...")
         cg = ChainGenerator()
-        counter = 1
         for i in tqdm(range(len(tasks)), desc="Evaluating tests: "):
             task = tasks[i]
             description = task.task
@@ -46,7 +45,6 @@ class CodeGenerator:
             task.task_execution_result = execution
             task.generation_time_ms = generation_time
             update_test(task)
-            counter += 1
         print("Finished evaluating tests")
 
 

@@ -2,14 +2,14 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from consolemenu import ConsoleMenu, SelectionMenu
+from consolemenu import ConsoleMenu
 from consolemenu.items import FunctionItem
 
 from database.config import init_db
 from dotenv import load_dotenv
 from generate_utils import load_code_gen_config
 from database.models import Model, ExecutionResults
-import traceback
+from view.menu import *
 import json
 
 load_dotenv()
@@ -22,10 +22,8 @@ cg = CodeGenerator()
 
 def automatically_evaluate_tests():
     options = ["GPT3.5", "GPT4", "LLAMA2"]
-    selection_menu = SelectionMenu(options, title="Select an LLM model")
-    selection_menu.show()
-    selection_menu.join()
-    model = selection_menu.selected_option
+    model = get_select_menu(options, "Select an LLM model")
+
     if model == 0:
         model = "GPT35"
     elif model == 1:
@@ -52,10 +50,7 @@ def automatically_evaluate_tests():
 
 def manually_evaluate_tasks():
     options = ["Evaluate random task", "Evaluate specific task by ID"]
-    selection_menu = SelectionMenu(options, title="Select an option to evaluate")
-    selection_menu.show()
-    selection_menu.join()
-    selection = selection_menu.selected_option
+    selection = get_select_menu(options, "Select an option to evaluate")
 
     if selection == 0:
         #TODO Implement random task evaluation
@@ -68,33 +63,39 @@ def manually_evaluate_tasks():
             if task_id == "q":
                 return
             try:
-                print(f"Getting task with id: {task_id}")
+                print(f"Getting task with id: {task_id}\n")
                 task = get_test(task_id)
-                if task.task_execution_result != "PASSED_AUTOMATIC_EXECUTION":
-                    print("This task has not been successfully executed automatically yet. Press any key to go back to the main menu...")
-                    input()
+                if task.task_execution_result != ExecutionResults.PASSED_AUTOMATIC_EXECUTION:
+                    input("This task has not been successfully executed automatically yet. Press any key to go back to the main menu...")
                     return
-                print(f"Task:\n{task.task}")
-                print(f"Code: \n{json.loads(task.model_response)['code']}")
-                eval_options = ["Completed task successfully", "Partially completed task", "Did not complete task"]
-                selection_menu = SelectionMenu(eval_options, title="Select an option to evaluate")
-                selection_menu.show()
-                selection_menu.join()
-                selection = selection_menu.selected_option
-                if selection == len(eval_options):
-                    return
-                selection = eval_options[selection]
-                confirm = input(f"Are you sure to evaluate the task as {selection}? (y/n): ")
-                if confirm == "y":
-                    print(f"Updating task with id: {task_id} as {selection}")
-                    task.task_execution_result = ExecutionResults[selection].value
-                    update_test(task)
-                input("Press any key to go back to the main menu...")
-                return
-
+                else:
+                    break
             except Exception as e:
                 print(e)
-                traceback.print_exc()
+
+        while True:
+            print(f"Task:\n{task.task}\n")
+            print(f"Code:\n\n{json.loads(task.model_response)['code']}")
+
+            eval_options = ["Executed but failed", "Partially completed task","Completed task successfully"]
+            selection_index = get_select_menu(eval_options, "Select an option to evaluate", clear_screen=False)
+            if selection_index == len(eval_options):
+                return
+            selection = eval_options[selection_index]
+            confirm = ""
+
+            while confirm.lower() != "y" and confirm.lower() != "n":
+                confirm = input(f"\nAre you sure to evaluate the task as {selection}? (y/n): ")
+                if confirm == "y":
+                    print(f"Updating task with id: {task_id} as {selection}")
+                    task.task_execution_result = list(ExecutionResults)[selection_index+2]
+                    update_test(task)
+                    print("Successfully updated task\n")
+
+            if confirm == "n":
+                continue
+            input("Press any key to go back to the main menu...")
+            return
 
 if __name__ == "__main__":
     # Create the menu
