@@ -73,14 +73,20 @@ def manually_evaluate_tasks():
             except Exception as e:
                 print(e)
 
-        while True:
-            print(f"Task:\n{task.task}\n")
-            print(f"Code:\n\n{json.loads(task.model_response)['code']}")
 
-            eval_options = ["Executed but failed", "Partially completed task","Completed task successfully"]
+        eval_options = ["Executed but failed", "Partially completed task","Completed task successfully", "SAVE TASK TO FILE!"]
+        while True:
+            code = json.loads(task.model_response)['code']
+            print(f"Task:\n{task.task}\n")
+            print(f"Code:\n\n{code}")
+
             selection_index = get_select_menu(eval_options, "Select an option to evaluate", clear_screen=False)
             if selection_index == len(eval_options):
                 return
+            elif selection_index == 3:
+                save_code_to_file(code, task.task, task.id)
+                del eval_options[-1]
+                continue
             selection = eval_options[selection_index]
             confirm = ""
 
