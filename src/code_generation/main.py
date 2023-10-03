@@ -53,23 +53,28 @@ def evaluate_manually():
     task = get_random_passed_auto_test()
     if task is None:
         input("No tasks found to evaluate. Press any key to go back to the main menu...")
-        return
+        return None
     evaluate_task(task, update_test)
+    return True
 
 def manually_evaluate_tasks_menu():
     options = ["Evaluate random task", "Evaluate specific task by ID"]
     selection = get_select_menu(options, "Select an option to evaluate")
 
     if selection == 0:
-        evaluate_manually()
+        task_found = evaluate_manually()
+        if task_found is None:
+            return
         continue_evaluating = "y"
         while continue_evaluating == "y":
             continue_evaluating = input("Do you want to continue evaluating tasks? (y/n): ")
             if continue_evaluating == "y":
-                evaluate_manually()
+                task_found = evaluate_manually()
             elif continue_evaluating != "y" and continue_evaluating != "n":
                 print(f"{continue_evaluating} is an invalid option. Please enter y or n")
                 continue
+            if task_found is None:
+                return
         input("Press any key to go back to the main menu...")
     elif selection == 1:
         task_id = None
