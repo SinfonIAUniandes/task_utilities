@@ -12,6 +12,11 @@ def get_test(test_id: str):
             raise Exception(f"Test with id {test_id} was not found")
         return test
 
+def get_random_passed_auto_test():
+    with Session(bind=engine) as session:
+        test = session.query(PepperTest).filter(PepperTest.task_execution_result == "PASSED_AUTOMATIC_EXECUTION").first()
+        return test
+
 def get_non_executed_tests(limit=10):
     with Session(bind=engine) as session:
         tests = session.query(PepperTest).filter(PepperTest.task_execution_result == "NOT_EXECUTED").limit(limit).all()
