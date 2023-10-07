@@ -16,7 +16,7 @@ class CodeGenerator:
 
     def evaluate_automated_tests(self,num_tests:int=10, prompting_type = PromptingType.CHAINING, model=Model.GPT35):
         print("Fetching non executed tests...")
-        tasks = get_non_executed_tests(num_tests)
+        tasks = get_non_executed_tests(model, limit=num_tests)
         print("Creating chain generator...")
         cg = ChainGenerator()
         for i in tqdm(range(len(tasks)), desc="Evaluating tests: "):

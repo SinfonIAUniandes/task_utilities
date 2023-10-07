@@ -17,9 +17,9 @@ def get_random_passed_auto_test():
         test = session.query(PepperTest).filter(PepperTest.task_execution_result == "PASSED_AUTOMATIC_EXECUTION").first()
         return test
 
-def get_non_executed_tests(limit=10):
+def get_non_executed_tests(model, limit=10):
     with Session(bind=engine) as session:
-        tests = session.query(PepperTest).filter(PepperTest.task_execution_result == "NOT_EXECUTED").limit(limit).all()
+        tests = session.query(PepperTest).filter(PepperTest.task_execution_result == "NOT_EXECUTED", PepperTest.model_name == model.value).limit(limit).all()
         return tests
 
 def get_succesfully_executed_tests(limit=10):

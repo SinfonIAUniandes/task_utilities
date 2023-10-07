@@ -96,7 +96,7 @@ def manually_evaluate_tasks_menu():
 
 if __name__ == "__main__":
     # Create the menu
-    menu = ConsoleMenu("Pepper Code Generation", "Subtitle")
+    menu = ConsoleMenu("Pepper Code Generation", "Console Menu to evaluate and create new tests")
     evaluate_tests = FunctionItem("Automatically Evaluate Tests", automatically_evaluate_tasks_menu)
     create_new_tests = FunctionItem("Create New Tests", cg.create_new_tasks)
     manually_evaluate = FunctionItem("Manually Evaluate Tests", manually_evaluate_tasks_menu)
