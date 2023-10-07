@@ -117,6 +117,7 @@ class ChainGenerator:
         Navigation Constraints:
         - **Available places to navigate**: {self.place_names}
         - If the places you need to go are not listed above, you cannot do the task. Your answer should be "False; I cannot do the task because I cannot go to <place1>"
+        - If the place is in the list, then you can go to that place with no problem.
 
         Perception constraints:
         - **Available objects to recognize**: {self.objects}
