@@ -33,15 +33,17 @@ def automatically_evaluate_tasks_menu():
         return
     done = False
     while not done:
-        num_tests = input("How many tests do you want to evaluate? (Default 10): ")
+        num_tests = input("How many tests do you want to evaluate? (Default 10, q to quit): ")
         if num_tests == "":
             num_tests = 10
+        elif num_tests == "q":
+            return
         else:
             try:
                 num_tests = int(num_tests)
                 if num_tests <= 0 or num_tests > 100:
                     raise TypeError
-            except TypeError:
+            except (TypeError, ValueError):
                 print("Please enter a valid number of tests")
                 continue
         cg.evaluate_automated_tests(num_tests=num_tests, model=Model[model])
@@ -70,6 +72,9 @@ def manually_evaluate_tasks_menu():
             continue_evaluating = input("Do you want to continue evaluating tasks? (y/n): ")
             if continue_evaluating == "y":
                 task_found = evaluate_manually()
+            elif continue_evaluating == "":
+                print("Please enter y or n.")
+                continue
             elif continue_evaluating != "y" and continue_evaluating != "n":
                 print(f"{continue_evaluating} is an invalid option. Please enter y or n")
                 continue

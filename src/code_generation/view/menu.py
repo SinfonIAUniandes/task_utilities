@@ -48,5 +48,4 @@ def evaluate_task(task: PepperTest, update_test: callable):
 
         if confirm == "n":
             continue
-        input("Press any key to go back or continue evaluating...")
         return

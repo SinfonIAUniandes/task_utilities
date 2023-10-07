@@ -104,7 +104,7 @@ class ChainGenerator:
 
         """
         return generate_gpt(text_prompt, system_message=system_message, is_code=False)
-    
+
     def classify_task_gpt(self, task:str)->(bool, str):
         system_message = """Your role is to classify tasks as approved or not approved for Pepper, a versatile general-purpose service robot. Your role involves providing if it's possible for Pepper to complete a task and the reason."""
         text_prompt = f"""
@@ -126,7 +126,6 @@ class ChainGenerator:
         Speech constraints:
         - **Available questions to ask**: {self.question_tags}
         - If the question you need to ask is not listed, you cannot do the task. Your answer should be "False; I cannot do the task because I cannot ask <question1>"
-        
 
         # Task Description:
 
@@ -164,8 +163,10 @@ class ChainGenerator:
         - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
         - Make sure to call and execute the functions from the codebase
         - MANDATORY: you must talk in between steps so users know what you are doing
-        - The only available places are: {self.place_names}, if you need to go to a place that is not listed use the most similar one from the list. Not doing this will result in an error. Use the sintax from the list when calling the codebase functions.
-        - The only available objects are: {self.objects}, if you need to recognize an object that is not listed use the most similar one from the list. Not doing this will result in an error. Use the sintax from the list when calling the codebase functions.
+        - The only available places are: {self.place_names}, if you need to go to a place that is not listed use the most similar one from the list. Not doing this will result in an error. Use the syntax from the list when calling the codebase functions.
+        - If the place you need to go or a similar place is NOT listed above, please respond with self.tm.talk("I cannot go to <place>")
+        - The only available objects are: {self.objects}, if you need to recognize an object that is not listed use the most similar one from the list. Not doing this will result in an error. Use the syntax from the list when calling the codebase functions.
+        - If the object you need to recognize or a similar object is NOT listed above, please respond with self.tm.talk("I cannot recognize <object>")
         - Special people could be considered as "person"
 
         # Task description:
