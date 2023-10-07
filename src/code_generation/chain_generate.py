@@ -25,7 +25,7 @@ class ChainGenerator:
         text_prompt = f"""
         # Instructions:
         Replace all entities from the following list with equivalent places, objects or q_a from the valid entities list.
-        For example: Replace "Jacob" with "person" or "toilet" with "bathroom".
+        For example: replace "toilet" with "bathroom".
         Understand entities as places, objects, people, etc.
 
         Requirements:
@@ -47,6 +47,8 @@ class ChainGenerator:
         text_input = f"""
         # Instructions:
         Replace all given entities in the following task description with their equivalent synonyms from the valid entities list and return a task description with the replaced values.
+        For example: replace "toilet" with "bathroom".
+        Do not replace person names with "person".
         If there isn't anything to replace, return the original task description.
 
         # Input entities:
@@ -69,26 +71,26 @@ class ChainGenerator:
         Output constraints:
         - MANDATORY: Answer in a paragraph describing the process to complete the task.
         - Just give me the answer, do not include anything else in your answer.
-        - If you believe you cannot accomplish the task, just say "Pepper should say: I cannot do the task because <reason>"
         - Try to do the most simple solution possible.
         - Think as a robot, not as a human. You have access to internet, time, date, etc.
         - Do not generate code, just a detailed short description.
         - Do not exceed 80 words in your description.
         - Do not use specific steps
         - Change all places and locations to the ones Pepper know, for example, change kitchen (unknown for Pepper) to kitchen_table (know for Pepper)
-        - - Change all objects to the ones Pepper know, for example, change water bottle (unknown for Pepper) to bottle (know for Pepper)
+        - Change all objects to the ones Pepper know, for example, change water bottle (unknown for Pepper) to bottle (know for Pepper)
 
         Navigation Constraints:
         - **Available places to navigate**: {self.place_names}
         - If the place you need to go is not listed above, you may decide if going to an above place is enough or if you are not able to do the task
         - When you give the description make sure to only use places listed here with the exact syntax of the next list: {self.place_names}
-        - Asume you are never in the place where you need to go (If you need to go somewhere)
+        - Assume you are never in the place where you need to go or at the starting place (If you need to go somewhere)
         - If you need to go back to a place you already visited it is important for you to save that place and this had to be included in the description.
 
         Perception constraints:
         - For object recognition include both cases where the object is found and where it is not found
         - **Available objects to recognize**: {self.objects}
         - If the object you need to recognize is not listed, you may decide if recognizing an above object is enough or if you are not able to do the task
+        - For recognizing specific persons just recognize "person", using personal names will result in an error
         - When you give the description make sure to only use object listed here with the exact syntax used in the next list: {self.objects}
         - To recognize special persons you may just recognize "person" instead of looking for a specific person
 
@@ -102,6 +104,45 @@ class ChainGenerator:
 
         """
         return generate_gpt(text_prompt, system_message=system_message, is_code=False)
+    
+    def classify_task_gpt(self, task:str)->(bool, str):
+        system_message = """Your role is to classify tasks as approved or not approved for Pepper, a versatile general-purpose service robot. Your role involves providing if it's possible for Pepper to complete a task and the reason."""
+        text_prompt = f"""
+        Output constraints:
+        - MANDATORY: Answer in a formatted way using ; to separate the answer and the reason, for example: "True; I can do the task because I can go to the kitchen and I can recognize a bottle" or "False; I cannot do the task because I cannot go to the car wash"
+        - Just give me the answer, do not include anything else in your answer.
+        - Think as a robot, not as a human. You have access to internet, time, date, etc.
+        - The only cases in which a task is not approved is when one of the following constraints is not met:
+
+        Navigation Constraints:
+        - **Available places to navigate**: {self.place_names}
+        - If the places you need to go are not listed above, you cannot do the task. Your answer should be "False; I cannot do the task because I cannot go to <place1>"
+
+        Perception constraints:
+        - **Available objects to recognize**: {self.objects}
+        - If the thing you need to recognize is not listed, you cannot do the task. Your answer should be "False; I cannot do the task because I cannot recognize <object1>"
+
+        Speech constraints:
+        - **Available questions to ask**: {self.question_tags}
+        - If the question you need to ask is not listed, you cannot do the task. Your answer should be "False; I cannot do the task because I cannot ask <question1>"
+        
+
+        # Task Description:
+
+        {task}
+
+        """
+        answer = generate_gpt(text_prompt, system_message=system_message, is_code=False)
+        try:
+            approved, reason = answer.split(";")
+            if approved == "True":
+                approved = True
+            else:
+                approved = False
+            return (approved, reason)
+        except:
+            print("Bad format when classifying the task")
+            return (True, "I cannot understand the answer, please try again")
 
     def generate_exec_gpt(self, task:str)-> str:
 
@@ -115,14 +156,15 @@ class ChainGenerator:
         # Details about the code to generate:
         - Always try to complete the task
         - The task module has allready instantiated as `self.tm = task_module.Task_module(perception = True,speech=True,manipulation=True, navigation=True)` so you should never instantiate it again
+        - Use the functions as they are described in the codebase interface, for example `self.tm.talk("Hello")` to talk
         - Do not use classes, just functions
         - The code must be written in python and the output will be executed directly
         - Always use self.tm.<function_name> to call the functions of the codebase interface
         - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
         - Make sure to call and execute the functions from the codebase
-        - MANDATORY: you must speak in between steps so users know what you are doing
-        - The only available places are: {self.place_names}, if you need to go to a place that is not listed use the most similar one from the list. Not doing this will result in an error. Use exactly the sintax from the list
-        - The only available objects are: {self.objects}, if you need to recognize an object that is not listed use the most similar one from the list. Not doing this will result in an error. Use exactly the sintax from the list
+        - MANDATORY: you must talk in between steps so users know what you are doing
+        - The only available places are: {self.place_names}, if you need to go to a place that is not listed use the most similar one from the list. Not doing this will result in an error. Use the sintax from the list when calling the codebase functions.
+        - The only available objects are: {self.objects}, if you need to recognize an object that is not listed use the most similar one from the list. Not doing this will result in an error. Use the sintax from the list when calling the codebase functions.
         - Special people could be considered as "person"
 
         # Task description:
@@ -143,8 +185,12 @@ class ChainGenerator:
             new_entities = self.replace_semantic_entities_gpt(entities)
             new_task = self.replace_entities_in_task(task, entities, new_entities)
             steps = self.generate_task_steps_gpt(new_task)
-            code = self.generate_exec_gpt(steps)
-            return (entities,new_entities,new_task,steps,code)
+            approved, reason = self.classify_task_gpt(steps)
+            if approved:
+                code = self.generate_exec_gpt(steps)
+                return (entities,new_entities,new_task,steps,code)
+            else:
+                return (entities,new_entities,new_task,steps,f'self.tm.talk(\'{reason}\')')
         else:
             pass
             #TODO: Add llama model code generation
