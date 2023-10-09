@@ -1,7 +1,7 @@
-from generate_utils import generate_gpt, get_task_module_code, load_task_config
+from generate_utils import generate_gpt, load_task_config
 from database.models import Model
 
-class Generator:
+class LongStringGenerator:
 
     def __init__(self) -> None:
         self.robot_vars = load_task_config()
@@ -9,7 +9,6 @@ class Generator:
         self.objects = self.robot_vars["objects"]
         self.question_tags = self.robot_vars["question_tags"]
         self.task_module_code = f"""
-        
         Perception functions:
         self.tm.find_object(object_name)->bool: Returns True if the object was found, False if not, the only possible objects with their exact syntax are: {self.objects}
         self.tm.count_objects(object_name)->int: Returns the number of objects found, the only possible objects with their exact syntax are: {self.objects}
@@ -31,8 +30,6 @@ class Generator:
         """
 
     def generate_exec_gpt(self, task:str)-> str:
- 
-        task_module_code = get_task_module_code()
 
         system_message = """You are a code generation AI model for a robot called Pepper."""
 
@@ -51,7 +48,21 @@ class Generator:
         - Make sure to call and execute the functions from the codebase
         - If with the given functions and external libraries you cannot complete the task, please respond with self.tm.talk("I am sorry but I cannot complete this task")
         - MANDATORY: you must talk in between steps so users know what you are doing
-        - Your output needs to be formatted in markdown as a python code snippet which is ```python <CODE> ```
+        - The only available places are: {self.place_names}, if you need to go to a place that is not listed use the most similar one from the list. Not doing this will result in an error. Use the syntax from the list when calling the codebase functions.
+        - If the place you need to go or a similar place is NOT listed above, please respond with self.tm.talk("I cannot go to <place>")
+        - Always assume that the robot is at the entrance of the house at the beginning of the task
+        - To locate objects, navigate to the place in which is most likely to find the object and then use the `find_object` service
+        - Scorting or guiding a person should be done by a `talk` service followed up by a `go_to_place` service
+
+        - The only available objects are: {self.objects}, if you need to recognize an object that is not listed use the most similar one from the list. Not doing this will result in an error. Use the syntax from the list when calling the codebase functions.
+        - If the object you need to recognize or a similar object is NOT listed above, please respond with self.tm.talk("I cannot recognize <object>")
+        - For recognizing people just use "person" instead of a specific name
+
+        - The only available default questions are: {self.question_tags}
+        - If you need to ask a question that is not listed just use the `talk` method to day the question and the `speech2text_srv` followed to save the answer. Use the syntax from the list when calling the codebase functions.
+
+        # Output Format:
+        - Your output needs to be formatted in markdown as a python code snippet which looks like ```python <CODE>```
 
         For example, if the task is "Grab a bottle, and bring it to the living room" you should return:
         ```python
@@ -70,19 +81,6 @@ class Generator:
             self.tm.talk("I am sorry, I did not find the bottle")
         ```
 
-        - The only available places are: {self.place_names}, if you need to go to a place that is not listed use the most similar one from the list. Not doing this will result in an error. Use the syntax from the list when calling the codebase functions.
-        - If the place you need to go or a similar place is NOT listed above, please respond with self.tm.talk("I cannot go to <place>")
-        - Always assume that the robot is at the entrance of the house at the beginning of the task
-        - To locate objects, navigate to the place in which is most likely to find the object and then use the `find_object` service
-        - Scorting or guiding a person should be done by a `talk` service followed up by a `go_to_place` service
-
-        - The only available objects are: {self.objects}, if you need to recognize an object that is not listed use the most similar one from the list. Not doing this will result in an error. Use the syntax from the list when calling the codebase functions.
-        - If the object you need to recognize or a similar object is NOT listed above, please respond with self.tm.talk("I cannot recognize <object>")
-        - For recognizing people just use "person" instead of a specific name
-
-        - The only available default questions are: {self.question_tags}
-        - If you need to ask a question that is not listed just use the `talk` method to day the question and the `speech2text_srv` followed to save the answer. Use the syntax from the list when calling the codebase functions.
-
         # Task description:
         {task}
 
@@ -91,9 +89,8 @@ class Generator:
         {self.task_module_code}
 
         # Code to generate:
-
         """
-        return generate_gpt(text_prompt, system_message=system_message, is_code=True)
+        return generate_gpt(text_prompt, system_message=system_message)
 
     def generate_code(self, task:str, model: Model)->str:
         if model == Model.GPT35:
@@ -101,4 +98,4 @@ class Generator:
             return code
         else:
             pass
-        
+

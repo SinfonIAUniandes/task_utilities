@@ -221,5 +221,4 @@ class ChainGenerator:
                 return (entities,new_entities,new_task,steps,f'self.tm.talk(\"\"\"I am sorry but {reason}\"\"\")')
         else:
             pass
-        
             #TODO: Add llama model code generation

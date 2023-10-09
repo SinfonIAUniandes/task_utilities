@@ -8,7 +8,7 @@ from consolemenu.items import FunctionItem
 from database.config import init_db
 from dotenv import load_dotenv
 from generate_utils import load_code_gen_config
-from database.models import Model, ExecutionResults
+from database.models import Model, ExecutionResults, PromptingType
 
 load_dotenv()
 init_db()
@@ -46,7 +46,7 @@ def automatically_evaluate_tasks_menu():
             except (TypeError, ValueError):
                 print("Please enter a valid number of tests")
                 continue
-        cg.evaluate_automated_tests(num_tests=num_tests, model=Model[model])
+        cg.evaluate_automated_tests(num_tests=num_tests, model=Model[model], prompting_type=PromptingType.LONG_STRING)
         done = True
 
 

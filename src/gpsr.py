@@ -12,7 +12,7 @@ import math
 import os
 import numpy as np
 from std_srvs.srv import SetBool
-from code_generation import generate as gen
+from code_generation import ls_generate as gen
 
 from navigation_msgs.srv import constant_spin_srv
 from navigation_msgs.msg import simple_feedback_msg
