@@ -70,6 +70,7 @@ def generate_gpt(text_prompt, system_message=None, is_code=True, model="gpt-3.5-
         try:
             code = (re.search(pattern, answer, re.DOTALL).group(1)).strip()
         except AttributeError:
+            print(answer)
             code = """self.tm.talk("I cannot do this command")"""
         return code
     else:

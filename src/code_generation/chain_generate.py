@@ -165,6 +165,25 @@ class ChainGenerator:
         - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
         - Make sure to call and execute the functions from the codebase
         - MANDATORY: you must talk in between steps so users know what you are doing
+        - Your output needs to be formatted in markdown as a python code snippet which is ```python <CODE> ```
+
+        For example, if the task is "Grab a bottle, and bring it to the living room" you should return:
+        ```python
+        self.tm.talk("I am going to grab a bottle")
+        self.tm.go_to_place("kitchen")
+        found_bottle = self.tm.find_object("bottle")
+        if found_bottle:
+            self.tm.grasp_object("bottle")
+        else:
+            self.tm.talk("I cannot find the bottle")'
+        self.tm.talk("I am going to the living room")
+        self.tm.go_to_place("living_room")
+        if found_bottle:
+            self.tm.leave_object("bottle")
+        else:
+            self.tm.talk("I am sorry, I did not find the bottle")
+        ```
+
 
         - The only available places are: {self.place_names}, if you need to go to a place that is not listed use the most similar one from the list. Not doing this will result in an error. Use the syntax from the list when calling the codebase functions.
         - If the place you need to go or a similar place is NOT listed above, please respond with self.tm.talk("I cannot go to <place>")
@@ -199,7 +218,8 @@ class ChainGenerator:
                 code = self.generate_exec_gpt(new_task)
                 return (entities,new_entities,new_task,steps,code)
             else:
-                return (entities,new_entities,new_task,steps,f'self.tm.talk(\"I am sorry but {reason}\")')
+                return (entities,new_entities,new_task,steps,f'self.tm.talk(\"\"\"I am sorry but {reason}\"\"\")')
         else:
             pass
+        
             #TODO: Add llama model code generation
