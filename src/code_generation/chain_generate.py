@@ -116,12 +116,14 @@ class ChainGenerator:
 
         Navigation Constraints:
         - **Available places to navigate**: {self.place_names}
-        - If the places you need to go are not listed above, you cannot do the task. Your answer should be "False; I cannot do the task because I cannot go to <place1>"
+        - You can only go the places listed above. If you need to go to a different place, your answer should be "False; I cannot do the task because I cannot go to <place1>"
         - If the place is in the list, then you can go to that place with no problem.
 
         Perception constraints:
-        - **Available objects to recognize**: {self.objects}
-        - If the thing you need to recognize is not listed, you cannot do the task. Your answer should be "False; I cannot do the task because I cannot recognize <object1>"
+        - **Available things to recognize**: {self.objects}
+        - You can only recognize objects or things listed above. If you need to recognize something not listed above, the answer should be "False; I cannot do the task because I cannot recognize <object1>"
+        - If the thing is in the list, then you can recognize that thing with no problem.
+        - Special people can be recognized as "person" instead of a specific name
 
         Speech constraints:
         - **Available questions to ask**: {self.question_tags}
@@ -163,11 +165,16 @@ class ChainGenerator:
         - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
         - Make sure to call and execute the functions from the codebase
         - MANDATORY: you must talk in between steps so users know what you are doing
+
         - The only available places are: {self.place_names}, if you need to go to a place that is not listed use the most similar one from the list. Not doing this will result in an error. Use the syntax from the list when calling the codebase functions.
         - If the place you need to go or a similar place is NOT listed above, please respond with self.tm.talk("I cannot go to <place>")
+        - Scorting or guiding a person should be done by a `talk` service followed up by a `go_to_place` service
+
         - The only available objects are: {self.objects}, if you need to recognize an object that is not listed use the most similar one from the list. Not doing this will result in an error. Use the syntax from the list when calling the codebase functions.
         - If the object you need to recognize or a similar object is NOT listed above, please respond with self.tm.talk("I cannot recognize <object>")
-        - Special people could be considered as "person"
+        - For recognizing people just use "person" instead of a specific name
+
+        - The only available default questions are: {self.question_tags}, if you need to ask a question that is not listed just use the `talk` method to day the question and the `speech2text_srv` followed to save the answer. Use the syntax from the list when calling the codebase functions.
 
         # Task description:
         {task}
@@ -183,16 +190,16 @@ class ChainGenerator:
 
     def generate_code(self, task:str, model: Model)->str:
         if model == Model.GPT35:
-            entities = self.extract_entities_gpt(task)
-            new_entities = self.replace_semantic_entities_gpt(entities)
-            new_task = self.replace_entities_in_task(task, entities, new_entities)
-            steps = self.generate_task_steps_gpt(new_task)
-            approved, reason = self.classify_task_gpt(steps)
+            steps = self.generate_task_steps_gpt(task)
+            entities = self.extract_entities_gpt(steps)
+            new_entities = self.replace_semantic_entities_gpt(steps)
+            new_task = self.replace_entities_in_task(steps, entities, new_entities)
+            approved, reason = self.classify_task_gpt(new_task)
             if approved:
-                code = self.generate_exec_gpt(steps)
+                code = self.generate_exec_gpt(new_task)
                 return (entities,new_entities,new_task,steps,code)
             else:
-                return (entities,new_entities,new_task,steps,f'self.tm.talk(\'{reason}\')')
+                return (entities,new_entities,new_task,steps,f'self.tm.talk(\"I am sorry but {reason}\")')
         else:
             pass
             #TODO: Add llama model code generation
