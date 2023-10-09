@@ -28,11 +28,11 @@ class CodeGenerator:
             description = task.task
             model_response = None
             t1 = time.time()
-
-            entities,new_entities,new_task,steps,code = cg.generate_code(description, model)
             if prompting_type == PromptingType.CHAINING:
+                entities,new_entities,new_task,steps,code = cg.generate_code(description, model)
                 model_response = json.dumps({"entities": entities, "new_entities": new_entities, "new_task": new_task, "steps": steps, "code": code})
             else:
+                code = cg.generate_code(description, model)
                 model_response = json.dumps({"code": code})
             t2 = time.time()
 
