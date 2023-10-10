@@ -1,6 +1,7 @@
 /*Creación del enum del resultado de la tarea*/
 CREATE TYPE llm_model AS ENUM (
   'GPT35',
+  'GPT4',
   'LLAMA2'
 );
 

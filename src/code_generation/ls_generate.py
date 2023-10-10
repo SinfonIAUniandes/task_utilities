@@ -90,7 +90,7 @@ class LongStringGenerator:
 
         # Code to generate:
         """
-        return generate_gpt(text_prompt, system_message=system_message, is_code=True)
+        return generate_gpt(text_prompt, system_message=system_message, is_code=True, model_type=self.model)
 
     def check_code(self, code:str)-> str:
 
@@ -126,10 +126,11 @@ class LongStringGenerator:
 
         # Fixed code:
         """
-        return generate_gpt(text_prompt, system_message=system_message, is_code=True)
+        return generate_gpt(text_prompt, system_message=system_message, is_code=True, model_type=self.model)
 
     def generate_code(self, task:str, model: Model)->str:
-        if model == Model.GPT35:
+        self.model = model
+        if model != Model.LLAMA2:
             first_code = self.generate_exec_gpt(task)
             final_code = self.check_code(first_code)
             return final_code

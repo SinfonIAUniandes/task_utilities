@@ -52,7 +52,7 @@ class CodeGenerator:
             task.task_execution_result = execution
             task.generation_time_ms = generation_time
             update_test(task)
-        print("Finished evaluating tests")
+        input("Finished evaluating tests, press any key to go back...")
 
     def create_new_tasks(self):
         print("Creating new tasks...")
@@ -62,9 +62,10 @@ class CodeGenerator:
                 description = task
                 category = task_category[1]
                 task_gpt = PepperTest(task=description, task_category=category.value, model_name=Model.GPT35.value)
+                task_gpt_4 = PepperTest(task=description, task_category=category.value, model_name=Model.GPT4.value)
                 task_llama = PepperTest(task=description, task_category=category.value, model_name=Model.LLAMA2.value)
-
                 create_test(task_gpt)
+                create_test(task_gpt_4)
                 create_test(task_llama)
             print("Created tasks for category: ", category.value)
         print("Created new tasks successfully")
