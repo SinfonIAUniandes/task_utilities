@@ -5,9 +5,9 @@ class ChainGenerator:
 
     def __init__(self) -> None:
         self.robot_vars = load_task_config()
-        self.place_names = self.robot_vars["place_names"]
-        self.objects = self.robot_vars["objects"]
-        self.question_tags = self.robot_vars["question_tags"]
+        self.place_names = ", ".join(['"'+elemento+'"' for elemento in self.robot_vars["place_names"]])
+        self.objects = ", ".join(['"'+elemento+'"' for elemento in self.robot_vars["objects"]])
+        self.question_tags = ", ".join(['"'+elemento+'"' for elemento in self.robot_vars["question_tags"]])
 
     def extract_entities_gpt(self, task:str)->str:
         text_prompt = f"""
