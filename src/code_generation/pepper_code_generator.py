@@ -15,57 +15,57 @@ class CodeGenerator:
     def __init__(self):
         self.tm = test_module.Task_module(perception = True, speech = True, manipulation = True, navigation = True)
 
-    def evaluate_automated_tests(self,num_tests:int=10, prompting_type = PromptingType.CHAINING, model=Model.GPT35):
+    def evaluate_automated_tests(self,num_tests:int=10, model=Model.GPT35):
         print("Fetching non executed tests...")
-        tasks = get_non_executed_tests(model, limit=num_tests)
-        print("Creating chain generator...")
-        if prompting_type == PromptingType.CHAINING:
-            cg = ChainGenerator()
-        else:
-            cg = LongStringGenerator()
-        for i in tqdm(range(len(tasks)), desc="Evaluating tests: "):
-            task = tasks[i]
-            description = task.task
-            model_response = None
-            t1 = time.time()
+        for prompting_type in list(PromptingType):
+            tasks = get_non_executed_tests(model, prompting_type, limit=num_tests)
             if prompting_type == PromptingType.CHAINING:
-                entities,new_entities,new_task,steps,code = cg.generate_code(description, model)
-                model_response = json.dumps({"entities": entities, "new_entities": new_entities, "new_task": new_task, "steps": steps, "code": code})
+                cg = ChainGenerator()
             else:
-                code = cg.generate_code(description, model)
-                model_response = json.dumps({"code": code})
-            t2 = time.time()
+                cg = LongStringGenerator()
+            for i in tqdm(range(len(tasks)), desc="Evaluating tests: "):
+                task = tasks[i]
+                description = task.task
+                model_response = None
+                t1 = time.time()
+                if prompting_type == PromptingType.CHAINING:
+                    entities,new_entities,new_task,steps,code = cg.generate_code(description, model)
+                    model_response = json.dumps({"entities": entities, "new_entities": new_entities, "new_task": new_task, "steps": steps, "code": code})
+                else:
+                    code = cg.generate_code(description, model)
+                    model_response = json.dumps({"code": code})
+                t2 = time.time()
 
-            generation_time = t2-t1
-            execution = ExecutionResults.NOT_EXECUTED
-            try:
-                exec(code)
-                execution = ExecutionResults.PASSED_AUTOMATIC_EXECUTION
-            except Exception as e:
-                execution = ExecutionResults.EXECUTED_BUT_FAILED
-                task.exception_traceback = "".join(format_exception(type(e), e, e.__traceback__))
-                task.exception_type = type(e).__name__
+                generation_time = t2-t1
+                execution = ExecutionResults.NOT_EXECUTED
+                try:
+                    exec(code)
+                    execution = ExecutionResults.PASSED_AUTOMATIC_EXECUTION
+                except Exception as e:
+                    execution = ExecutionResults.EXECUTED_BUT_FAILED
+                    task.exception_traceback = "".join(format_exception(type(e), e, e.__traceback__))
+                    task.exception_type = type(e).__name__
 
-            task.model_name = model.value
-            task.prompting_type = prompting_type.value
-            task.model_response = model_response
-            task.task_execution_result = execution
-            task.generation_time_ms = generation_time
-            update_test(task)
+                task.model_name = model.value
+                task.prompting_type = prompting_type.value
+                task.model_response = model_response
+                task.task_execution_result = execution
+                task.generation_time_ms = generation_time
+                update_test(task)
         input("Finished evaluating tests, press any key to go back...")
 
     def create_new_tasks(self):
+        count = 0
         print("Creating new tasks...")
-        tasks = generate_category_tasks(10)
-        for task_category in tasks:
-            for task in task_category[0]:
-                description = task
-                category = task_category[1]
-                task_gpt = PepperTest(task=description, task_category=category.value, model_name=Model.GPT35.value)
-                task_gpt_4 = PepperTest(task=description, task_category=category.value, model_name=Model.GPT4.value)
-                task_llama = PepperTest(task=description, task_category=category.value, model_name=Model.LLAMA2.value)
-                create_test(task_gpt)
-                create_test(task_gpt_4)
-                create_test(task_llama)
+        tasks_tuple = generate_category_tasks(20)
+        for tuple in tasks_tuple:
+            for task in tuple[0]:
+                for prompting_type in list(PromptingType):
+                    for model in list(Model):
+                        description = task
+                        category = tuple[1]
+                        task_gpt = PepperTest(task=description, task_category=category.value, model_name=model.value, prompting_type=prompting_type.value)
+                        count += 1
+                        create_test(task_gpt)
             print("Created tasks for category: ", category.value)
-        print("Created new tasks successfully")
+        input(f"Created {count} new tasks succesfully. Press any key to continue...")
