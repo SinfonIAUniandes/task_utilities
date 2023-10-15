@@ -18,7 +18,7 @@ def save_code_to_file(code, task, task_id, path=os.getcwd()):
     input("Press any key to evaluate...")
 
 def evaluate_task(task: PepperTest, update_test: callable):
-    eval_options = ["Executed but failed", "Not completed (Model Error)", "Partially completed task", "Completed task successfully", "Lack of robot capabilities", "SAVE TASK TO FILE!"]
+    eval_options = ["Not completed (Model Error)", "Partially completed task", "Completed task successfully", "Lack of robot capabilities", "SAVE TASK TO FILE!"]
     while True:
         code = json.loads(task.model_response)['code']
         print(f"Task:\n{task.task}\n")
@@ -29,7 +29,7 @@ def evaluate_task(task: PepperTest, update_test: callable):
         selection_index = get_select_menu(eval_options, "Select an option to evaluate", clear_screen=False)
         if selection_index == len(eval_options):
             return
-        elif selection_index == len(eval_options-1):
+        elif selection_index == len(eval_options)-1:
             save_code_to_file(code, task.task, task.id)
             del eval_options[-1]
             continue
@@ -40,7 +40,7 @@ def evaluate_task(task: PepperTest, update_test: callable):
             confirm = input(f"\nAre you sure to evaluate the task as {selection}? (y/n): ")
             if confirm == "y":
                 print(f"Updating task with id: {task.id} as {selection}")
-                task.task_execution_result = list(ExecutionResults)[selection_index+2].value
+                task.task_execution_result = list(ExecutionResults)[selection_index+3].value
                 update_test(task)
                 print("Successfully updated task\n")
             elif confirm != "y" and confirm != "n":

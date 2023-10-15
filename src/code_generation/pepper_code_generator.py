@@ -57,13 +57,13 @@ class CodeGenerator:
     def create_new_tasks(self):
         count = 0
         print("Creating new tasks...")
-        tasks_tuple = generate_category_tasks(20)
+        tasks_tuple = generate_category_tasks(8)
         for tuple in tasks_tuple:
             for task in tuple[0]:
+                category = tuple[1]
                 for prompting_type in list(PromptingType):
                     for model in list(Model):
                         description = task
-                        category = tuple[1]
                         task_gpt = PepperTest(task=description, task_category=category.value, model_name=model.value, prompting_type=prompting_type.value)
                         count += 1
                         create_test(task_gpt)

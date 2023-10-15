@@ -1,5 +1,6 @@
 import sys
 import os
+import generate_utils
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from consolemenu import ConsoleMenu
@@ -100,7 +101,7 @@ def manually_evaluate_tasks_menu():
         evaluate_task(task)
 
 if __name__ == "__main__":
-    # Create the menu
+    #Create the menu
     menu = ConsoleMenu("Pepper Code Generation", "Console Menu to evaluate and create new tests")
     evaluate_tests = FunctionItem("Automatically Evaluate Tests", automatically_evaluate_tasks_menu)
     create_new_tests = FunctionItem("Create New Tests", cg.create_new_tasks)

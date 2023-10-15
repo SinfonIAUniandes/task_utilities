@@ -8,6 +8,27 @@ class ChainGenerator:
         self.place_names = ", ".join(['"'+elemento+'"' for elemento in self.robot_vars["place_names"]])
         self.objects = ", ".join(['"'+elemento+'"' for elemento in self.robot_vars["objects"]])
         self.question_tags = ", ".join(['"'+elemento+'"' for elemento in self.robot_vars["question_tags"]])
+        self.task_module_code = f"""
+        Perception functions:
+        self.tm.find_object(object_name)->bool: Returns True if the object was found, False if not, the only possible objects with their exact syntax are: {self.objects}
+        self.tm.count_objects(object_name)->int: Returns the number of objects found, the only possible objects with their exact syntax are: {self.objects}
+
+        Speech functions:
+        self.tm.talk(text): Allows the robot to say the input of the service.
+        self.tm.speech2text_srv()->str: Allows the robot to listen to the user and returns the text that the robot heard
+        self.tm.q_a_speech(tag)->str: Allows the robot to ask a question and returns the answer of the user, the list of possible questions with exact syntax is: {self.question_tags}
+        self.tm.answer_question(question)->str: Allows the robot to answer a question, the input should be extracted with the speech2text_srv() function and to say the answer use the talk(text) function
+
+        Navigation functions:
+        self.tm.go_to_place(place_name): Allows the robot to go to a place, the only possible places with their exact syntax are: {self.place_names}
+        self.tm.follow_you(): Allows the robot to follow the user
+        self.tm.robot_stop_srv(): Allows the robot to stop
+        self.tm.add_place(place_name): Allows the robot to add a place to the map
+
+        Manipulation functions:
+        self.tm.grasp_object(object_name): Allows the robot to grasp an object, the only possible objects with their exact syntax are: {self.objects}
+        self.tm.leave_object(object_name): Allows the robot to leave an object, the only possible objects with their exact syntax are: {self.objects}
+        """
 
     def extract_entities_gpt(self, task:str)->str:
         text_prompt = f"""
@@ -22,6 +43,7 @@ class ChainGenerator:
         return generate_gpt(text_prompt, is_code=False, model_type=self.model)
 
     def replace_semantic_entities_gpt(self, input_entities:list)->str:
+        print("3.1")
         text_prompt = f"""
         # Instructions:
         Replace all entities from the following list with equivalent places, objects or q_a from the valid entities list.
@@ -157,6 +179,7 @@ class ChainGenerator:
 
         # Details about the code to generate:
         - Always try to complete the task
+        - If you need any extrenal libraries, you can import them
         - The task module has allready instantiated as `self.tm = task_module.Task_module(perception = True,speech=True,manipulation=True, navigation=True)` so you should never instantiate it again
         - Use the functions as they are described in the codebase interface, for example `self.tm.talk("Hello")` to talk
         - Do not use classes, just functions
@@ -200,7 +223,7 @@ class ChainGenerator:
 
         # Codebase Interface:
 
-        {task_module_code}
+        {self.task_module_code}
 
         # Code to generate:
 
@@ -210,11 +233,17 @@ class ChainGenerator:
     def generate_code(self, task:str, model: Model)->str:
         self.model = model
         if model != Model.LLAMA2:
+            print("1")
             steps = self.generate_task_steps_gpt(task)
+            print("2",steps)
             entities = self.extract_entities_gpt(steps)
-            new_entities = self.replace_semantic_entities_gpt(steps)
+            print("3",entities)
+            new_entities = self.replace_semantic_entities_gpt(entities)
+            print("4",new_entities)
             new_task = self.replace_entities_in_task(steps, entities, new_entities)
+            print("5",new_task)
             approved, reason = self.classify_task_gpt(new_task)
+            print("6",approved,reason)
             if approved:
                 code = self.generate_exec_gpt(new_task)
                 return (entities,new_entities,new_task,steps,code)
