@@ -17,42 +17,48 @@ class CodeGenerator:
 
     def evaluate_automated_tests(self,num_tests:int=10, model=Model.GPT35):
         print("Fetching non executed tests...")
-        for prompting_type in list(PromptingType):
-            tasks = get_non_executed_tests(model, prompting_type, limit=num_tests)
-            if prompting_type == PromptingType.CHAINING:
-                cg = ChainGenerator()
-            else:
-                cg = LongStringGenerator()
-            for i in tqdm(range(len(tasks)), desc="Evaluating tests: "):
-                task = tasks[i]
-                description = task.task
-                model_response = None
-                t1 = time.time()
+        with tqdm(total=num_tests*len(list(PromptingType)), desc="Fetching tests: ") as pbar:
+            count = 0
+            for prompting_type in list(PromptingType):
+                tasks = get_non_executed_tests(model, prompting_type, limit=num_tests)
                 if prompting_type == PromptingType.CHAINING:
-                    entities,new_entities,new_task,steps,code = cg.generate_code(description, model)
-                    model_response = json.dumps({"entities": entities, "new_entities": new_entities, "new_task": new_task, "steps": steps, "code": code})
+                    cg = ChainGenerator()
                 else:
-                    code = cg.generate_code(description, model)
-                    model_response = json.dumps({"code": code})
-                t2 = time.time()
+                    cg = LongStringGenerator()
+                for i in range(len(tasks)):
+                    task = tasks[i]
+                    description = task.task
+                    model_response = None
+                    t1 = time.time()
+                    if prompting_type == PromptingType.CHAINING:
+                        entities,new_entities,new_task,steps,code = cg.generate_code(description, model)
+                        model_response = json.dumps({"entities": entities, "new_entities": new_entities, "new_task": new_task, "steps": steps, "code": code})
+                    else:
+                        code = cg.generate_code(description, model)
+                        model_response = json.dumps({"code": code})
+                    t2 = time.time()
 
-                generation_time = t2-t1
-                execution = ExecutionResults.NOT_EXECUTED
-                try:
-                    exec(code)
-                    execution = ExecutionResults.PASSED_AUTOMATIC_EXECUTION
-                except Exception as e:
-                    execution = ExecutionResults.EXECUTED_BUT_FAILED
-                    task.exception_traceback = "".join(format_exception(type(e), e, e.__traceback__))
-                    task.exception_type = type(e).__name__
+                    generation_time = t2-t1
+                    execution = ExecutionResults.NOT_EXECUTED
+                    try:
+                        exec(code)
+                        execution = ExecutionResults.PASSED_AUTOMATIC_EXECUTION
+                    except Exception as e:
+                        execution = ExecutionResults.EXECUTED_BUT_FAILED
+                        task.exception_traceback = "".join(format_exception(type(e), e, e.__traceback__))
+                        task.exception_type = type(e).__name__
 
-                task.model_name = model.value
-                task.prompting_type = prompting_type.value
-                task.model_response = model_response
-                task.task_execution_result = execution
-                task.generation_time_ms = generation_time
-                update_test(task)
-        input("Finished evaluating tests, press any key to go back...")
+                    task.model_name = model.value
+                    task.prompting_type = prompting_type.value
+                    task.model_response = model_response
+                    task.task_execution_result = execution
+                    task.generation_time_ms = generation_time
+                    update_test(task)
+                    count += 1
+                    pbar.update(1)
+            if count != num_tests*len(list(PromptingType)):
+                pbar.update(num_tests*len(list(PromptingType))-count)
+            input("Finished evaluating tests, press any key to go back...")
 
     def create_new_tasks(self):
         count = 0

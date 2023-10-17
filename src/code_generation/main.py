@@ -34,7 +34,7 @@ def automatically_evaluate_tasks_menu():
         return
     done = False
     while not done:
-        num_tests = input("How many tests do you want to evaluate? (Default 10, q to quit): ")
+        num_tests = input("How many tests do you want to evaluate (Per prompting type)? (Default 10, q to quit): ")
         if num_tests == "":
             num_tests = 10
         elif num_tests == "q":

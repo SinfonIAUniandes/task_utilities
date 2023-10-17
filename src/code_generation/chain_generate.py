@@ -43,7 +43,6 @@ class ChainGenerator:
         return generate_gpt(text_prompt, is_code=False, model_type=self.model)
 
     def replace_semantic_entities(self, input_entities:list)->str:
-        print("3.1")
         text_prompt = f"""
         # Instructions:
         Replace all entities from the following list with equivalent places, objects or q_a from the valid entities list.
@@ -165,7 +164,6 @@ class ChainGenerator:
                 approved = False
             return (approved, reason)
         except:
-            print("Bad format when classifying the task")
             return (True, "I cannot understand the answer, please try again")
 
     def generate_exec(self, task:str)-> str:
