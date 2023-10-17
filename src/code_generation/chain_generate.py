@@ -30,7 +30,7 @@ class ChainGenerator:
         self.tm.leave_object(object_name): Allows the robot to leave an object, the only possible objects with their exact syntax are: {self.objects}
         """
 
-    def extract_entities_gpt(self, task:str)->str:
+    def extract_entities(self, task:str)->str:
         text_prompt = f"""
         # Instructions:
         Extract all entities from the following task description, understand entities as places, objects, people, etc.
@@ -42,7 +42,7 @@ class ChainGenerator:
         """
         return generate_gpt(text_prompt, is_code=False, model_type=self.model)
 
-    def replace_semantic_entities_gpt(self, input_entities:list)->str:
+    def replace_semantic_entities(self, input_entities:list)->str:
         print("3.1")
         text_prompt = f"""
         # Instructions:
@@ -87,7 +87,7 @@ class ChainGenerator:
         except KeyError:
             return task_input
 
-    def generate_task_steps_gpt(self, task_input:str)->str:
+    def generate_task_steps(self, task_input:str)->str:
         system_message = """You serve as a professional planner for Pepper, a versatile general-purpose service robot. Your role involves providing detailed instructions on how to accomplish a specific task changing places and object to known places and objects for Pepper."""
         text_prompt = f"""
         Output constraints:
@@ -127,7 +127,7 @@ class ChainGenerator:
         """
         return generate_gpt(text_prompt, system_message=system_message, is_code=False, model_type=self.model)
 
-    def classify_task_gpt(self, task:str)->(bool, str):
+    def classify_task(self, task:str)->(bool, str):
         system_message = """Your role is to classify tasks as approved or not approved for Pepper, a versatile general-purpose service robot. Your role involves providing if it's possible for Pepper to complete a task and the reason."""
         text_prompt = f"""
         Output constraints:
@@ -168,9 +168,7 @@ class ChainGenerator:
             print("Bad format when classifying the task")
             return (True, "I cannot understand the answer, please try again")
 
-    def generate_exec_gpt(self, task:str)-> str:
-
-        task_module_code = get_task_module_code()
+    def generate_exec(self, task:str)-> str:
 
         system_message = """You are a code generation AI model for a robot called Pepper."""
 
@@ -233,19 +231,13 @@ class ChainGenerator:
     def generate_code(self, task:str, model: Model)->str:
         self.model = model
         if model != Model.LLAMA2:
-            print("1")
-            steps = self.generate_task_steps_gpt(task)
-            print("2",steps)
-            entities = self.extract_entities_gpt(steps)
-            print("3",entities)
-            new_entities = self.replace_semantic_entities_gpt(entities)
-            print("4",new_entities)
+            steps = self.generate_task_steps(task)
+            entities = self.extract_entities(steps)
+            new_entities = self.replace_semantic_entities(entities)
             new_task = self.replace_entities_in_task(steps, entities, new_entities)
-            print("5",new_task)
-            approved, reason = self.classify_task_gpt(new_task)
-            print("6",approved,reason)
+            approved, reason = self.classify_task(new_task)
             if approved:
-                code = self.generate_exec_gpt(new_task)
+                code = self.generate_exec(new_task)
                 return (entities,new_entities,new_task,steps,code)
             else:
                 return (entities,new_entities,new_task,steps,f'self.tm.talk(\"\"\"I am sorry but {reason}\"\"\")')

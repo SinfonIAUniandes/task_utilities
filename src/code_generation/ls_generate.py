@@ -30,7 +30,7 @@ class LongStringGenerator:
         self.tm.leave_object(object_name): Allows the robot to leave an object, the only possible objects with their exact syntax are: {self.objects}
         """
 
-    def generate_exec_gpt(self, task:str)-> str:
+    def generate_exec(self, task:str)-> str:
 
         system_message = """You are a code generation AI model for a robot called Pepper."""
 
@@ -132,7 +132,7 @@ class LongStringGenerator:
     def generate_code(self, task:str, model: Model)->str:
         self.model = model
         if model != Model.LLAMA2:
-            code = self.generate_exec_gpt(task)
+            code = self.generate_exec(task)
             return code
         else:
             pass
