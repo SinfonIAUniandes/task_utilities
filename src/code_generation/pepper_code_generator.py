@@ -63,7 +63,7 @@ class CodeGenerator:
     def create_new_tasks(self):
         count = 0
         print("Creating new tasks...")
-        tasks_tuple = generate_category_tasks(8)
+        tasks_tuple = generate_category_tasks(15)
         for tuple in tasks_tuple:
             for task in tuple[0]:
                 category = tuple[1]
