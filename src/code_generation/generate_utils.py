@@ -3,6 +3,7 @@ import tiktoken
 import re
 import os
 from database.models import Model
+from requests.exceptions import JSONDecodeError
 import requests
 
 codebase = """"""
@@ -52,7 +53,11 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
         ] + messages
     if model_type == Model.LLAMA2:
         response = requests.post("http://localhost:6969/llama2", json={"messages": messages})
-        return response.json()
+        try:
+            return response.json()
+        except JSONDecodeError:
+            print("Error decoding json response from llama2")
+            return None
 
     elif openai.api_version is None:
         prediction = openai.ChatCompletion.create(
