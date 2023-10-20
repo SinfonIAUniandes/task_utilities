@@ -228,17 +228,13 @@ class ChainGenerator:
 
     def generate_code(self, task:str, model: Model)->str:
         self.model = model
-        if model != Model.LLAMA2:
-            steps = self.generate_task_steps(task)
-            entities = self.extract_entities(steps)
-            new_entities = self.replace_semantic_entities(entities)
-            new_task = self.replace_entities_in_task(steps, entities, new_entities)
-            approved, reason = self.classify_task(new_task)
-            if approved:
-                code = self.generate_exec(new_task)
-                return (entities,new_entities,new_task,steps,code)
-            else:
-                return (entities,new_entities,new_task,steps,f'self.tm.talk(\"\"\"I am sorry but {reason}\"\"\")')
+        steps = self.generate_task_steps(task)
+        entities = self.extract_entities(steps)
+        new_entities = self.replace_semantic_entities(entities)
+        new_task = self.replace_entities_in_task(steps, entities, new_entities)
+        approved, reason = self.classify_task(new_task)
+        if approved:
+            code = self.generate_exec(new_task)
+            return (entities,new_entities,new_task,steps,code)
         else:
-            pass
-            #TODO: Add llama model code generation
+            return (entities,new_entities,new_task,steps,f'self.tm.talk(\"\"\"I am sorry but {reason}\"\"\")')

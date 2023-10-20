@@ -96,9 +96,4 @@ class LongStringGenerator:
     def generate_code(self, task:str, model: Model)->str:
         self.model = model
         code = self.generate_exec(task)
-        if model != Model.LLAMA2:
-            return code
-        else:
-            if code:
-                print(code)
-            exit()
+        return code
