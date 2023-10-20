@@ -168,7 +168,7 @@ class ChainGenerator:
 
     def generate_exec(self, task:str)-> str:
 
-        system_message = """You are a code generation AI model for a robot called Pepper."""
+        system_message = """You are a code generation AI model for a robot called Pepper. You will only provide the code to complete the task, not the task description."""
 
         text_prompt = f"""
         You are a Pepper robot, given a task definition and an interface of the codebase (it only describes what each function does). You must generate the python code that completes the task using the codebase interface.
@@ -183,8 +183,11 @@ class ChainGenerator:
         - Always use self.tm.<function_name> to call the functions of the codebase interface
         - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
         - Make sure to call and execute the functions from the codebase
-        - MANDATORY: you must talk in between steps so users know what you are doing
-        - Your output needs to be formatted in markdown as a python code snippet which is ```python\n<CODE> ```
+        - MANDATORY: you must talk in between steps so users know what you are doing.
+
+        # Output Format:
+        - Your output needs to be formatted in markdown as a python code snippet, do not add anything else to the output, just return the code.
+        - The response should be formatted as follows: ```python\n<CODE> ```
 
         For example, if the task is "Grab a bottle, and bring it to the living room" you should return:
         ```python
