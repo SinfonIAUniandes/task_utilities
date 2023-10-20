@@ -184,7 +184,7 @@ class ChainGenerator:
         - Return only the code, just code, your output is going to be saved in a variable and executed with exec(<your answer>)
         - Make sure to call and execute the functions from the codebase
         - MANDATORY: you must talk in between steps so users know what you are doing
-        - Your output needs to be formatted in markdown as a python code snippet which is ```python <CODE> ```
+        - Your output needs to be formatted in markdown as a python code snippet which is ```python\n<CODE> ```
 
         For example, if the task is "Grab a bottle, and bring it to the living room" you should return:
         ```python

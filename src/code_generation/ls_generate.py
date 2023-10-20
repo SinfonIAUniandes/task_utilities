@@ -63,7 +63,7 @@ class LongStringGenerator:
         - If you need to ask a question that is not listed just use the `talk` method to say the question and the `speech2text_srv` followed to save the answer. Use the syntax from the list when calling the codebase functions.
 
         # Output Format:
-        - Your output needs to be formatted in markdown as a python code snippet which looks like ```python <CODE>```
+        - Your output needs to be formatted in markdown as a python code snippet which looks like ```python\n<CODE>```
 
         For example, if the task is "Grab a bottle, and bring it to the living room" you should return:
         ```python
