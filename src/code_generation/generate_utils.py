@@ -80,11 +80,13 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
     if is_code:
         pattern = r'```python(.*?)```'
         try:
-            code = (re.search(pattern, answer, re.DOTALL).group(1)).strip()
+            return (re.search(pattern, answer, re.DOTALL).group(1)).strip()
         except AttributeError:
-            print("Incorrect code format, response was:")
-            print(answer)
-            code = """self.tm.talk("I cannot do this command")"""
-        return code
+            pass
+        try:
+            pattern = r'```(.*?)```'
+            return (re.search(pattern, answer, re.DOTALL).group(1)).strip()
+        except AttributeError:
+            return f"""#Error while getting response from model {model_type.value}. Response had an incorrect format.\n#The response was:\n{answer}"""
     else:
         return answer
