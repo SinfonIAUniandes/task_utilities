@@ -83,6 +83,6 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
         except AttributeError:
             print(answer)
             code = """self.tm.talk("I cannot do this command")"""
-        return code
+        return code.rstrip()
     else:
-        return answer
+        return answer.rstrip()
