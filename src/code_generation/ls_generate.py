@@ -64,7 +64,7 @@ class LongStringGenerator:
 
         # Output Format:
         - Your output needs to be formatted in markdown as a python code snippet, do not add anything else to the output, just the code.
-        - The response should be formatted as follows: ```python\n<CODE> ```
+        - The response must be formatted as follows: ```python\n<CODE> ```
 
         For example, if the task is "Grab a bottle, and bring it to the living room" you should return:
         ```python
