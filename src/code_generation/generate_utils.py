@@ -53,9 +53,9 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
     if model_type == Model.LLAMA2:
         response = requests.post("http://localhost:6969/llama2", json={"messages": messages})
         try:
-            return response.json()[0]["generation"]["content"].rstrip()
+            answer = response.json()[0]["generation"]["content"].rstrip()
         except JSONDecodeError:
-            print("Error decoding json response from llama2")
+            print("Error decoding json response from LLAMA2, please check that the server is running and that the model is loaded correctly")
             return None
 
     elif openai.api_version is None:
@@ -75,7 +75,8 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
             temperature=temperature,
             messages=messages
         )
-    answer = prediction['choices'][0]['message']['content']
+    if model_type != Model.LLAMA2:
+        answer = prediction['choices'][0]['message']['content']
     if is_code:
         pattern = r'```python(.*?)\n```'
         try:
@@ -83,6 +84,6 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
         except AttributeError:
             print(answer)
             code = """self.tm.talk("I cannot do this command")"""
-        return code.rstrip()
+        return code
     else:
-        return answer.rstrip()
+        return answer
