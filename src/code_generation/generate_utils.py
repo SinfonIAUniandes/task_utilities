@@ -53,7 +53,7 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
     if model_type == Model.LLAMA2:
         response = requests.post("http://localhost:6969/llama2", json={"messages": messages})
         try:
-            return response.json()
+            return response.json()[0]["generation"]["content"].rstrip()
         except JSONDecodeError:
             print("Error decoding json response from llama2")
             return None
