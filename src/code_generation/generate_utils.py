@@ -5,7 +5,6 @@ import os
 from database.models import Model
 from requests.exceptions import JSONDecodeError
 import requests
-
 codebase = """"""
 
 dirname, _ = os.path.split(__file__)

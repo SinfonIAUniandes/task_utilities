@@ -99,5 +99,6 @@ class LongStringGenerator:
         if model != Model.LLAMA2:
             return code
         else:
-            print(code)
+            if code:
+                print(code)
             exit()
