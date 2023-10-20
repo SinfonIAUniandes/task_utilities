@@ -3,6 +3,7 @@ import tiktoken
 import re
 import os
 from database.models import Model
+import requests
 
 codebase = """"""
 
@@ -40,7 +41,7 @@ def count_tokens(string: str, encoding_name: str = "cl100k_base") -> int:
     num_tokens = len(encoding.encode(string))
     return num_tokens
 
-def generate_gpt(text_prompt, system_message=None, is_code=True, model="gpt-3.5-turbo-16k", model_type= Model.GPT35, temperature=0):
+def generate_response(text_prompt, system_message=None, is_code=True, model="gpt-3.5-turbo-16k", model_type= Model.GPT35, temperature=0):
     messages = [
         {"role": "user", "content": text_prompt}
     ]
@@ -49,8 +50,11 @@ def generate_gpt(text_prompt, system_message=None, is_code=True, model="gpt-3.5-
         messages = [
             {"role": "system", "content": system_message},
         ] + messages
+    if model_type == Model.LLAMA2:
+        response = requests.post("http://localhost:6969/llama2", json={"messages": messages})
+        return response.json()
 
-    if openai.api_version is None:
+    elif openai.api_version is None:
         prediction = openai.ChatCompletion.create(
             model=model,
             temperature=temperature,

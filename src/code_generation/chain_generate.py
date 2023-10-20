@@ -1,4 +1,4 @@
-from generate_utils import generate_gpt, get_task_module_code, load_task_config
+from generate_utils import generate_response, get_task_module_code, load_task_config
 from database.models import Model
 
 class ChainGenerator:
@@ -40,7 +40,7 @@ class ChainGenerator:
         # Task description:
         {task}
         """
-        return generate_gpt(text_prompt, is_code=False, model_type=self.model)
+        return generate_response(text_prompt, is_code=False, model_type=self.model)
 
     def replace_semantic_entities(self, input_entities:list)->str:
         text_prompt = f"""
@@ -62,7 +62,7 @@ class ChainGenerator:
         - Valid Objects: {self.objects}
         - Valid Q_A: {self.question_tags}
         """
-        return generate_gpt(text_prompt, is_code=False, model_type=self.model)
+        return generate_response(text_prompt, is_code=False, model_type=self.model)
 
     def replace_entities_in_task(self, task_input:str, input_entities:list, valid_entities:list)->str:
         text_input = f"""
@@ -82,7 +82,7 @@ class ChainGenerator:
         {task_input}
         """
         try:
-            return generate_gpt(text_input, is_code=False, model_type=self.model)
+            return generate_response(text_input, is_code=False, model_type=self.model)
         except KeyError:
             return task_input
 
@@ -124,7 +124,7 @@ class ChainGenerator:
         {task_input}
 
         """
-        return generate_gpt(text_prompt, system_message=system_message, is_code=False, model_type=self.model)
+        return generate_response(text_prompt, system_message=system_message, is_code=False, model_type=self.model)
 
     def classify_task(self, task:str)->(bool, str):
         system_message = """Your role is to classify tasks as approved or not approved for Pepper, a versatile general-purpose service robot. Your role involves providing if it's possible for Pepper to complete a task and the reason."""
@@ -155,7 +155,7 @@ class ChainGenerator:
         {task}
 
         """
-        answer = generate_gpt(text_prompt, system_message=system_message, is_code=False, model_type=self.model)
+        answer = generate_response(text_prompt, system_message=system_message, is_code=False, model_type=self.model)
         try:
             approved, reason = answer.split(";")
             if approved == "True":
@@ -224,7 +224,7 @@ class ChainGenerator:
         # Code to generate:
 
         """
-        return generate_gpt(text_prompt, system_message=system_message, is_code=True, model_type=self.model)
+        return generate_response(text_prompt, system_message=system_message, is_code=True, model_type=self.model)
 
     def generate_code(self, task:str, model: Model)->str:
         self.model = model
