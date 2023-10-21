@@ -17,7 +17,7 @@ class CodeGenerator:
 
     def evaluate_automated_tests(self,num_tests:int=10, model=Model.GPT35):
         print("Fetching non executed tests...")
-        with tqdm(total=num_tests*len(list(PromptingType)), desc="Fetching tests: ") as pbar:
+        with tqdm(total=num_tests*len(list(PromptingType)), desc="Evaluating tests: ") as pbar:
             count = 0
             total_time1 = time.time()
             for prompting_type in list(PromptingType):
