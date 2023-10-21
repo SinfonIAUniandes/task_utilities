@@ -32,7 +32,7 @@ class LongStringGenerator:
 
     def generate_exec(self, task:str)-> str:
 
-        system_message = """You are a code generation AI model for a robot called Pepper. You will only provide the code to complete the task, not the task description."""
+        system_message = """You are a code generation AI model for a robot called Pepper."""
 
         text_prompt = f"""
         You are a Pepper robot, given a task definition and an interface of the codebase (it only describes what each function does). You must generate the python code that completes the task using the codebase interface.
