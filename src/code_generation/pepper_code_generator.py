@@ -19,6 +19,7 @@ class CodeGenerator:
         print("Fetching non executed tests...")
         with tqdm(total=num_tests*len(list(PromptingType)), desc="Fetching tests: ") as pbar:
             count = 0
+            total_time1 = time.time()
             for prompting_type in list(PromptingType):
                 tasks = get_non_executed_tests(model, prompting_type, limit=num_tests)
                 if prompting_type == PromptingType.CHAINING:
@@ -58,7 +59,9 @@ class CodeGenerator:
                     pbar.update(1)
             if count != num_tests*len(list(PromptingType)):
                 pbar.update(num_tests*len(list(PromptingType))-count)
-            input("Finished evaluating tests, press any key to go back...")
+            total_time2 = time.time()
+            time_elapsed = total_time2 - total_time1
+            input(f"Finished evaluating tests. Took {time_elapsed} seconds or {time_elapsed/60} minutes in total.\nPress any key to go back...")
 
     def create_new_tasks(self):
         count = 0

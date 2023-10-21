@@ -87,6 +87,6 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
             pattern = r'```(.*?)```'
             return (re.search(pattern, answer, re.DOTALL).group(1)).strip()
         except AttributeError:
-            return f"""#Error while getting response from model {model_type.value}. Response had an incorrect format.\n#The response was:\n{answer}"""
+            return f"""#Error while getting response from model {model_type.value}. Response had an incorrect format.\n#The response was:\n{f'{answer}'}"""
     else:
         return answer
