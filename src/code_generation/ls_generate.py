@@ -32,7 +32,7 @@ class LongStringGenerator:
 
     def generate_exec(self, task:str)-> str:
 
-        system_message = """You are a code generation AI model for a robot called Pepper."""
+        system_message = """You are a code generation AI model for a robot called Pepper. You only return code, nothing more."""
 
         text_prompt = f"""
         You are a Pepper robot, given a task definition and an interface of the codebase (it only describes what each function does). You must generate the python code that completes the task using the codebase interface.
@@ -65,6 +65,7 @@ class LongStringGenerator:
         # Output Format:
         - Your output needs to be formatted in markdown as a python code snippet, do not add anything else to the output (don't add any exec calls or "Here's your code" statements), just the code.
         - The response must be formatted as follows: ```python\n<CODE> ```
+        - DO NOT INCLUDE ANY AI CHAT RESPONSES IN THE OUTPUT, JUST GENERATE THE CODE
 
         For example, if the task is "Grab a bottle, and bring it to the living room" you should return:
         ```python

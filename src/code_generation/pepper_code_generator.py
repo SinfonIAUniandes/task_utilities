@@ -61,7 +61,7 @@ class CodeGenerator:
                 pbar.update(num_tests*len(list(PromptingType))-count)
             total_time2 = time.time()
             time_elapsed = total_time2 - total_time1
-            input(f"Finished evaluating tests. Took {time_elapsed} seconds or {time_elapsed/60} minutes in total.\nPress any key to go back...")
+            input(f"\nFinished evaluating tests. Took {time_elapsed} seconds or {time_elapsed/60} minutes in total.\nPress any key to go back...")
 
     def create_new_tasks(self):
         count = 0
