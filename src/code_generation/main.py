@@ -1,6 +1,8 @@
 import sys
 import os
-import generate_utils
+import pickle
+import config as cfg
+from getpass import getpass
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from consolemenu import ConsoleMenu
@@ -14,7 +16,8 @@ from database.models import Model, ExecutionResults
 load_dotenv()
 init_db()
 load_code_gen_config()
-from database.crud import get_test, get_random_passed_auto_test, update_test
+
+from database.crud import get_test, get_random_passed_auto_test, update_test, sign_in
 from pepper_code_generator import CodeGenerator
 from view.menu import get_select_menu, evaluate_task
 
@@ -61,7 +64,29 @@ def evaluate_manually():
     return True
 
 def manually_evaluate_tasks_menu():
-    options = ["Evaluate random task", "Evaluate specific task by ID"]
+    try:
+        path = os.path.join(cfg.CONFIG_PATH, "config.pkl")
+        with open(path, "rb") as f:
+            user = pickle.load(f)
+        cfg.CURRENT_USER = sign_in(user.username, user.password, dump=False)
+    except FileNotFoundError:
+        print("You need to log in first to evaluate tasks manually")
+        while True:
+            username = input("Enter your username (q to quit): ")
+            if username == "q":
+                return
+            password = getpass("Enter your password (q to quit) [Input will be invisible]: ")
+            if password == "q":
+                return
+            try:
+                cfg.CURRENT_USER = sign_in(username, password)
+                break
+            except Exception as e:
+                print(e)
+                continue
+        input(f"Logged in as {cfg.CURRENT_USER.username} successfully. Press enter to continue...")
+
+    options = ["Evaluate random task", "Evaluate specific task by ID", "Log out/Switch user"]
     selection = get_select_menu(options, "Select an option to evaluate")
 
     if selection == 0:
@@ -98,8 +123,15 @@ def manually_evaluate_tasks_menu():
                     break
             except Exception as e:
                 print(e)
-        evaluate_task(task)
-
+            evaluate_task(task)
+    elif selection == 2:
+        cfg.CURRENT_USER = None
+        try:
+            path = os.path.join(cfg.CONFIG_PATH, "config.pkl")
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+        return
 if __name__ == "__main__":
     #Create the menu
     menu = ConsoleMenu("Pepper Code Generation", "Console Menu to evaluate and create new tests")

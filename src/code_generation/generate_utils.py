@@ -2,13 +2,13 @@ import openai
 import tiktoken
 import re
 import os
+import config as cfg
 from database.models import Model
 from requests.exceptions import JSONDecodeError
 import requests
 codebase = """"""
 
-dirname, _ = os.path.split(__file__)
-CONFIG_PATH = os.path.join(dirname, "configs/robot_vars.csv")
+CONFIG_PATH = os.path.join(cfg.CONFIG_PATH, "robot_vars.csv")
 TASK_VARS = None
 
 def load_task_config()->dict:

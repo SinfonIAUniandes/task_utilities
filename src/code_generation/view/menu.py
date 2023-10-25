@@ -2,6 +2,7 @@ import os
 import json
 from consolemenu import SelectionMenu
 from code_generation.database.models import ExecutionResults, PepperTest
+import config as cfg
 
 def get_select_menu(options, title, clear_screen=True):
     selection_menu = SelectionMenu(options, title=title, clear_screen=clear_screen)
@@ -41,6 +42,7 @@ def evaluate_task(task: PepperTest, update_test: callable):
             if confirm == "y":
                 print(f"Updating task with id: {task.id} as {selection}")
                 task.task_execution_result = list(ExecutionResults)[selection_index+3].value
+                task.evaluated_by = cfg.CURRENT_USER.id
                 update_test(task)
                 print("Successfully updated task\n")
             elif confirm != "y" and confirm != "n":

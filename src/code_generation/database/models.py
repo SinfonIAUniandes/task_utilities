@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Float
+from sqlalchemy import Column, String, Float, ForeignKey
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.dialects.postgresql import UUID, ENUM, JSON
 from enum import Enum
@@ -36,6 +36,24 @@ class TaskCategory(Enum):
     EGSPR5 = 'EGSPR5'
     EGSPR6 = 'EGSPR6'
 
+class UserType(Enum):
+    LUCCAS = 'LUCCAS'
+    JUAN = 'JUAN'
+    SINFONIA = 'SINFONIA'
+
+class TaskUser:
+    def __init__(self, username, password) -> None:
+        self.username = username
+        self.password = password
+
+
+class User(Base):
+    __tablename__ = 'users'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    username = Column(String(255), nullable=False)
+    password = Column(String(255), nullable=False)
+    user_type = Column(ENUM(UserType), nullable=False, default=UserType.SINFONIA.value)
+
 class PepperTest(Base):
     __tablename__ = 'pepper_tests'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -48,3 +66,4 @@ class PepperTest(Base):
     exception_traceback = Column(String(255), nullable=True)
     exception_type = Column(String(255), nullable=True)
     generation_time_ms = Column(Float, nullable=True)
+    evaluated_by = Column(UUID, ForeignKey('users.id'), nullable=True)

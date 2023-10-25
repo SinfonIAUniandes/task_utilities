@@ -48,6 +48,16 @@ ALTER TABLE "pepper_tests"
 ADD COLUMN task_category task_category_enum NOT NULL
 DEFAULT 'GSPR1';
 
+CREATE TYPE user_type AS ENUM (
+  'LUCCAS',
+  'JUAN',
+  'SINFONIA'
+);
+
+ALTER TABLE "users"
+ADD COLUMN user_type user_type
+DEFAULT 'SINFONIA';
+
 /*Operación de peligro*/
 
 DROP TYPE IF EXISTS task_execution_result_enum CASCADE;

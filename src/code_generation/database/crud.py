@@ -1,6 +1,11 @@
 from sqlalchemy.orm import Session
+import bcrypt
+import pickle
+import config as cfg
+import os
+
 from .config import engine
-from .models import PepperTest
+from .models import PepperTest, User, TaskUser
 from .utils.validators import is_valid_uuid
 
 def get_test(test_id: str):
@@ -51,3 +56,17 @@ def delete_test(test_id: str):
         test.delete()
         session.commit()
         return test
+
+def sign_in(username: str, password: str, dump=True):
+    with Session(bind=engine) as session:
+        user = session.query(User).filter(User.username == username).first()
+        if not user:
+            raise Exception(f"Error: User with username {username} and password {password} was not found")
+        elif bcrypt.checkpw(password.encode("utf-8"), user.password.encode("utf-8")):
+            if dump:
+                path = os.path.join(cfg.CONFIG_PATH, "config.pkl")
+                with open(path, "wb") as f:
+                    pickle.dump(TaskUser(username, password), f)
+            return user
+        else:
+            raise Exception(f"Error: User with username {username} and password {password} was not found")
