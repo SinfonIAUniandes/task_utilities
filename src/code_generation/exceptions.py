@@ -16,3 +16,6 @@ class InvalidLocationException(PepperTestingException):
 
 class InvalidDegreesException(PepperTestingException):
     pass
+
+class EmptyQuestionException(PepperTestingException):
+    pass
