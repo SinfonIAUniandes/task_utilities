@@ -64,7 +64,7 @@ class CodeGenerator:
             input(f"\nFinished evaluating tests. Took {time_elapsed} seconds or {time_elapsed/60} minutes in total.\nPress any key to go back...")
 
     def create_new_tasks(self):
-        inp = input("Are you sure you want to create new tasks? This will populate the database (Y for yes, N for no, q to quit): ")
+        inp = input("Are you sure you want to create new tasks? This will populate the database (Y for yes, anything else to quit): ")
         if inp.lower() == "y":
             count = 0
             print("Creating new tasks...")
