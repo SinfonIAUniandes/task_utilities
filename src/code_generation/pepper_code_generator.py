@@ -44,6 +44,10 @@ class CodeGenerator:
                     try:
                         exec(code)
                         execution = ExecutionResults.PASSED_AUTOMATIC_EXECUTION
+                    except IndentationError:
+                        code = code.replace('    '*2, '')
+                        exec(code)
+                        execution = ExecutionResults.PASSED_AUTOMATIC_EXECUTION
                     except Exception as e:
                         execution = ExecutionResults.EXECUTED_BUT_FAILED
                         task.exception_traceback = "".join(format_exception(type(e), e, e.__traceback__))
