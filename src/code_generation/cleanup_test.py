@@ -28,11 +28,14 @@ class CodeGenerator:
         with Session(bind=engine) as session:
             test = session.query(PepperTest).filter(PepperTest.model_name == "LLAMA2", cast(PepperTest.model_response, String).not_like("%#Error%"), cast(PepperTest.model_response, String).not_like("%I am sorry%"),).first()
             original_string = json.loads(test.model_response)["code"]
-            new_string = original_string.replace("        ", "")
             try:
-                eval(new_string)
-                print("success")
-            except Exception:
+                exec(original_string)
+                print("Success")
+            except IndentationError:
+                code = code.replace('    '*2, '')
+                exec(code)
+                print("Success")
+            except Exception as e:
                 traceback.print_exc()
 
 if __name__ == "__main__":
