@@ -45,13 +45,19 @@ class CodeGenerator:
                         exec(code)
                         execution = ExecutionResults.PASSED_AUTOMATIC_EXECUTION
                     except IndentationError:
-                        code = code.replace('    '*2, '')
-                        exec(code)
-                        execution = ExecutionResults.PASSED_AUTOMATIC_EXECUTION
+                        try:
+                            code = code.replace('    '*2, '')
+                            exec(code)
+                            execution = ExecutionResults.PASSED_AUTOMATIC_EXECUTION
+                        except Exception as e:
+                            execution = ExecutionResults.EXECUTED_BUT_FAILED
+                            task.exception_traceback = "".join(format_exception(type(e), e, e.__traceback__))
+                            task.exception_type = type(e).__name__
                     except Exception as e:
-                        execution = ExecutionResults.EXECUTED_BUT_FAILED
-                        task.exception_traceback = "".join(format_exception(type(e), e, e.__traceback__))
-                        task.exception_type = type(e).__name__
+                            execution = ExecutionResults.EXECUTED_BUT_FAILED
+                            task.exception_traceback = "".join(format_exception(type(e), e, e.__traceback__))
+                            task.exception_type = type(e).__name__
+
 
                     task.model_name = model.value
                     task.prompting_type = prompting_type.value

@@ -1,6 +1,6 @@
 test.py
 *.pyc
-.env
+*.env*
 *Examples
 signup.py
 config.pkl
