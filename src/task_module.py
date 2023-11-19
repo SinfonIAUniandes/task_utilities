@@ -923,6 +923,7 @@ class Task_module:
     def grasp_object(self,object_name:str)->bool:
         """
         Input: object_name
+
         Output: True if the service was called correctly, False if not
         ----------
         Grasp the <object_name>
@@ -930,10 +931,10 @@ class Task_module:
         if self.manipulation:
             try:
                 self.setMoveArms_srv.call(False, False)
-                self.execute_trayectory("request_help_both_arms")
+                self.grasp_object_proxy(object_name)
                 self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=True)
-                rospy.sleep(9)
-                self.go_to_pose("almost_open_both_hands")
+                rospy.sleep(6)
+                self.talk("Thank you!","English",wait=True)
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
@@ -952,8 +953,9 @@ class Task_module:
         if self.manipulation:
             try:
                 self.talk("Please pick up the "+object_name,"English",wait=True)
-                rospy.sleep(7)
+                rospy.sleep(6)
                 self.execute_trayectory("place_both_arms") 
+                self.talk("Thank you!","English",wait=True)
                 self.setMoveArms_srv.call(True, True)           
                 return True
             except rospy.ServiceException as e:

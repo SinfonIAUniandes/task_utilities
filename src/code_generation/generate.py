@@ -96,7 +96,7 @@ if __name__ == "__main__":
     openai.api_key = "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"
 
     task = "Could you enter to the living room, locate the fruits, and hand it to Elizabeth at the dining table. Fruits: apple"
-    #task = input("Write the task: ")
+    task = input("Write the task: ")
     print(task)
     code = generate_code(task)
 
