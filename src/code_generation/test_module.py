@@ -1,30 +1,27 @@
 #!/usr/bin/env python3
-import rospy
-import time
-import rospkg
-import rosservice
-import ConsoleFormatter
-
-
-from std_msgs.msg import Int32, String, Bool
-from std_srvs.srv import Trigger, TriggerRequest
-
-# All imports from tools
-
-# from robot_toolkit_msgs.msg import speech_msg
-
-from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, q_a_speech_srvRequest, talk_speech_srvRequest, saveAudio_srvRequest, speech2text_srv
-
-from perception_msgs.srv import  set_model_recognition_srv,set_model_recognition_srvRequest
-
-from manipulation_msgs.srv import SaveState, SaveStateRequest, GoToState, GoToStateRequest
-
-from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
-from navigation_msgs.msg import simple_feedback_msg
+import generate_utils
+import exceptions
+import random
 
 class Task_module:
 
+    configuration = generate_utils.load_task_config()
+    places = configuration["place_names"]
+    language = configuration["languages"]
+    question_tags = configuration["question_tags"]
+    objects = configuration["objects"]
+
+    def __init__(self, perception=False, speech=False, manipulation=False, navigation=False):
+        """Initializer for the Task_module class
+
+        Args:
+            perception (bool): Enables or disables perception services
+            speech (bool): Enables or disables speech services
+            manipulation (bool): Enables or disables manipulation services
+            navigation (bool): Enables or disables navigation services
+        """
     ################### PERCEPTION SERVICES ###################
+
 
     def find_object(self,object_name:str, timeout=25)->bool:
         """
@@ -35,7 +32,10 @@ class Task_module:
         ----------
         Spins while looking for <object_name> for <timeout> seconds while spinning at 15 deg/s
         """
-        
+        if object_name not in self.objects:
+            raise exceptions.InvalidObjectException(f"Object {object_name} not in the list of objects")
+        return random.choice([True,False])
+
     def count_objects(self,object_name:str)->int:
         """
         Input: object_name, classes names depends of the actual model (see set_model service)
@@ -43,6 +43,9 @@ class Task_module:
         ----------
         Spins 360 degrees and then returns the number of objects of <object_name> seen
         """
+        if object_name not in self.objects:
+            raise exceptions.InvalidObjectException(f"Object {object_name} not in the list of objects")
+        return random.randint(0,10)
 
     def set_model(self,model_name:str)->bool:
         """
@@ -51,6 +54,9 @@ class Task_module:
         ----------
         Sets the model to use for the object recognition.
         classes by model:
+        default: ["person","bench","backpack","handbag","suitcase","bottle","cup","fork","knife","spoon","bowl","chair","couch","bed","laptop"]
+        objects: ["spam"(carne enlatada), "cleanser", "sugar", "jello"(gelatina roja), "mug", "tuna", "bowl", "tomato_soup", "footwear", "banana", "mustard", "coffee_grounds", "cheezit"]
+        fruits: ["apple", "lemon", "orange", "peach", "pear", "plum","strawberry"]
         """
 
     ################### SPEECH SERVICES ###################
@@ -66,10 +72,13 @@ class Task_module:
         ----------
         Allows the robot to say the input of the service.
         """
+        if language not in self.language:
+            raise exceptions.LanguageNotSupported(f"Language {language} not in the list of languages")
+        return True
 
     def speech2text_srv(self, file_name="prueba",seconds=0,transcription=True)->bool:
         """
-        Input: 
+        Input:
         seconds: 0 for automatic stop || > 0 for seconds to record
         file_name: name of the file
         transcription: True || False
@@ -77,6 +86,7 @@ class Task_module:
         ----------
         Allows the robot to save audio and saves it to a file.
         """
+        return "prueba"
 
     def q_a_speech(self, tag:str)->str:
         """
@@ -85,19 +95,39 @@ class Task_module:
         ----------
         Returns a specific answer for predefined questions.
         """
+        if tag not in self.question_tags:
+            raise exceptions.QuestionAnswerTagException(f"Tag {tag} not in the list of question tags")
+        if tag =="age":
+            return "1"
+        else:
+            return "prueba"
+        
+    def answer_question(self,question:str)->str:
+        """
+        Input: question
+        Output: answer
+        ----------
+        Returns an answer for a question.
+        """
+        if question == "" or question is None:
+            raise exceptions.EmptyQuestionException(f"Question recieved is empty")
+        return "respuesta de prueba"
 
     ################### NAVIGATION SERVICES ###################
 
     def go_to_place(self,place_name:str, graph=1, wait=True)->bool:
         """
         Input:
-        place_name: the name of the place
+        place_name: options -> ("bed","dishwasher","kitchen_table","dining_room","sink","desk","entrance","cleaning_stuff","bedside_table","shelf_bedroom","trashbin","pantry","refrigerator",cabinet","tv_stand","storage_rack","side_table","sofa","bookshelf")
         graph: 0 no graph || 1 graph
         wait: True (waits until the robot reaches) || False (doesn't wait)
         Output: True if the service was called correctly, False if not
         ----------
         Goes to place_name
         """
+        if place_name not in self.places:
+            raise exceptions.InvalidLocationException(f"Location {place_name} not in the list of locations")
+        return True
 
     def robot_stop_srv(self)->bool:
         """
@@ -114,6 +144,8 @@ class Task_module:
         ----------
         Spins the robot a number of degrees
         """
+        if degrees < 0 or degrees > 360:
+            raise exceptions.InvalidDegreesException(f"Degrees {degrees} not in the range [0,360]")
 
     def go_to_defined_angle_srv(self, degrees:float):
         """
@@ -122,10 +154,12 @@ class Task_module:
         ----------
         Goes to defined angle
         """
+        if degrees < 0 or degrees > 360:
+            raise exceptions.InvalidDegreesException(f"Degrees {degrees} not in the range [0,360]")
 
     def follow_you(self)->bool:
         """
-        Input: 
+        Input:
         Output: True if the service was called correctly, False if not
         ----------
         Follows the person in front of the robot until the person touches the head of the robot,
@@ -139,9 +173,11 @@ class Task_module:
         ----------
         Adds a place to the graph
         """
+        self.places.append(name)
+        return True
 
-    ############ MANIPULATION SERVICES ###############    
-        
+    ############ MANIPULATION SERVICES ###############
+
     def grasp_object(self,object_name:str)->bool:
         """
         Input: object_name
@@ -149,7 +185,10 @@ class Task_module:
         ----------
         Grasp the <object_name>
         """
-    
+        if object_name not in self.objects:
+            raise exceptions.InvalidObjectException(f"Object {object_name} not in the list of objects")
+        return True
+
     def leave_object(self,object_name:str)->bool:
         """
         Input: object_name
@@ -157,3 +196,6 @@ class Task_module:
         ----------
         Leave the <object_name>
         """
+        if object_name not in self.objects:
+            raise exceptions.InvalidObjectException(f"Object {object_name} not in the list of objects")
+        return True

@@ -1,0 +1,6 @@
+test.py
+*.pyc
+*.env*
+*Examples
+signup.py
+config.pkl
