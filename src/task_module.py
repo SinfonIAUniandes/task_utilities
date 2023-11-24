@@ -16,7 +16,7 @@ from robot_toolkit_msgs.msg import touch_msg
 
 from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
 
-from speech_utilities_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest, hot_word_srvRequest
+from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest, hot_word_srvRequest, answer_srv
 
 from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv #,get_person_description_srv
 
@@ -104,6 +104,10 @@ class Task_module:
             print(self.consoleFormatter.format("Waiting for speech_utilities/q_a_speech...", "WARNING"))
             rospy.wait_for_service('/speech_utilities/q_a_speech_srv')
             self.q_a_proxy = rospy.ServiceProxy('/speech_utilities/q_a_speech_srv', q_a_speech_srv)
+
+            print(self.consoleFormatter.format("Waiting for speech_utilities/answer...", "WARNING"))
+            rospy.wait_for_service('/speech_utilities/answers_srv')
+            self.answer_proxy = rospy.ServiceProxy('/speech_utilities/answers_srv', answer_srv)
 
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
 
@@ -555,6 +559,15 @@ class Task_module:
             print("speech as false")
             return ""
 
+    def answer(self, question:str)->str:
+        if self.speech:
+            try:
+                answer = self.answer_proxy(question)
+                return answer.answer
+            except rospy.ServiceException as e:
+                print("Service call failedL %s"%e)
+                return ""
+        
     def q_a_speech(self, tag:str)->str:
         """
         Input: tag in lowercase: options -> ("age", "name", "drink")
@@ -924,7 +937,6 @@ class Task_module:
     def grasp_object(self,object_name:str)->bool:
         """
         Input: object_name
-
         Output: True if the service was called correctly, False if not
         ----------
         Grasp the <object_name>
@@ -932,10 +944,10 @@ class Task_module:
         if self.manipulation:
             try:
                 self.setMoveArms_srv.call(False, False)
-                self.grasp_object_proxy(object_name)
+                self.execute_trayectory("request_help_both_arms")
                 self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=True)
-                rospy.sleep(6)
-                self.talk("Thank you!","English",wait=True)
+                rospy.sleep(9)
+                self.go_to_pose("almost_open_both_hands")
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s"%e)
@@ -954,9 +966,8 @@ class Task_module:
         if self.manipulation:
             try:
                 self.talk("Please pick up the "+object_name,"English",wait=True)
-                rospy.sleep(6)
+                rospy.sleep(7)
                 self.execute_trayectory("place_both_arms") 
-                self.talk("Thank you!","English",wait=True)
                 self.setMoveArms_srv.call(True, True)           
                 return True
             except rospy.ServiceException as e:
