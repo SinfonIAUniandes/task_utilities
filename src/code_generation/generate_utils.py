@@ -2,13 +2,13 @@ import openai
 import tiktoken
 import re
 import os
-import config as cfg
-from database.models import Model
+import code_generation.configs as cfg
+from code_generation.database.models import Model
 from requests.exceptions import JSONDecodeError
 import requests
 codebase = """"""
 
-CONFIG_PATH = os.path.join(cfg.CONFIG_PATH, "robot_vars.csv")
+CONFIG_PATH = os.path.join("src/task_utilities/src/code_generation/configs/robot_vars.csv")
 TASK_VARS = None
 
 def load_task_config()->dict:
@@ -42,6 +42,7 @@ def count_tokens(string: str, encoding_name: str = "cl100k_base") -> int:
     return num_tokens
 
 def generate_response(text_prompt, system_message=None, is_code=True, model="gpt-3.5-turbo-16k", model_type= Model.GPT35, temperature=0):
+    print("generate response")
     messages = [
         {"role": "user", "content": text_prompt}
     ]
@@ -59,13 +60,16 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
             return None
 
     elif openai.api_version is None:
+        print("Entro openai.api_version is None")
         prediction = openai.ChatCompletion.create(
             model=model,
             temperature=temperature,
             messages=messages
         )
     else:
+        print("Entro else")
         api_key = os.getenv("OPENAI3_KEY") if model_type == Model.GPT35 else os.getenv("OPENAI4_KEY")
+        print("API KEY", api_key)
         api_base = os.getenv("OPENAI3_API_BASE", "https://api.openai.com/v1") if model_type == Model.GPT35 else os.getenv("OPENAI4_API_BASE", "https://api.openai.com/v1")
         deployment_name=os.getenv("OPENAI3_DEPLOYMENT_NAME", "gpt-35-turbo") if model_type == Model.GPT35 else os.getenv("OPENAI4_DEPLOYMENT_NAME", "gpt-4")
         prediction = openai.ChatCompletion.create(

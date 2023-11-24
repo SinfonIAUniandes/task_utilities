@@ -1,5 +1,7 @@
-from generate_utils import generate_response, load_task_config
-from database.models import Model
+from code_generation.generate_utils import generate_response, load_task_config
+
+# from generate_utils import generate_response, load_task_config
+from code_generation.database.models import Model
 
 class LongStringGenerator:
 
@@ -12,6 +14,8 @@ class LongStringGenerator:
         Perception functions:
         self.tm.find_object(object_name)->bool: Returns True if the object was found, False if not, the only possible objects with their exact syntax are: {self.objects}
         self.tm.count_objects(object_name)->int: Returns the number of objects found, the only possible objects with their exact syntax are: {self.objects}
+        self.tm.recognize_face()->str: Returns the name of the person that the robot is looking at
+        self.tm.save_face(name)->bool: Saves the face of the person that the robot is looking at with the given name
 
         Speech functions:
         self.tm.talk(text): Allows the robot to say the input of the service.
@@ -31,7 +35,7 @@ class LongStringGenerator:
         """
 
     def generate_exec(self, task:str)-> str:
-
+        print("generate exec")
         system_message = """You are a code generation AI model for a robot called Pepper. You only return code, nothing more."""
 
         text_prompt = f"""
