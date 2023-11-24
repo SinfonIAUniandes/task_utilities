@@ -44,10 +44,20 @@ class CodeGenerator:
                     try:
                         exec(code)
                         execution = ExecutionResults.PASSED_AUTOMATIC_EXECUTION
+                    except IndentationError:
+                        try:
+                            code = code.replace('    '*2, '')
+                            exec(code)
+                            execution = ExecutionResults.PASSED_AUTOMATIC_EXECUTION
+                        except Exception as e:
+                            execution = ExecutionResults.EXECUTED_BUT_FAILED
+                            task.exception_traceback = "".join(format_exception(type(e), e, e.__traceback__))
+                            task.exception_type = type(e).__name__
                     except Exception as e:
-                        execution = ExecutionResults.EXECUTED_BUT_FAILED
-                        task.exception_traceback = "".join(format_exception(type(e), e, e.__traceback__))
-                        task.exception_type = type(e).__name__
+                            execution = ExecutionResults.EXECUTED_BUT_FAILED
+                            task.exception_traceback = "".join(format_exception(type(e), e, e.__traceback__))
+                            task.exception_type = type(e).__name__
+
 
                     task.model_name = model.value
                     task.prompting_type = prompting_type.value
@@ -64,17 +74,21 @@ class CodeGenerator:
             input(f"\nFinished evaluating tests. Took {time_elapsed} seconds or {time_elapsed/60} minutes in total.\nPress any key to go back...")
 
     def create_new_tasks(self):
-        count = 0
-        print("Creating new tasks...")
-        tasks_tuple = generate_category_tasks(15)
-        for tuple in tasks_tuple:
-            for task in tuple[0]:
-                category = tuple[1]
-                for prompting_type in list(PromptingType):
-                    for model in list(Model):
-                        description = task
-                        task_gpt = PepperTest(task=description, task_category=category.value, model_name=model.value, prompting_type=prompting_type.value)
-                        count += 1
-                        create_test(task_gpt)
-            print("Created tasks for category: ", category.value)
-        input(f"Created {count} new tasks succesfully. Press any key to continue...")
+        inp = input("Are you sure you want to create new tasks? This will populate the database (Y for yes, anything else to quit): ")
+        if inp.lower() == "y":
+            count = 0
+            print("Creating new tasks...")
+            tasks_tuple = generate_category_tasks(15)
+            for tuple in tasks_tuple:
+                for task in tuple[0]:
+                    category = tuple[1]
+                    for prompting_type in list(PromptingType):
+                        for model in list(Model):
+                            description = task
+                            task_gpt = PepperTest(task=description, task_category=category.value, model_name=model.value, prompting_type=prompting_type.value)
+                            count += 1
+                            create_test(task_gpt)
+                print("Created tasks for category: ", category.value)
+            input(f"Created {count} new tasks succesfully. Press any key to continue...")
+        else:
+            input("Did not create new tasks. Press any key to continue...")

@@ -101,6 +101,17 @@ class Task_module:
             return "1"
         else:
             return "prueba"
+        
+    def answer_question(self,question:str)->str:
+        """
+        Input: question
+        Output: answer
+        ----------
+        Returns an answer for a question.
+        """
+        if question == "" or question is None:
+            raise exceptions.EmptyQuestionException(f"Question recieved is empty")
+        return "respuesta de prueba"
 
     ################### NAVIGATION SERVICES ###################
 

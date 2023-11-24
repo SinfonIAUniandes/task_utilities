@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.expression import func
 import bcrypt
 import pickle
 import config as cfg
@@ -19,7 +20,7 @@ def get_test(test_id: str):
 
 def get_random_passed_auto_test():
     with Session(bind=engine) as session:
-        test = session.query(PepperTest).filter(PepperTest.task_execution_result == "PASSED_AUTOMATIC_EXECUTION").first()
+        test = session.query(PepperTest).filter(PepperTest.task_execution_result == "PASSED_AUTOMATIC_EXECUTION").order_by(func.random()).first()
         return test
 
 def get_non_executed_tests(model, prompting_type, limit=10):
