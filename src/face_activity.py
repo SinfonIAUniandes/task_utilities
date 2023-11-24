@@ -12,11 +12,7 @@ import math
 import os
 import numpy as np
 from std_srvs.srv import SetBool
-from code_generation import ls_generate as gen
-from code_generation import generate_utils 
-from code_generation.database.models import Model
-
-
+from code_generation import generate as gen
 
 from navigation_msgs.srv import constant_spin_srv
 from navigation_msgs.msg import simple_feedback_msg
@@ -26,7 +22,7 @@ from tf.transformations import euler_from_quaternion
 
 class GPSR(object):
     def __init__(self):
-        self.gen = gen.LongStringGenerator()
+        
         # TODO
         """
         - Revisar si se meten los servicios de interface o del pytoolkit directamente (ojala nodo de interface)
@@ -40,7 +36,7 @@ class GPSR(object):
         # Definir los estados posibles del semáforo
         self.task_name = "GPSR"
         states = ['INIT', 'WAIT4GUEST', 'GPSR', 'GO2GPSR']
-        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=False, pytoolkit=True)
+        self.tm = tm(perception = True,speech=True,manipulation=True, navigation=False, pytoolkit=False)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
@@ -58,16 +54,29 @@ class GPSR(object):
         rospy_check.start()
 
         ############################# GLOBAL VARIABLES #############################
-        self.location = "receptionist"
+        self.location = "bookshelf"
 
     def on_enter_INIT(self):
-        self.tm.talk("I am going to do the  "+self.task_name+" task","English")
-        print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        self.tm.go_to_place("receptionist")
-        self.tm.go_to_defined_angle_srv(0)
+        self.tm.go_to_pose("up_head")
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.start_recognition("front_camera")
-        self.tm.go_to_pose("default_head")
+        while True:
+            self.tm.talk("Waiting for guests")
+            self.tm.look_for_object("person",False)
+            self.tm.wait_for_object(-1)        
+            self.tm.look_for_object("",True)
+            time.sleep(2)
+            person_name = "Unknown"
+            self.tm.talk("Recognizing person")
+            person_name = self.tm.recognize_face(3)
+            if person_name in ["Unknown","NO_PERSON_DETECTED","ERROR"]:
+                self.tm.talk("I don't recognize you. ")
+                person_name = self.tm.q_a_speech("name")
+                self.tm.talk(f"{person_name}, will take some pictures of your face to recognize you in future occasions")
+                succed = self.tm.save_face(person_name,5)
+            else: 
+                self.tm.talk(f'Hello {person_name}, welcome to the event')
+            rospy.sleep(2)
         self.beggining()
 
     def on_enter_GPSR(self):
@@ -76,11 +85,10 @@ class GPSR(object):
         self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. Talk to me now: ","English")
         task = self.tm.speech2text_srv("gpsr",10,True)
         print("task",task)
-        generate_utils.load_code_gen_config()
-        code = self.gen.generate_code(task,Model.GPT35)
+        code = gen.generate_code(task)
         print(code)
 
-        self.tm.talk("I will: ","English")
+        self.tm.talk("I will: "+task,"English")
         try:
             exec(code)
         except:
