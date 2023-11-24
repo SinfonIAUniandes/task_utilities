@@ -108,7 +108,7 @@ class RECEPTIONIST(object):
         self.old_person = ""
         self.failed_saving_face=False
         self.angle_index = 0
-        self.chair_angles = [127,163,193,235]
+        self.chair_angles = [260,220,180,140]
         self.checked_chair_angles = []
         self.empty_chair_angles = []
         self.first_time = True
@@ -180,9 +180,9 @@ class RECEPTIONIST(object):
             self.show_topic_srv("/perception_utilities/filtered_image")
             self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
         succed = self.tm.save_face(self.actual_person["name"],5)
-        attributes = self.tm.get_person_description()
-        print("attributes: ",attributes)
-        # attributes = {"age":25,"gender":"Male","race":"White"}
+        #attributes = self.tm.get_person_description()
+        #print("attributes: ",attributes)
+        attributes = {"age":25,"gender":"Man","race":"White"}
         print("succed ",succed)
         if succed and attributes!={}:
             time.sleep(1)
@@ -256,6 +256,7 @@ class RECEPTIONIST(object):
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
         person_name = ""
+        """
         # TODO Si hay un falso positivo la maqunina de estados se ve a la gran puta mierda
         if self.first_time:
             self.first_time=False
@@ -270,21 +271,21 @@ class RECEPTIONIST(object):
                 self.tm.talk(f' {person_name}, I am going to take some pictures of you please look at me ',"English", wait=False)
                 self.tm.save_face(person_name, 7)
             self.introduced_persons.append(person_name)
-        else:
-            while person_name == "" and self.recognize_person_counter<3:
-                person_name = self.tm.recognize_face(3)
-                print("saw: "+person_name)
-                self.recognize_person_counter+=1
-            self.recognize_person_counter=0
-            if person_name not in self.introduced_persons and person_name in self.all_persons:
-                self.empty_chair_angles.remove(self.checked_chair_angles[-1])
-                person_introduce = self.all_persons[person_name]
-                print("Person introduce: ",person_introduce)
-                #TODO manipulacion animations/poses
-                self.animations_publisher.publish("animations","Gestures/TakePlace_2")
-                self.tm.talk(f' {self.actual_person["name"]} I introduce to you {person_name}. {person_introduce["pronoun"]} is a {person_introduce["gender"]}. {person_name} is around {person_introduce["age"]} years old and likes to drink {person_introduce["drink"]}',"English")
-                self.introduced_persons.append(person_name)
+        else:"""
         
+        while person_name == "" and self.recognize_person_counter<3:
+            person_name = self.tm.recognize_face(3)
+            print("saw: "+person_name)
+            self.recognize_person_counter+=1
+            self.recognize_person_counter=0
+        if person_name not in self.introduced_persons and person_name in self.all_persons:
+            self.empty_chair_angles.remove(self.checked_chair_angles[-1])
+            person_introduce = self.all_persons[person_name]
+            print("Person introduce: ",person_introduce)
+            #TODO manipulacion animations/poses
+            self.animations_publisher.publish("animations","Gestures/TakePlace_2")
+            self.tm.talk(f' {self.actual_person["name"]} I introduce to you {person_name}. {person_introduce["pronoun"]} is a {person_introduce["gender"]}. {person_name} is around {person_introduce["age"]} years old and likes to drink {person_introduce["drink"]}',"English")
+            self.introduced_persons.append(person_name)
         self.introduced_old_person()
     
     def on_enter_LOOK4CHAIR(self):
