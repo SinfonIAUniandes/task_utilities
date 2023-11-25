@@ -38,7 +38,7 @@ class GPSR(object):
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
-        self.task_name = "ANSWER TEST"
+        self.task_name = "ANSWERTEST"
         states = ['INIT', 'MAL', 'GPSR', 'BIEN', "ANSWER"]
         self.tm = tm(perception = True,speech=True,manipulation=False, navigation=False, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
