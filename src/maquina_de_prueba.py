@@ -39,7 +39,7 @@ class GPSR(object):
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
         self.task_name = "GPSR"
-        states = ['INIT', 'MAL', 'GPSR', 'BIEN']
+        states = ['INIT', 'MAL', 'GPSR', 'BIEN', "ANSWER"]
         self.tm = tm(perception = True,speech=True,manipulation=False, navigation=False, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
@@ -69,7 +69,7 @@ class GPSR(object):
             self.bien()
         else:
             self.mal()
-            
+
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo
         while not rospy.is_shutdown():
