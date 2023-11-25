@@ -563,8 +563,12 @@ class Task_module:
         if self.speech:
             try:
                 self.talk("Please ask me your question, talk to me now")
-                question= self.speech2text_srv_proxy()
-                answer = self.answer_proxy(question, language)
+                question= self.speech2text_srv()
+                print("1",question)
+                answer = self.answer_proxy(question, language).answer
+                if answer== "None": 
+                    answer = "I don't know"
+                print("2",answer)   
                 self.talk(answer)
                 return True
             except rospy.ServiceException as e:

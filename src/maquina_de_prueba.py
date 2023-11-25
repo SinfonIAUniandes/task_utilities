@@ -65,7 +65,8 @@ class GPSR(object):
         self.beggining()
     
     def on_enter_ANSWER(self):
-        if self.tm.answer_question():
+        works=self.tm.answer()
+        if works:
             self.bien()
         else:
             self.mal()
