@@ -38,17 +38,16 @@ class GPSR(object):
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
-        self.task_name = "GPSR"
-        states = ['INIT', 'WAIT4GUEST', 'GPSR', 'GO2GPSR']
-        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=True, pytoolkit=True)
+        self.task_name = "ANSWERTEST"
+        states = ['INIT', 'MAL', 'GPSR', 'BIEN', "ANSWER"]
+        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=False, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
             {'trigger': 'start', 'source': 'GPSR', 'dest': 'INIT'},
-            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'GO2GPSR'},
-            {'trigger': 'go_to_gpsr', 'source': 'GO2GPSR', 'dest': 'WAIT4GUEST'},
-            {'trigger': 'person_arrived', 'source': 'WAIT4GUEST', 'dest': 'GPSR'},
-            {'trigger': 'GPSR_done', 'source': 'GPSR', 'dest': 'GO2GPSR'}
+            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'ANSWER'},
+            {'trigger': 'bien', 'source': 'ANSWER', 'dest': 'BIEN'},
+            {'trigger': 'mal', 'source': 'ANSWER', 'dest': 'MAL'},
         ]
         
         # Crear la máquina de estados
@@ -58,48 +57,19 @@ class GPSR(object):
         rospy_check.start()
 
         ############################# GLOBAL VARIABLES #############################
-        self.location = "living_room"
+        self.location = "receptionist"
 
     def on_enter_INIT(self):
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        self.tm.go_to_defined_angle_srv(0)
-        self.tm.turn_camera("front_camera","custom",1,15) 
-        self.tm.start_recognition("front_camera")
-        self.tm.go_to_pose("default_head")
         self.beggining()
-
-    def on_enter_GPSR(self):
-        print(self.consoleFormatter.format("GPSR", "HEADER"))
-        self.tm.look_for_object("")
-        self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. Talk to me now: ","English")
-        task = self.tm.speech2text_srv("gpsr",10,True)
-        print("task",task)
-        self.tm.talk("Processing your request")
-        generate_utils.load_code_gen_config()
-        code = self.gen.generate_code(task,Model.GPT4)
-        print(code)
-
-        self.tm.talk("I will: ","English")
-        try:
-            exec(code)
-        except:
-            self.tm.talk("I cannot do this task: "+task,"English")
-        self.GPSR_done()
-
-    def on_enter_GO2GPSR(self):
-        print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
-        self.tm.talk("I am going to the GPSR location","English")
-        self.tm.go_to_place(self.location)
-        self.tm.go_to_defined_angle_srv(0)
-        self.go_to_gpsr()
-
-    def on_enter_WAIT4GUEST(self):
-        print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
-        self.tm.talk("Waiting for guests","English")
-        self.tm.look_for_object("person")
-        self.tm.wait_for_object(-1)
-        self.person_arrived()
+    
+    def on_enter_ANSWER(self):
+        works=self.tm.answer()
+        if works:
+            self.bien()
+        else:
+            self.mal()
 
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo

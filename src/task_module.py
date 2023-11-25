@@ -10,76 +10,16 @@ from std_srvs.srv import Trigger, TriggerRequest, SetBool
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import (
-    set_move_arms_enabled_srv,
-    misc_tools_srv,
-    misc_tools_srvRequest,
-    tablet_service_srv,
-)  # , set_security_distance_srv
+from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv #, set_security_distance_srv
 from robot_toolkit_msgs.msg import touch_msg
 
 from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
 
-from speech_utilities_msgs.srv import (
-    q_a_speech_srv,
-    talk_speech_srv,
-    speech2text_srv,
-    q_a_speech_srvRequest,
-    talk_speech_srvRequest,
-    speech2text_srvRequest,
-    hot_word_srvRequest,
-)
+from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest, hot_word_srvRequest, answer_srv
 
-from perception_msgs.srv import (
-    start_recognition_srv,
-    start_recognition_srvRequest,
-    look_for_object_srv,
-    look_for_object_srvRequest,
-    save_face_srv,
-    save_face_srvRequest,
-    recognize_face_srv,
-    recognize_face_srvRequest,
-    save_image_srv,
-    save_image_srvRequest,
-    set_model_recognition_srv,
-    set_model_recognition_srvRequest,
-    read_qr_srv,
-    read_qr_srvRequest,
-    turn_camera_srv,
-    turn_camera_srvRequest,
-    filtered_image_srv,
-    filtered_image_srvRequest,
-    start_pose_recognition_srv,
-)  # ,get_person_description_srv
+from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv #,get_person_description_srv
 
-from navigation_msgs.srv import (
-    set_current_place_srv,
-    set_current_place_srvRequest,
-    go_to_relative_point_srv,
-    go_to_relative_point_srvRequest,
-    go_to_place_srv,
-    go_to_place_srvRequest,
-    start_random_navigation_srv,
-    start_random_navigation_srvRequest,
-    add_place_srv,
-    add_place_srvRequest,
-    follow_you_srv,
-    follow_you_srvRequest,
-    robot_stop_srv,
-    robot_stop_srvRequest,
-    spin_srv,
-    spin_srvRequest,
-    go_to_defined_angle_srv,
-    go_to_defined_angle_srvRequest,
-    get_absolute_position_srv,
-    get_absolute_position_srvRequest,
-    get_route_guidance_srv,
-    get_route_guidance_srvRequest,
-    correct_position_srv,
-    correct_position_srvRequest,
-    constant_spin_srv,
-    constant_spin_srvRequest,
-)
+from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
 
 
@@ -219,43 +159,25 @@ class Task_module:
         self.speech = speech
 
         if speech:
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for SPEECH services...", "WARNING"
-                )
-            )
+            print(self.consoleFormatter.format("Waiting for SPEECH services...","WARNING"))
 
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for speech_utilities/talk_speech...", "WARNING"
-                )
-            )
-            rospy.wait_for_service("/speech_utilities/talk_speech_srv")
-            self.talk_proxy = rospy.ServiceProxy(
-                "/speech_utilities/talk_speech_srv", talk_speech_srv
-            )
+            print(self.consoleFormatter.format("Waiting for speech_utilities/talk_speech...", "WARNING"))
+            rospy.wait_for_service('/speech_utilities/talk_speech_srv')
+            self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_speech_srv)
 
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for speech_utilities/speech2text...", "WARNING"
-                )
-            )
-            rospy.wait_for_service("speech_utilities/speech2text_srv")
-            self.speech2text_srv_proxy = rospy.ServiceProxy(
-                "speech_utilities/speech2text_srv", speech2text_srv
-            )
+            print(self.consoleFormatter.format("Waiting for speech_utilities/speech2text...", "WARNING"))
+            rospy.wait_for_service('speech_utilities/speech2text_srv')
+            self.speech2text_srv_proxy = rospy.ServiceProxy('speech_utilities/speech2text_srv', speech2text_srv)
 
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for speech_utilities/q_a_speech...", "WARNING"
-                )
-            )
-            rospy.wait_for_service("/speech_utilities/q_a_speech_srv")
-            self.q_a_proxy = rospy.ServiceProxy(
-                "/speech_utilities/q_a_speech_srv", q_a_speech_srv
-            )
+            print(self.consoleFormatter.format("Waiting for speech_utilities/q_a_speech...", "WARNING"))
+            rospy.wait_for_service('/speech_utilities/q_a_speech_srv')
+            self.q_a_proxy = rospy.ServiceProxy('/speech_utilities/q_a_speech_srv', q_a_speech_srv)
 
-            print(self.consoleFormatter.format("SPEECH services enabled", "OKGREEN"))
+            print(self.consoleFormatter.format("Waiting for speech_utilities/answer...", "WARNING"))
+            rospy.wait_for_service('/speech_utilities/answers_srv')
+            self.answer_proxy = rospy.ServiceProxy('/speech_utilities/answers_srv', answer_srv)
+
+            print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
 
             self.hot_word = "ready"
 
@@ -478,9 +400,13 @@ class Task_module:
                 )
             )
             rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
-            self.autonomous_life_proxy = rospy.ServiceProxy(
-                "/pytoolkit/ALAutonomousLife/set_state_srv", SetBool
-            )
+            self.autonomous_life_proxy = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
+
+            print(self.consoleFormatter.format("Waiting for pytoolkit/stop_tracker...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALTracker/stop_tracker_srv")
+            self.stop_tracker_proxy = rospy.ServiceProxy("/pytoolkit/ALTracker/stop_tracker_srv",battery_service_srv)
+
+            print(self.consoleFormatter.format("PYTOOLKIT services enabled","OKGREEN"))
 
             print(self.consoleFormatter.format("PYTOOLKIT services enabled", "OKGREEN"))
 
@@ -633,9 +559,9 @@ class Task_module:
         Spins while looking for <object_name> for <timeout> seconds while spinning at 15 deg/s
         """
         # spins until the object is found or timeout
-        if self.perception and self.navigation and self.manipulation:
+        if self.perception and self.navigation:
             try:
-                self.go_to_pose("default_head")
+                # self.go_to_pose("default_head")
                 self.look_for_object(object_name)
                 self.constant_spin_srv(15)
                 found = self.wait_for_object(timeout)
@@ -840,14 +766,31 @@ class Task_module:
             try:
                 text = self.speech2text_srv_proxy(file_name, seconds, transcription)
                 return text.answer
-            except rospy.ServiceException as e:
+            except rospy.ServiceException as e  :
                 print("Service call failed: %s" % e)
                 return ""
         else:
             print("speech as false")
             return ""
 
-    def q_a_speech(self, tag: str) -> str:
+    def answer_question(self, file_name="answer_prueba", language="English")->bool:
+        if self.speech:
+            try:
+                self.talk("Please ask me your question, talk to me now")
+                question= self.speech2text_srv()
+                print("1",question)
+                answer = self.answer_proxy(question, language).answer
+                if answer== "None": 
+                    answer = "I don't know"
+                print("2",answer)   
+                self.talk(answer)
+                return True
+            except rospy.ServiceException as e:
+                print("Service call failedL %s"%e)
+                return False
+        return False
+        
+    def q_a_speech(self, tag:str)->str:
         """
         Input: tag in lowercase: options -> ("age", "name", "drink")
         Output: answer
@@ -899,8 +842,16 @@ class Task_module:
         """
         if self.navigation:
             try:
-                approved = self.go_to_relative_point_proxy(x, y, theta)
-                if approved == "approved":
+                if self.pytoolkit:
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
+                approved = self.go_to_relative_point_proxy(x,y,theta)
+                if self.pytoolkit:     
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
+                if approved=="approved":
                     return True
                 else:
                     return False
@@ -923,10 +874,26 @@ class Task_module:
         """
         if self.navigation:
             try:
+                if self.pytoolkit:
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
                 approved = self.go_to_place_proxy(place_name, graph)
+                if self.pytoolkit:
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
                 if wait:
+                    if self.pytoolkit:
+                        self.stop_tracker_proxy()
+                        self.stop_tracker_proxy()
+                        self.stop_tracker_proxy()
                     self.wait_go_to_place()
-                if approved == "approved":
+                    if self.pytoolkit:
+                        self.stop_tracker_proxy()
+                        self.stop_tracker_proxy()
+                        self.stop_tracker_proxy()
+                if approved=="approved":
                     return True
                 else:
                     return False
@@ -946,9 +913,17 @@ class Task_module:
         Follows the person in front of the robot until the person touches the head of the robot
         """
         rospy.Subscriber("/touch", touch_msg, self.callback_head_sensor_subscriber)
-        if self.navigation:
+        if self.navigation and self.pytoolkit:
             try:
+                if self.pytoolkit:
+                        self.stop_tracker_proxy()
+                        self.stop_tracker_proxy()
+                        self.stop_tracker_proxy()
                 approved = self.follow_you_proxy(True)
+                if self.pytoolkit:
+                        self.stop_tracker_proxy()
+                        self.stop_tracker_proxy()
+                        self.stop_tracker_proxy()
                 if approved == "approved":
                     self.talk(
                         "When you want me to stop please touch my head",
@@ -1224,7 +1199,6 @@ class Task_module:
     def grasp_object(self, object_name: str) -> bool:
         """
         Input: object_name
-
         Output: True if the service was called correctly, False if not
         ----------
         Grasp the <object_name>
@@ -1232,14 +1206,10 @@ class Task_module:
         if self.manipulation:
             try:
                 self.setMoveArms_srv.call(False, False)
-                self.grasp_object_proxy(object_name)
-                self.talk(
-                    "Could you place the " + object_name + " in my hands, please?",
-                    "English",
-                    wait=True,
-                )
-                rospy.sleep(6)
-                self.talk("Thank you!", "English", wait=True)
+                self.execute_trayectory("request_help_both_arms")
+                self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=True)
+                rospy.sleep(9)
+                self.go_to_pose("almost_open_both_hands")
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -1257,11 +1227,10 @@ class Task_module:
         """
         if self.manipulation:
             try:
-                self.talk("Please pick up the " + object_name, "English", wait=True)
-                rospy.sleep(6)
-                self.execute_trayectory("place_both_arms")
-                self.talk("Thank you!", "English", wait=True)
-                self.setMoveArms_srv.call(True, True)
+                self.talk("Please pick up the "+object_name,"English",wait=True)
+                rospy.sleep(7)
+                self.execute_trayectory("place_both_arms") 
+                self.setMoveArms_srv.call(True, True)           
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
