@@ -24,7 +24,12 @@ from speech_msgs.srv import hot_word_srv
 from navigation_msgs.srv import constant_spin_srv, follow_you_srv
 from perception_msgs.msg import get_labels_msg
 from navigation_msgs.msg import simple_feedback_msg
-from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv, misc_tools_srv
+from robot_toolkit_msgs.srv import (
+    tablet_service_srv,
+    move_head_srv,
+    misc_tools_srv,
+    battery_service_srv,
+)
 from robot_toolkit_msgs.msg import animation_msg, touch_msg
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion
@@ -114,6 +119,15 @@ class CARRY_MY_LUGGAGE(object):
             self.callback_get_labels_subscriber,
         )
 
+        print(
+            self.consoleFormatter.format(
+                "Waiting for pytoolkit/stop_tracker...", "WARNING"
+            )
+        )
+        rospy.wait_for_service("/pytoolkit/ALTracker/stop_tracker_srv")
+        self.stop_tracker_proxy = rospy.ServiceProxy(
+            "/pytoolkit/ALTracker/stop_tracker_srv", battery_service_srv
+        )
         # --------------- Subscribers ---------------
         self.posePublisherSubscriber = rospy.Subscriber(
             "perception_utilities/pose_publisher", String, self.posePublisherCallback
@@ -173,12 +187,12 @@ class CARRY_MY_LUGGAGE(object):
         ):
             rospy.sleep(0.05)
         print("Signaled")
-        if self.isBagAtTheLeft == True:
-            self.bagSelectedLeft = True
+        if self.isBagAtTheRight == True:
+            self.bagSelectedRight = True
             self.tm.talk("I found your bag to my left")
             self.tm.go_to_pose("small_object_left_hand", 0.1)
-        elif self.isBagAtTheRight == True:
-            self.bagSelectedRight = True
+        elif self.isBagAtTheLeft == True:
+            self.bagSelectedLeft = True
             self.tm.talk("I found your bag to my right")
             self.tm.go_to_pose("small_object_right_hand", 0.1)
         else:
@@ -199,7 +213,7 @@ class CARRY_MY_LUGGAGE(object):
             self.tm.talk("Im moving right", wait=False)
             self.tm.go_to_relative_point(0.2, -0.5, 0)
         elif self.isBagAtTheRight:
-            self.tm.talk("Im moving right", wait=False)
+            self.tm.talk("Im moving left", wait=False)
             self.tm.go_to_relative_point(0.2, 0.5, 0)
         self.grab_bag()
 
@@ -241,8 +255,13 @@ class CARRY_MY_LUGGAGE(object):
         self.tm.talk("If you want me to stop please touch my head!")
         rospy.sleep(3)
         self.tm.talk("Go ahead, I am following you")
+        self.stop_tracker_proxy()
+        self.stop_tracker_proxy()
+        self.stop_tracker_proxy()
         self.follow_you_srv.call(True)
-        time.sleep(10)
+        self.stop_tracker_proxy()
+        self.stop_tracker_proxy()
+        self.stop_tracker_proxy()
         self.save_places = True
         # answer = self.hot_word_srv("stop", 0.5, 1000000)
         while self.isTouched == False:
