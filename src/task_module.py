@@ -559,9 +559,10 @@ class Task_module:
             print("speech as false")
             return ""
 
-    def answer(self, question:str)->str:
+    def answer(self)->str:
         if self.speech:
             try:
+		question= self.speech2text_srv_proxy(file_name, 5, True)
                 answer = self.answer_proxy(question)
                 return answer.answer
             except rospy.ServiceException as e:
