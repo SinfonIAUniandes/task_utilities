@@ -11,7 +11,7 @@ from std_srvs.srv import Trigger, TriggerRequest, SetBool
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv #, set_security_distance_srv
+from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv #, set_security_distance_srv
 from robot_toolkit_msgs.msg import touch_msg
 
 from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
@@ -198,6 +198,10 @@ class Task_module:
             print(self.consoleFormatter.format("Waiting for pytoolkit/autononumusLife...", "WARNING"))
             rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
             self.autonomous_life_proxy = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
+
+            print(self.consoleFormatter.format("Waiting for pytoolkit/stop_tracker...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALTracker/stop_tracker_srv")
+            self.stop_tracker_proxy = rospy.ServiceProxy("/pytoolkit/ALTracker/stop_tracker_srv",battery_service_srv)
 
             print(self.consoleFormatter.format("PYTOOLKIT services enabled","OKGREEN"))
 
@@ -608,7 +612,15 @@ class Task_module:
         """
         if self.navigation:
             try:
+                if self.pytoolkit:
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
                 approved = self.go_to_relative_point_proxy(x,y,theta)
+                if self.pytoolkit:     
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
                 if approved=="approved":
                     return True
                 else:
@@ -632,9 +644,25 @@ class Task_module:
         """
         if self.navigation:
             try:
+                if self.pytoolkit:
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
                 approved = self.go_to_place_proxy(place_name, graph)
+                if self.pytoolkit:
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
+                    self.stop_tracker_proxy()
                 if wait:
+                    if self.pytoolkit:
+                        self.stop_tracker_proxy()
+                        self.stop_tracker_proxy()
+                        self.stop_tracker_proxy()
                     self.wait_go_to_place()
+                    if self.pytoolkit:
+                        self.stop_tracker_proxy()
+                        self.stop_tracker_proxy()
+                        self.stop_tracker_proxy()
                 if approved=="approved":
                     return True
                 else:

@@ -1,4 +1,4 @@
-place_names:door_living_room,receptionist
+place_names:door,kitchen,living_room
 languages:English,Spanish
 question_tags:age,name,drink,gender
 objects:person,bench,cleanser,backpack,biscuits,handbag,suitcase,bottle,cup,bowl
