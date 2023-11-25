@@ -559,7 +559,7 @@ class Task_module:
             print("speech as false")
             return ""
 
-    def answer(self, file_name="answer_prueba", language="English")->bool:
+    def answer_question(self, file_name="answer_prueba", language="English")->bool:
         if self.speech:
             try:
                 self.talk("Please ask me your question, talk to me now")
