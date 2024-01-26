@@ -40,7 +40,7 @@ class GPSR(object):
         # Definir los estados posibles del semáforo
         self.task_name = "GPSR"
         states = ['INIT', 'WAIT4GUEST', 'GPSR', 'GO2GPSR']
-        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=False, pytoolkit=True)
+        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=True, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
@@ -58,12 +58,11 @@ class GPSR(object):
         rospy_check.start()
 
         ############################# GLOBAL VARIABLES #############################
-        self.location = "receptionist"
+        self.location = "living_room"
 
     def on_enter_INIT(self):
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        self.tm.go_to_place("receptionist")
         self.tm.go_to_defined_angle_srv(0)
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.start_recognition("front_camera")
@@ -76,8 +75,9 @@ class GPSR(object):
         self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. Talk to me now: ","English")
         task = self.tm.speech2text_srv("gpsr",10,True)
         print("task",task)
+        self.tm.talk("Processing your request")
         generate_utils.load_code_gen_config()
-        code = self.gen.generate_code(task,Model.GPT35)
+        code = self.gen.generate_code(task,Model.GPT4)
         print(code)
 
         self.tm.talk("I will: ","English")
