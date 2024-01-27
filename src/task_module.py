@@ -418,6 +418,17 @@ class Task_module:
         """
         rospy.init_node("task_" + task_name + "_node")
 
+    def initialize_pepper(self):
+        """
+        Initializes the pepper robot with default parameteres
+        """
+        if self.pytoolkit and self.perception:
+            self.turn_camera("front_camera","custom",1,15)
+            self.start_recognition("front_camera")
+            # quedarse como un coco
+        else:
+            print("pytoolkit or perception as false")
+
     ################### PERCEPTION SERVICES ###################
 
     def turn_camera(
