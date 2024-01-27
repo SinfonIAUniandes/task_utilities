@@ -412,6 +412,8 @@ class Task_module:
                     "Waiting for pytoolkit/autononumusLife...", "WARNING"
                 )
             )
+            
+
             rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
             self.autonomous_life_proxy = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
 
@@ -823,7 +825,7 @@ class Task_module:
                 print("Service call failedL %s"%e)
                 return False
         return False
-        
+    
     def q_a_speech(self, tag:str)->str:
         """
         Input: tag in lowercase: options -> ("age", "name", "drink")
@@ -1337,7 +1339,7 @@ class Task_module:
         """
         Input: True turn on || False turn off
         Output: True if the service was called correctly, False if not
-        ----------
+        ----------  
         Sets the autonomous life of the robot
         """
         if self.pytoolkit:
@@ -1353,6 +1355,8 @@ class Task_module:
         else:
             print("pytoolkit as false")
             return False
+        
+    
 
     ################ SUBSCRIBER CALLBACKS ################
 
