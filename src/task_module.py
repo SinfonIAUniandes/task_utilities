@@ -46,7 +46,7 @@ class Task_module:
         self.object_found = False
         self.isTouched = False
         self.navigation_status = 0
-
+        self.labels = []
         self.perception = perception
         if perception:
             print(
@@ -64,6 +64,19 @@ class Task_module:
             self.turn_camera_proxy = rospy.ServiceProxy(
                 "/perception_utilities/turn_camera_srv", turn_camera_srv
             )
+
+
+            print(
+                self.consoleFormatter.format(
+                    "Waiting for perception_utilities/get_labels...", "WARNING"
+                )
+            )
+            rospy.wait_for_service("/perception_utilities/get_labels_srv")
+            self.get_labels_proxy = rospy.ServiceProxy(
+                "/perception_utilities/get_labels_srv", get_labels_srv
+            )
+
+
 
             print(
                 self.consoleFormatter.format(
@@ -500,6 +513,16 @@ class Task_module:
             print("perception as false")
             return False
 
+    def get_labels(self, bool):
+        if self.perception:
+    
+            try:
+                return self.get_labels_proxy.call(bool)
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+            return []
+            
+            
     def look_for_object(self, object_name: str, ignore_already_seen=False) -> bool:
         """
         Input:
@@ -852,16 +875,10 @@ class Task_module:
         specified in the request message.
         """
         if self.navigation:
+            approved=False
             try:
                 if self.pytoolkit:
-                    self.stop_tracker_proxy()
-                    self.stop_tracker_proxy()
-                    self.stop_tracker_proxy()
-                approved = self.go_to_relative_point_proxy(x,y,theta)
-                if self.pytoolkit:     
-                    self.stop_tracker_proxy()
-                    self.stop_tracker_proxy()
-                    self.stop_tracker_proxy()
+                    approved = self.go_to_relative_point_proxy(x,y,theta)
                 if approved=="approved":
                     return True
                 else:
@@ -926,15 +943,9 @@ class Task_module:
         rospy.Subscriber("/touch", touch_msg, self.callback_head_sensor_subscriber)
         if self.navigation and self.pytoolkit:
             try:
+                approved = False
                 if self.pytoolkit:
-                        self.stop_tracker_proxy()
-                        self.stop_tracker_proxy()
-                        self.stop_tracker_proxy()
-                approved = self.follow_you_proxy(True)
-                if self.pytoolkit:
-                        self.stop_tracker_proxy()
-                        self.stop_tracker_proxy()
-                        self.stop_tracker_proxy()
+                    approved = self.follow_you_proxy(True)
                 if approved == "approved":
                     self.talk(
                         "When you want me to stop please touch my head",
