@@ -10,7 +10,7 @@ from std_srvs.srv import Trigger, TriggerRequest, SetBool
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv #, set_security_distance_srv
+from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv
 from robot_toolkit_msgs.msg import touch_msg
 
 from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
@@ -412,7 +412,16 @@ class Task_module:
                     "Waiting for pytoolkit/autononumusLife...", "WARNING"
                 )
             )
-            
+            rospy.wait_for_service("/pytoolkit/ALMotion/set_security_distance_srv")
+            self.set_security_distance_proxy = rospy.ServiceProxy(
+                "/pytoolkit/ALMotion/set_security_distance_srv", set_security_distance_srv
+            )
+
+            print(
+                self.consoleFormatter.format(
+                    "Waiting for pytoolkit/ALMotion/set_security_distance_srv...", "WARNING"
+                )
+            )
 
             rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
             self.autonomous_life_proxy = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
@@ -1356,6 +1365,20 @@ class Task_module:
             print("pytoolkit as false")
             return False
         
+    def set_security_distance(self, state:bool) -> bool: 
+        if self.pytoolkit: 
+            try: 
+                approved = self.set_security_distance_proxy(state)
+                if approved == "OK": 
+                    return True
+                else: 
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("pytoolkit as false")
+            return False
     
 
     ################ SUBSCRIBER CALLBACKS ################
