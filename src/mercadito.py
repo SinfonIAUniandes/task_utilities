@@ -69,9 +69,7 @@ class MERCADITO(object):
 
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
-        self.tm.follow_you()
-        stop_thread = threading.Thread(target=self.stop_thread)
-        stop_thread.start()
+        self.tm.follow_you() #TODO 
 
         while not self.is_done:
             if self.hey_pepper:
@@ -83,9 +81,7 @@ class MERCADITO(object):
 
     def on_enter_FININSH(self):
         print(self.consoleFormatter.format("FINISH", "HEADER"))
-        self.tm.follow_you()
-        while not self.is_done:
-            time.sleep(0.1)
+        self.tm.follow_you() #TODO
         self.finish()
 
     def on_enter_MERCADITO_DONE(self):
@@ -95,11 +91,12 @@ class MERCADITO(object):
 
     def hey_pepper_function(self):
         self.tm.get_labels(True)
-        text = self.tm.speech2text(seconds = 5)
+        text = self.tm.speech2text_srv() 
         labels=self.tm.get_labels(False)
-        request = f"""The person asked: {text}. You can see the labels: {", ".join(labels)}"""
-        answer=self.tm.answer_question(request)
+        request = f"""The person asked: {text}.While the person spoke, you saw the next objects: {", ".join(labels)}"""
+        answer=self.tm.answer_question(request) #TODO
         self.tm.talk(answer,"English")
+
     # def callback_word_recognition(req):
     #     if req.word == "stop":
     #         self.tm.follow_you(False)
