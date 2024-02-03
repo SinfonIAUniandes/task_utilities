@@ -775,18 +775,15 @@ class Task_module:
             return False
         
     def get_closer_person(self):
-        self.found = False
-        while not self.found and self.follow_you_active:
+        while self.follow_you_active:
             labels_actuales = self.labels
             for label in labels_actuales:
                 if label == "person":
                     max_tuple = max(labels_actuales[label], key=lambda x: x[3])
-                    self.id_max_tuple = max_tuple[0]
-                    print(self.id_max_tuple)
-                    self.found = True
-            if self.found:
-                self.i = 0
-                break
+                    id_max_tuple = max_tuple[0]
+                    print(id_max_tuple)
+                    self.i = 0
+                    return id_max_tuple
 
     ################### SPEECH SERVICES ###################
 
@@ -968,7 +965,6 @@ class Task_module:
         ----------
         Follows the person in front of the robot until the person touches the head of the robot
         """
-        rospy.Subscriber("/touch", touch_msg, self.callback_head_sensor_subscriber)
         rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
         self.cmd_velPublisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         
@@ -979,20 +975,12 @@ class Task_module:
                     service_thread = Thread(target=self.follow_you_srv_thread)
                     service_thread.start()
                     self.follow_you_proxy(command)
-                elif not command:
-                    #self.talk(
-                    #    "When you want me to stop please touch my head",
-                    #    "English",
-                    #    wait=True,
-                    #)
+                else:
                     self.follow_you_active = command
                     self.follow_you_proxy(command)
                     #self.talk("Finished following")
                     print("Finished following")
                     return True
-                else:
-                    print("Error following a person")
-                    return False
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return False
@@ -1002,11 +990,11 @@ class Task_module:
         
     def follow_you_srv_thread(self):
         self.i=0
-        self.get_closer_person()
+        id_max_tuple = self.get_closer_person()
         while True and self.follow_you_active: 
             cmd_vel_msg = Twist()
             if "person" in self.labels:
-                result = [tuple for tuple in self.labels["person"] if tuple[0] == self.id_max_tuple]
+                result = [tuple for tuple in self.labels["person"] if tuple[0] == id_max_tuple]
                 if len(result) == 0:
                     self.cmd_velPublisher.publish(cmd_vel_msg)
                     self.i+=1
@@ -1027,7 +1015,7 @@ class Task_module:
                 #self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
                 print("I have lost you, please stand in front of me, I will tell you when you can continue")
                 rospy.sleep(5)
-                self.get_closer_person()
+                id_max_tuple = self.get_closer_person()
                 #self.talk_proxy("GO AHEAD!", "English", True, False)
                 print("GO AHEAD!")
 

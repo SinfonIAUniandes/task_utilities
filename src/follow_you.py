@@ -69,7 +69,7 @@ class FOLLOW_YOU(object):
             print(self.isTouched)
         self.stop()
             
-    def on_enter_FINISH(self):
+    def on_enter_FINISH (self):
         self.tm.follow_you(False)
         print(self.consoleFormatter.format("FINISH", "HEADER"))
         self.tm.talk("I have finished the "+self.task_name+" task","English")
