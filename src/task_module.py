@@ -780,10 +780,9 @@ class Task_module:
             for label in labels_actuales:
                 if label == "person":
                     max_tuple = max(labels_actuales[label], key=lambda x: x[3])
-                    id_max_tuple = max_tuple[0]
-                    print(id_max_tuple)
+                    print(max_tuple)
                     self.i = 0
-                    return id_max_tuple
+                    return max_tuple
 
     ################### SPEECH SERVICES ###################
 
@@ -975,6 +974,7 @@ class Task_module:
                     service_thread = Thread(target=self.follow_you_srv_thread)
                     service_thread.start()
                     self.follow_you_proxy(command)
+                    return True
                 else:
                     self.follow_you_active = command
                     self.follow_you_proxy(command)
@@ -987,37 +987,68 @@ class Task_module:
         else:
             print("navigation as false")
             return False
-        
+     
     def follow_you_srv_thread(self):
-        self.i=0
-        id_max_tuple = self.get_closer_person()
-        while True and self.follow_you_active: 
+        tolerance = 5
+        init = self.get_closer_person()[3]
+        final = init
+        delta = final-init
+        while self.follow_you_active:
             cmd_vel_msg = Twist()
             if "person" in self.labels:
-                result = [tuple for tuple in self.labels["person"] if tuple[0] == id_max_tuple]
-                if len(result) == 0:
-                    self.cmd_velPublisher.publish(cmd_vel_msg)
-                    self.i+=1
-                    continue
+                print("delta", delta)
+                # Se acerca
+                if delta > tolerance:
+                    print("Se acerca")
+                    
+                # Se aleja
+                elif delta < -tolerance:
+                    self.go_to_relative_point(1.5,0,0)
+                    print("Se aleja")
+                
+                # Está quieto
                 else:
-                    self.i=0
-                target_x = result[0][1]
-                center_x = 320 / 2
-                linear_vel = 0.15
-                error_x = target_x - center_x
-                angular_vel = 0.004 * error_x
-                cmd_vel_msg.linear.x = linear_vel
-                cmd_vel_msg.angular.z = angular_vel
+                    print("Está quieto")
+                time.sleep(0.9)
+                init = final
+                final = self.get_closer_person()[3]
+                delta = final-init
             else:
-                self.i+=1
-            self.cmd_velPublisher.publish(cmd_vel_msg)
-            if self.i >= 20:
+                print("No hay nadie")
+                
+        
+    #def follow_you_srv_thread(self):
+        #self.i=0
+        #id_max_tuple = self.get_closer_person()
+        #while self.follow_you_active: 
+            #cmd_vel_msg = Twist()
+            #if "person" in self.labels:
+                #result = [tuple for tuple in self.labels["person"] if tuple[0] == id_max_tuple]
+                #if len(result) == 0:
+                    #self.cmd_velPublisher.publish(cmd_vel_msg)
+                    #self.i+=1
+                    #continue
+                #else:
+                    #self.i=0
+                #target_x = result[0][1]
+                #center_x = 320 / 2
+                #linear_vel = 0.15
+                #error_x = target_x - center_x
+                #angular_vel = 0.004 * error_x
+                #cmd_vel_msg.linear.x = linear_vel
+                #cmd_vel_msg.angular.z = angular_vel
+                #TODO: Definir un delta que permita variar la velocidad si la persona camina rápido/lento.
+                #TODO: Crear una cte que permita variar la velocidad lineal
+            #else:
+                #self.i+=1
+            #self.cmd_velPublisher.publish(cmd_vel_msg)
+            #if self.i >= 20:
                 #self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
-                print("I have lost you, please stand in front of me, I will tell you when you can continue")
-                rospy.sleep(5)
-                id_max_tuple = self.get_closer_person()
+                #print("I have lost you, please stand in front of me, I will tell you when you can continue")
+                #rospy.sleep(5)
+                #id_max_tuple = self.get_closer_person()
                 #self.talk_proxy("GO AHEAD!", "English", True, False)
-                print("GO AHEAD!")
+                #print("GO AHEAD!")
 
     def robot_stop_srv(self) -> bool:
         """

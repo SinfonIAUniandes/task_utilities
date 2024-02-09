@@ -105,7 +105,7 @@ class MERCADITO(object):
     #         self.tm.follow_you(False)
     #         self.is_done = True
     #     elif req.word == "hi_pepeper":
-    #         self.is_done = True
+    #         self.hey_pepper = True
     
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo
