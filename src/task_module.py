@@ -874,9 +874,9 @@ class Task_module:
             print("perception as false")
             return False
 
-    def get_closer_person(self):
+    def get_closer_person(self, labels):
         while self.follow_you_active:
-            labels_actuales = self.labels
+            labels_actuales = labels
             for label in labels_actuales:
                 if label == "person":
                     max_tuple = max(labels_actuales[label], key=lambda x: x[3])
