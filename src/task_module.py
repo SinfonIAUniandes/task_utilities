@@ -49,7 +49,7 @@ class Task_module:
         self.navigation_status = 0
         self.labels = []
         self.perception = perception
-        self.conversation_gpt = []
+        self.conversation_gpt = [{"role":"system","content":"You are a Pepper robot named Nova from the University of the Andes, specially from the research group SinfonIA, you serve as a Social Robot and you are able to perform tasks such as guiding, answering questions, recognizing objects, people and faces, among others. Asnwer all questions in the most accurate but nice way possible."}]
         if perception:
             print(
                 self.consoleFormatter.format(
@@ -425,7 +425,6 @@ class Task_module:
                 )
             )
 
-
             rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
             self.autonomous_life_proxy = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
 
@@ -535,7 +534,6 @@ class Task_module:
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
             return []
-            
             
     def look_for_object(self, object_name: str, ignore_already_seen=False) -> bool:
         """
@@ -836,12 +834,13 @@ class Task_module:
                 if fill_time:
                     self.talk("I am processing your question",wait=False)
                 if not save_conversation:
-                    self.conversation_gpt = []
+                    self.conversation_gpt = [{"role":"system","content":"You are a Pepper robot named Nova from the University of the Andes, specially from the research group SinfonIA, you serve as a Social Robot and you are able to perform tasks such as guiding, answering questions, recognizing objects, people and faces, among others. Asnwer all questions in the most accurate but nice way possible."}]
                 self.conversation_gpt.append({"role":"user","content":question})
                 request_json = {"question":self.conversation_gpt,"temperature":temperature}
                 json_request = json.dumps(request_json)
                 string_json_request = str(json_request)
-                #{{"role":"assistant","content":respuesta}}
+                #{{"role":"assistant","conten":respuesta}}
+                #json STRING de la respuesta de chatgpt 
                 response = self.answer_proxy(string_json_request).answer
                 response_json = json.loads(response)
                 if "content" in response_json:
@@ -851,7 +850,6 @@ class Task_module:
                         answer = "I could not find relevant results for your question "
                 else:
                     answer = "I could not find relevant results for your question "
-            
             except rospy.ServiceException as e:
                 print("Service call failedL %s"%e)
                 answer = "I could not find relevant results for your question "

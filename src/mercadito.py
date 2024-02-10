@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from transitions import Machine
 from task_module import Task_module as tm
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 import ConsoleFormatter
 import time
 import random
@@ -64,6 +64,7 @@ class MERCADITO(object):
         self.tm.talk("Hello I will help you with your shopping today, when you are ready put your basket in my hands","English")
         self.tm.go_to_pose("basket", 0.1)
         self.tm.go_to_pose("open_both_hands", 0.1)
+        subscriber = rospy.Subscriber("/speech_utilities/look_for_object_publisher",String,self.callback_hot_word) #TODO
         if self.isTouched == True:
             self.beggining()
 
@@ -97,12 +98,13 @@ class MERCADITO(object):
         answer=self.tm.answer_question(request) #TODO
         self.tm.talk(answer,"English")
 
-    # def callback_word_recognition(req):
-    #     if req.word == "stop":
-    #         self.tm.follow_you(False)
-    #         self.is_done = True
-    #     elif req.word == "hi_pepeper":
-    #         self.is_done = True
+    def callback_hot_word(self,data):
+        word = data.data
+        if word == "stop":
+            self.tm.follow_you(False)
+            self.is_done = True
+        elif word == "hey":
+            self.is_done = True
     
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo
