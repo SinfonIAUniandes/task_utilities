@@ -4,6 +4,7 @@ import time
 import rospkg
 import rosservice
 import ConsoleFormatter
+import json
 
 from std_msgs.msg import Int32, String, Bool
 from std_srvs.srv import Trigger, TriggerRequest, SetBool
@@ -17,7 +18,8 @@ from robot_toolkit_msgs.msg import touch_msg
 
 from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
 
-from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest, hot_word_srvRequest, answer_srv
+from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest,hot_word_srv ,hot_word_srvRequest, answer_srv, answer_srvRequest
+from speech_msgs.msg import hotword_msg
 
 from perception_msgs.srv import start_recognition_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv #,get_person_description_srv
 
@@ -51,7 +53,7 @@ class Task_module:
         self.isTouched = False
         self.navigation_status = 0
         self.perception = perception
-        
+        self.conversation_gpt = [{"role":"system","content":"You are a Pepper robot named Nova from the University of the Andes, specially from the research group SinfonIA, you serve as a Social Robot and you are able to perform tasks such as guiding, answering questions, recognizing objects, people and faces, among others. Asnwer all questions in the most accurate but nice way possible."}]
         if perception:
             print(
                 self.consoleFormatter.format(
@@ -193,6 +195,10 @@ class Task_module:
             print(self.consoleFormatter.format("Waiting for speech_utilities/answer...", "WARNING"))
             rospy.wait_for_service('/speech_utilities/answers_srv')
             self.answer_proxy = rospy.ServiceProxy('/speech_utilities/answers_srv', answer_srv)
+
+            print(self.consoleFormatter.format("Waiting for speech_utilities/hot_word...", "WARNING"))
+            rospy.wait_for_service('/speech_utilities/hotword_srv')
+            self.hot_word_proxy = rospy.ServiceProxy('/speech_utilities/hotword_srv', hot_word_srv)
 
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
 
@@ -378,7 +384,7 @@ class Task_module:
 
             self.setMoveArms_srv = rospy.ServiceProxy(
                 "pytoolkit/ALMotion/set_move_arms_enabled_srv",
-                set_move_arms_enabled_srv,
+                set_move_arms_enabled_srv
             )
             print(
                 self.consoleFormatter.format(
@@ -536,7 +542,6 @@ class Task_module:
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
             return []
-            
             
     def look_for_object(self, object_name: str, ignore_already_seen=False) -> bool:
         """
@@ -832,23 +837,60 @@ class Task_module:
         else:
             print("speech as false")
             return ""
-
-    def answer_question(self, file_name="answer_prueba", language="English")->bool:
+        
+    def hot_word(self, hot_words:list)->bool:
+        """
+        Input: hot_words
+        Output: True if the service was called correctly, False if not
+        ----------
+        Activates the hot word detection
+        """
         if self.speech:
             try:
-                self.talk("Please ask me your question, talk to me now")
-                question= self.speech2text_srv()
-                print("1",question)
-                answer = self.answer_proxy(question, language).answer
-                if answer== "None": 
-                    answer = "I don't know"
-                print("2",answer)   
-                self.talk(answer)
-                return True
+                approved = self.hot_word_proxy(hot_words)
+                return approved.approved
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("speech as false")
+            return False
+
+    def answer_question(self, question:str, temperature = 0.5, save_conversation = True, fill_time = True)->str:
+        """
+        Input: 
+        question: String question to respond 
+        temperature: scale from 0 to 1 being 0 deterministic and 1 creative
+        save_conversation: Save history of the conversation or not
+        fill_time: Fill with speaking 
+        Output: 
+        answer: A string with the answer to the question
+        """
+        if self.speech:
+            try:
+                if fill_time:
+                    self.talk("I am processing your question",wait=False)
+                if not save_conversation:
+                    self.conversation_gpt = [{"role":"system","content":"You are a Pepper robot named Nova from the University of the Andes, specially from the research group SinfonIA, you serve as a Social Robot and you are able to perform tasks such as guiding, answering questions, recognizing objects, people and faces, among others. Asnwer all questions in the most accurate but nice way possible."}]
+                self.conversation_gpt.append({"role":"user","content":question})
+                request_json = {"question":self.conversation_gpt,"temperature":temperature}
+                json_request = json.dumps(request_json)
+                string_json_request = str(json_request)
+                #{{"role":"assistant","conten":respuesta}}
+                #json STRING de la respuesta de chatgpt 
+                response = self.answer_proxy(string_json_request).answer
+                response_json = json.loads(response)
+                if "content" in response_json:
+                    answer = response_json["content"]
+                    self.conversation_gpt.append(response_json)
+                    if answer== "": 
+                        answer = "I could not find relevant results for your question "
+                else:
+                    answer = "I could not find relevant results for your question "
             except rospy.ServiceException as e:
                 print("Service call failedL %s"%e)
-                return False
-        return False
+                answer = "I could not find relevant results for your question "
+        return answer
     
     def q_a_speech(self, tag:str)->str:
         """
@@ -880,6 +922,7 @@ class Task_module:
         """
         if self.navigation:
             try:
+                self.set_move_arms_enabled(False, False)
                 approved = self.set_current_place_proxy(place_name)
                 if approved == "approved":
                     return True
@@ -903,6 +946,7 @@ class Task_module:
         if self.navigation:
             approved=False
             try:
+                self.set_move_arms_enabled(False, False)
                 if self.pytoolkit:
                     approved = self.go_to_relative_point_proxy(x,y,theta)
                 if approved=="approved":
@@ -928,6 +972,7 @@ class Task_module:
         """
         if self.navigation:
             try:
+                self.set_move_arms_enabled(False, False)
                 if self.pytoolkit:
                     self.stop_tracker_proxy()
                     self.stop_tracker_proxy()
@@ -971,12 +1016,22 @@ class Task_module:
         
         if self.navigation and self.pytoolkit:
             try:
-                if  command:
-                    self.set_move_arms_enabled(False, False)
-                    self.follow_you_active = command
-                    service_thread = Thread(target=self.follow_you_srv_thread)
-                    service_thread.start()
-                    self.follow_you_proxy(command)
+                self.set_move_arms_enabled(False, False)
+                approved = False
+                if self.pytoolkit:
+                    approved = self.follow_you_proxy(True)
+                if approved == "approved":
+                    self.talk(
+                        "When you want me to stop please touch my head",
+                        "English",
+                        wait=True,
+                    )
+                    while not self.isTouched:
+                        rospy.sleep(0.1)
+                        print("I am following a person")
+                    self.follow_you_proxy(False)
+                    self.talk("Finished following")
+                    return True
                 else:
                     self.set_move_arms_enabled(True, True)
                     self.follow_you_active = command
@@ -1031,6 +1086,7 @@ class Task_module:
         """
         if self.navigation:
             try:
+                self.set_move_arms_enabled(False, False)
                 approved = self.robot_stop_proxy()
                 if approved == "approved":
                     return True
@@ -1052,6 +1108,7 @@ class Task_module:
         """
         if self.navigation:
             try:
+                self.set_move_arms_enabled(False, False)
                 approved = self.spin_proxy(degrees)
                 if approved == "approved":
                     return True
@@ -1073,6 +1130,7 @@ class Task_module:
         """
         if self.navigation:
             try:
+                self.set_move_arms_enabled(False, False)
                 approved = self.go_to_defined_angle_proxy(degrees)
                 if approved == "approved":
                     return True
@@ -1094,6 +1152,7 @@ class Task_module:
         """
         if self.navigation:
             try:
+                self.set_move_arms_enabled(False, False)
                 instructions = self.get_route_guidance_proxy(place_name)
                 return instructions
             except rospy.ServiceException as e:
@@ -1112,6 +1171,7 @@ class Task_module:
         """
         if self.navigation:
             try:
+                self.set_move_arms_enabled(False, False)
                 approved = self.constant_spin_proxy(velocity)
                 if approved == "approved":
                     return True
@@ -1133,6 +1193,7 @@ class Task_module:
         """
         if self.navigation:
             try:
+                self.set_move_arms_enabled(False, False)
                 print("Waiting to reach the place")
                 finish = False
                 response = False
@@ -1167,6 +1228,7 @@ class Task_module:
         """
         if self.navigation:
             try:
+                self.set_move_arms_enabled(False, False)
                 approved = self.add_place_proxy(name, persist, edges)
                 if approved == "approved":
                     return True
@@ -1423,6 +1485,20 @@ class Task_module:
             print("pytoolkit as false")
             return False
     
+    def set_move_arms_enabled(self, state:bool)->bool: 
+        if self.pytoolkit: 
+            try: 
+                approved = self.set_move_arms_enabled(state,state)
+                if approved == "OK": 
+                    return True
+                else: 
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("pytoolkit as false")
+            return False
 
     ################ SUBSCRIBER CALLBACKS ################
 

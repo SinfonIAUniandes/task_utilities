@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from transitions import Machine
 from task_module import Task_module as tm
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 import ConsoleFormatter
 import time
 import random
@@ -64,15 +64,15 @@ class MERCADITO(object):
         self.tm.talk("Hello I will help you with your shopping today, when you are ready put your basket in my hands","English")
         self.tm.go_to_pose("basket", 0.1)
         self.tm.go_to_pose("open_both_hands", 0.1)
+        subscriber = rospy.Subscriber("/speech_utilities/hotword",String,self.callback_hot_word) #TODO
         if self.isTouched == True:
             self.beggining()
 
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
-        self.tm.follow_you()
-        stop_thread = threading.Thread(target=self.stop_thread)
-        stop_thread.start()
-
+        self.tm.talk("When you have a question regarding your food please say Hey Pepper. If you want me to stop and hand you the basket say Stop","English")
+        self.tm.hot_word(["hey","stop"])
+        self.tm.follow_you() #TODO 
         while not self.is_done:
             if self.hey_pepper:
                 self.hey_pepper_function()
@@ -83,9 +83,7 @@ class MERCADITO(object):
 
     def on_enter_FININSH(self):
         print(self.consoleFormatter.format("FINISH", "HEADER"))
-        self.tm.follow_you()
-        while not self.is_done:
-            time.sleep(0.1)
+        self.tm.follow_you() #TODO
         self.finish()
 
     def on_enter_MERCADITO_DONE(self):
@@ -95,17 +93,19 @@ class MERCADITO(object):
 
     def hey_pepper_function(self):
         self.tm.get_labels(True)
-        text = self.tm.speech2text(seconds = 5)
+        text = self.tm.speech2text_srv() 
         labels=self.tm.get_labels(False)
-        request = f"""The person asked: {text}. You can see the labels: {", ".join(labels)}"""
-        answer=self.tm.answer_question(request)
+        request = f"""The person asked: {text}.While the person spoke, you saw the next objects: {", ".join(labels)}"""
+        answer=self.tm.answer_question(request) #TODO
         self.tm.talk(answer,"English")
-    # def callback_word_recognition(req):
-    #     if req.word == "stop":
-    #         self.tm.follow_you(False)
-    #         self.is_done = True
-    #     elif req.word == "hi_pepeper":
-    #         self.is_done = True
+
+    def callback_hot_word(self,data):
+        word = data.data
+        if word == "stop":
+            self.tm.follow_you(False)
+            self.is_done = True
+        elif word == "hey":
+            self.is_done = True
     
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo
