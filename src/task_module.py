@@ -112,7 +112,9 @@ class Task_module:
         ################### GLOBAL VARIABLES ###################
         self.follow_you_active = True
         self.labels = dict()
-        self.last_second_labels = [{}*15]
+        self.camera_resolution = 1
+        self.frames_per_second = 15
+        self.last_second_labels = [{} for _ in range(self.frames_per_second)]
         self.object_found = False
         self.isTouched = False
         self.navigation_status = 0
@@ -551,7 +553,9 @@ class Task_module:
         Initializes the pepper robot with default parameteres
         """
         if self.pytoolkit and self.perception:
-            self.turn_camera("front_camera", "custom", 1, 15)
+            self.turn_camera(
+                "front_camera", "custom", self.camera_resolution, self.frames_per_second
+            )
             self.start_recognition("front_camera")
             # quedarse como un coco
         else:
@@ -1601,5 +1605,6 @@ class Task_module:
                 )
         # keep only the detections of the last second
         # delete older detection and add new detection
+
         self.last_second_labels.pop(0)
         self.last_second_labels.append(self.labels)
