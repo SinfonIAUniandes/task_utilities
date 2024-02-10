@@ -7,6 +7,8 @@ import ConsoleFormatter
 
 from std_msgs.msg import Int32, String, Bool
 from std_srvs.srv import Trigger, TriggerRequest, SetBool
+from geometry_msgs.msg import Twist
+from threading import Thread
 
 # All imports from tools
 
@@ -43,11 +45,13 @@ class Task_module:
 
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
         ################### GLOBAL VARIABLES ###################
+        self.follow_you_active = True
+        self.labels = dict()
         self.object_found = False
         self.isTouched = False
         self.navigation_status = 0
-        self.labels = []
         self.perception = perception
+        
         if perception:
             print(
                 self.consoleFormatter.format(
@@ -770,6 +774,17 @@ class Task_module:
         else:
             print("perception as false")
             return False
+    
+    def get_closer_person(self):
+        while self.follow_you_active:
+            labels_actuales = self.labels
+            for label in labels_actuales:
+                if label == "person":
+                    max_tuple = max(labels_actuales[label], key=lambda x: x[3])
+                    id_max_tuple = max_tuple[0]
+                    print(id_max_tuple)
+                    self.i = 0
+                    return id_max_tuple
 
     ################### SPEECH SERVICES ###################
 
@@ -943,7 +958,7 @@ class Task_module:
             print("navigation as false")
             return False
 
-    def follow_you(self) -> bool:
+    def follow_you(self, command: bool) -> bool:
         """
         Input:
         start: Start to follow a person
@@ -951,33 +966,61 @@ class Task_module:
         ----------
         Follows the person in front of the robot until the person touches the head of the robot
         """
-        rospy.Subscriber("/touch", touch_msg, self.callback_head_sensor_subscriber)
+        rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
+        self.cmd_velPublisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+        
         if self.navigation and self.pytoolkit:
             try:
-                approved = False
-                if self.pytoolkit:
-                    approved = self.follow_you_proxy(True)
-                if approved == "approved":
-                    self.talk(
-                        "When you want me to stop please touch my head",
-                        "English",
-                        wait=True,
-                    )
-                    while not self.isTouched:
-                        rospy.sleep(0.1)
-                        print("I am following a person")
-                    self.follow_you_proxy(False)
-                    self.talk("Finished following")
-                    return True
+                if  command:
+                    self.set_move_arms_enabled(False, False)
+                    self.follow_you_active = command
+                    service_thread = Thread(target=self.follow_you_srv_thread)
+                    service_thread.start()
+                    self.follow_you_proxy(command)
                 else:
-                    print("Error following a person")
-                    return False
+                    self.set_move_arms_enabled(True, True)
+                    self.follow_you_active = command
+                    self.follow_you_proxy(command)
+                    #self.talk("Finished following")
+                    print("Finished following")
+                    return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return False
         else:
             print("navigation as false")
             return False
+
+    def follow_you_srv_thread(self):
+        self.i=0
+        id_max_tuple = self.get_closer_person()
+        while True and self.follow_you_active: 
+            cmd_vel_msg = Twist()
+            if "person" in self.labels:
+                result = [tuple for tuple in self.labels["person"] if tuple[0] == id_max_tuple]
+                if len(result) == 0:
+                    self.cmd_velPublisher.publish(cmd_vel_msg)
+                    self.i+=1
+                    continue
+                else:
+                    self.i=0
+                target_x = result[0][1]
+                center_x = 320 / 2
+                linear_vel = 0.15
+                error_x = target_x - center_x
+                angular_vel = 0.004 * error_x
+                cmd_vel_msg.linear.x = linear_vel
+                cmd_vel_msg.angular.z = angular_vel
+            else:
+                self.i+=1
+            self.cmd_velPublisher.publish(cmd_vel_msg)
+            if self.i >= 20:
+                #self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
+                print("I have lost you, please stand in front of me, I will tell you when you can continue")
+                rospy.sleep(5)
+                id_max_tuple = self.get_closer_person()
+                #self.talk_proxy("GO AHEAD!", "English", True, False)
+                print("GO AHEAD!")
 
     def robot_stop_srv(self) -> bool:
         """
@@ -1393,3 +1436,17 @@ class Task_module:
     def callback_head_sensor_subscriber(self, msg):
         if "head" in msg.name:
             self.isTouched = msg.state
+            
+    def callback_get_labels_subscriber(self, msg):
+        self.labels = {}
+        labels_msg = msg.labels
+        x_coordinates_msg = msg.x_coordinates
+        y_coordinates_msg = msg.y_coordinates
+        widths = msg.widths
+        heights = msg.heights
+        ids = msg.ids
+        for label in range(len(labels_msg)):
+            if labels_msg[label] not in self.labels:
+                self.labels[labels_msg[label]] = [(ids[label], x_coordinates_msg[label], y_coordinates_msg[label], widths[label], heights[label])]
+            else:
+                self.labels[labels_msg[label]].append((ids[label], x_coordinates_msg[label], y_coordinates_msg[label], widths[label], heights[label]))
