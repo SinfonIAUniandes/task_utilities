@@ -112,7 +112,7 @@ class Task_module:
         ################### GLOBAL VARIABLES ###################
         self.follow_you_active = True
         self.labels = dict()
-        self.last_second_labels = [] * 15
+        self.last_second_labels = [{}*15]
         self.object_found = False
         self.isTouched = False
         self.navigation_status = 0
