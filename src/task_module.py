@@ -114,6 +114,7 @@ class Task_module:
         self.labels = dict()
         self.camera_resolution = 1
         self.frames_per_second = 15
+        self.last_second_labels_empty = []
         self.last_second_labels = [{} for _ in range(self.frames_per_second)]
         self.object_found = False
         self.isTouched = False
@@ -879,14 +880,16 @@ class Task_module:
             return False
 
     def get_closer_person(self, labels):
-        while self.follow_you_active:
+        if self.follow_you_active:
             labels_actuales = labels
             for label in labels_actuales:
                 if label == "person":
                     max_tuple = max(labels_actuales[label], key=lambda x: x[3])
                     print(max_tuple)
                     self.i = 0
+                    print("Persona!")
                     return max_tuple
+        return None
 
     ################### SPEECH SERVICES ###################
 
@@ -1099,13 +1102,17 @@ class Task_module:
     def follow_you_srv_thread(self):
         tolerance = 5
         while self.follow_you_active:
-            init = self.get_closer_person(self.last_second_labels[0])[3]
-            final = self.get_closer_person(self.last_second_labels[-1])[3]
-            delta = final - init
             cmd_vel_msg = Twist()
-            if "person" in self.labels:
-                print("delta", delta)
+            start = self.get_closer_person(self.last_second_labels[0])
+            end = self.get_closer_person(self.last_second_labels[-1])
+            
+            if (type(start) == tuple) and (type(end) == tuple):
+                init = start[3]
+                final = end[3]
+                delta = final - init
                 # Se acerca
+                print("No hay nadie")
+                
                 if delta > tolerance:
                     print("Se acerca")
 
@@ -1560,6 +1567,10 @@ class Task_module:
         else:
             print("pytoolkit as false")
             return False
+        
+    def update_last_second_labels(self):
+        self.last_second_labels = self.last_second_labels_empty
+        self.last_second_labels_empty = []
 
     ################ SUBSCRIBER CALLBACKS ################
 
@@ -1605,6 +1616,7 @@ class Task_module:
                 )
         # keep only the detections of the last second
         # delete older detection and add new detection
-
-        self.last_second_labels.pop(0)
-        self.last_second_labels.append(self.labels)
+        self.last_second_labels_empty.append(self.labels)
+        if len(self.last_second_labels_empty) == self.frames_per_second:
+            update_thread = Thread(target=self.update_last_second_labels)
+            
