@@ -69,7 +69,7 @@ class MERCADITO(object):
 
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
-        self.tm.follow_you()
+        self.tm.follow_you(True)
         stop_thread = threading.Thread(target=self.stop_thread)
         stop_thread.start()
 
@@ -77,13 +77,14 @@ class MERCADITO(object):
             if self.hey_pepper:
                 self.hey_pepper_function()
                 self.hey_pepper=False
+                tm.set_say_go_ahead(False)
             time.sleep(0.1)
 
         self.market_ready()
 
     def on_enter_FININSH(self):
         print(self.consoleFormatter.format("FINISH", "HEADER"))
-        self.tm.follow_you()
+        self.tm.follow_you(False)
         while not self.is_done:
             time.sleep(0.1)
         self.finish()
