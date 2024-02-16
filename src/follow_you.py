@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from transitions import Machine
 from task_module import Task_module as tm
-from std_msgs.msg import Bool, String
+from std_msgs.msg import Bool
 import ConsoleFormatter
 import time
 import random
@@ -24,24 +24,21 @@ from robot_toolkit_msgs.msg import animation_msg
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion
 
-class MERCADITO(object):
+class FOLLOW_YOU(object):
     def __init__(self):
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
-        self.task_name = "MERCADITO"
-        self.is_done = False
-        self.hey_pepper=False
+        self.task_name = "TEST"
         self.isTouched = False
-        states = ['MERCADITO','INIT', 'FOLLOW_YOU','FINISH','MERCADITO_DONE']
-        self.tm = tm(perception = True,speech=True,manipulation=True, navigation=True, pytoolkit=True)
+        states = ['TEST', 'INIT', 'FOLLOW_YOU', 'FINISH']
+        self.tm = tm(perception = True, speech=False, manipulation=False, navigation=True, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
-            {'trigger': 'start', 'source': 'MERCADITO', 'dest': 'INIT'},
+            {'trigger': 'start', 'source': 'TEST', 'dest': 'INIT'},
             {'trigger': 'beggining', 'source': 'INIT', 'dest': 'FOLLOW_YOU'},
-            {'trigger': 'market_ready', 'source': 'FOLLOW_YOU', 'dest': 'FINISH'},
-            {'trigger': 'finish', 'source': 'FINISH', 'dest': 'MERCADITO_DONE'},
+            {'trigger': 'stop', 'source': 'FOLLOW_YOU', 'dest': 'FINISH'}
         ]
 
         self.handSensorSubscriber = rospy.Subscriber(
@@ -49,7 +46,7 @@ class MERCADITO(object):
         )
         
         # Crear la máquina de estados
-        self.machine = Machine(model=self, states=states, transitions=transitions, initial='MERCADITO')
+        self.machine = Machine(model=self, states=states, transitions=transitions, initial='TEST')
         
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
@@ -59,54 +56,24 @@ class MERCADITO(object):
     def on_enter_INIT(self):
         print(self.consoleFormatter.format("INIT", "HEADER"))
         self.tm.initialize_pepper()
-        self.tm.talk("I am going to do the shopping task","English")
+        print("I am going to test follow you")
+        #self.tm.talk("I am going to test follow you","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        self.tm.talk("Hello I will help you with your shopping today, when you are ready put your basket in my hands","English")
-        self.tm.go_to_pose("basket", 0.1)
-        self.tm.go_to_pose("open_both_hands", 0.1)
-        subscriber = rospy.Subscriber("/speech_utilities/hotword",String,self.callback_hot_word) #TODO
-        if self.isTouched == True:
-            self.beggining()
+        self.beggining()
 
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
-        self.tm.talk("When you have a question regarding your food please say Hey Pepper. If you want me to stop and hand you the basket say Stop","English")
-        self.tm.hot_word(["hey","stop"])
-        self.tm.follow_you() #TODO 
-        while not self.is_done:
-            if self.hey_pepper:
-                tm.set_say_go_ahead(False)
-                self.hey_pepper_function()
-                self.hey_pepper=False
+        self.tm.follow_you(True)
+        print("Follow you activated!")
+        while self.isTouched == False:
             time.sleep(0.1)
-
-        self.market_ready()
-
-    def on_enter_FININSH(self):
+        self.stop()
+            
+    def on_enter_FINISH (self):
+        self.tm.follow_you(False)
         print(self.consoleFormatter.format("FINISH", "HEADER"))
-        self.tm.follow_you(False) #TODO
-        self.finish()
-
-    def on_enter_MERCADITO_DONE(self):
-        print(self.consoleFormatter.format("MERCADITO_DONE", "HEADER"))
         self.tm.talk("I have finished the "+self.task_name+" task","English")
         os._exit(os.EX_OK)
-
-    def hey_pepper_function(self):
-        self.tm.get_labels(True)
-        text = self.tm.speech2text_srv() 
-        labels=self.tm.get_labels(False)
-        request = f"""The person asked: {text}.While the person spoke, you saw the next objects: {", ".join(labels)}"""
-        answer=self.tm.answer_question(request) #TODO
-        self.tm.talk(answer,"English")
-
-    def callback_hot_word(self,data):
-        word = data.data
-        if word == "stop":
-            self.tm.follow_you(False)
-            self.is_done = True
-        elif word == "hey":
-            self.is_done = True
     
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo
@@ -125,6 +92,6 @@ class MERCADITO(object):
     
 # Crear una instancia de la maquina de estados
 if __name__ == "__main__":
-    sm = MERCADITO()
+    sm = FOLLOW_YOU()
     sm.run()
     rospy.spin()
