@@ -65,14 +65,13 @@ class MERCADITO(object):
         self.tm.go_to_pose("basket", 0.1)
         self.tm.go_to_pose("open_both_hands", 0.1)
         subscriber = rospy.Subscriber("/speech_utilities/hotword",String,self.callback_hot_word) #TODO
-        if self.isTouched == True:
-            self.beggining()
+        self.beggining()
 
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
         self.tm.talk("When you have a question regarding your food please say Hey Pepper. If you want me to stop and hand you the basket say Stop","English")
-        self.tm.hot_word(["hey","stop"])
-        self.tm.follow_you() #TODO 
+        self.tm.hot_word(["hello","stop"])
+        self.tm.follow_you(True) #TODO 
         while not self.is_done:
             if self.hey_pepper:
                 tm.set_say_go_ahead(False)
@@ -105,8 +104,8 @@ class MERCADITO(object):
         if word == "stop":
             self.tm.follow_you(False)
             self.is_done = True
-        elif word == "hey":
-            self.is_done = True
+        elif word == "hello":
+            self.hey_pepper = True
     
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo

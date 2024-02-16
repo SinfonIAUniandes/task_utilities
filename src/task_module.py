@@ -25,8 +25,7 @@ from robot_toolkit_msgs.msg import touch_msg
 
 from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
 
-from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest,hot_word_srv ,hot_word_srvRequest, answer_srv, answer_srvRequest
-from speech_msgs.msg import hotword_msg
+from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest, hotword_srv ,hotword_srvRequest, answer_srv, answer_srvRequest
 
 from perception_msgs.srv import start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv #,get_person_description_srv
 
@@ -228,13 +227,11 @@ class Task_module:
                 "/speech_utilities/answers_srv", answer_srv
             )
 
-            print(self.consoleFormatter.format("Waiting for speech_utilities/hot_word...", "WARNING"))
+            print(self.consoleFormatter.format("Waiting for speech_utilities/hotword...", "WARNING"))
             rospy.wait_for_service('/speech_utilities/hotword_srv')
-            self.hot_word_proxy = rospy.ServiceProxy('/speech_utilities/hotword_srv', hot_word_srv)
+            self.hot_word_proxy = rospy.ServiceProxy('/speech_utilities/hotword_srv', hotword_srv)
 
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
-
-            self.hot_word = "ready"
 
         self.navigation = navigation
         if navigation:
@@ -900,7 +897,7 @@ class Task_module:
         if self.speech:
             try:
                 approved = self.hot_word_proxy(hot_words)
-                return approved.approved
+                return approved.answer
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return False
@@ -974,7 +971,7 @@ class Task_module:
         """
         if self.navigation:
             try:
-                self.set_move_arms_enabled(False, False)
+                self.set_move_arms_enabled(False)
                 approved = self.set_current_place_proxy(place_name)
                 if approved == "approved":
                     return True
@@ -998,7 +995,7 @@ class Task_module:
         if self.navigation:
             approved = False
             try:
-                self.set_move_arms_enabled(False, False)
+                self.set_move_arms_enabled(False)
                 if self.pytoolkit:
                     approved = self.go_to_relative_point_proxy(x, y, theta)
                 if approved == "approved":
@@ -1024,7 +1021,7 @@ class Task_module:
         """
         if self.navigation:
             try:
-                self.set_move_arms_enabled(False, False)
+                self.set_move_arms_enabled(False)
                 if self.pytoolkit:
                     self.stop_tracker_proxy()
                     self.stop_tracker_proxy()
@@ -1069,7 +1066,7 @@ class Task_module:
         if self.navigation and self.pytoolkit:
             try:
                 if  command:
-                    self.set_move_arms_enabled(False, False)
+                    self.set_move_arms_enabled(False)
                     self.follow_you_active = command
                     service_thread = Thread(target=self.follow_you_srv_thread)
                     service_thread.start()
@@ -1181,7 +1178,7 @@ class Task_module:
         """
         if self.navigation:
             try:
-                self.set_move_arms_enabled(False, False)
+                self.set_move_arms_enabled(False)
                 approved = self.robot_stop_proxy()
                 if approved == "approved":
                     return True
@@ -1203,7 +1200,7 @@ class Task_module:
         """
         if self.navigation:
             try:
-                self.set_move_arms_enabled(False, False)
+                self.set_move_arms_enabled(False)
                 approved = self.spin_proxy(degrees)
                 if approved == "approved":
                     return True
@@ -1225,7 +1222,7 @@ class Task_module:
         """
         if self.navigation:
             try:
-                self.set_move_arms_enabled(False, False)
+                self.set_move_arms_enabled(False)
                 approved = self.go_to_defined_angle_proxy(degrees)
                 if approved == "approved":
                     return True
@@ -1247,7 +1244,7 @@ class Task_module:
         """
         if self.navigation:
             try:
-                self.set_move_arms_enabled(False, False)
+                self.set_move_arms_enabled(False)
                 instructions = self.get_route_guidance_proxy(place_name)
                 return instructions
             except rospy.ServiceException as e:
@@ -1266,7 +1263,7 @@ class Task_module:
         """
         if self.navigation:
             try:
-                self.set_move_arms_enabled(False, False)
+                self.set_move_arms_enabled(False)
                 approved = self.constant_spin_proxy(velocity)
                 if approved == "approved":
                     return True
@@ -1288,7 +1285,7 @@ class Task_module:
         """
         if self.navigation:
             try:
-                self.set_move_arms_enabled(False, False)
+                self.set_move_arms_enabled(False)
                 print("Waiting to reach the place")
                 finish = False
                 response = False
@@ -1323,7 +1320,7 @@ class Task_module:
         """
         if self.navigation:
             try:
-                self.set_move_arms_enabled(False, False)
+                self.set_move_arms_enabled(False)
                 approved = self.add_place_proxy(name, persist, edges)
                 if approved == "approved":
                     return True
@@ -1587,7 +1584,7 @@ class Task_module:
     def set_move_arms_enabled(self, state:bool)->bool: 
         if self.pytoolkit: 
             try: 
-                approved = self.set_move_arms_enabled(state,state)
+                approved = self.setMoveArms_srv(state,state)
                 if approved == "OK": 
                     return True
                 else: 
