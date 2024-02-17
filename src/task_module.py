@@ -13,14 +13,7 @@ from threading import Thread
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import (
-    set_move_arms_enabled_srv,
-    misc_tools_srv,
-    misc_tools_srvRequest,
-    tablet_service_srv,
-    battery_service_srv,
-    set_security_distance_srv,
-)
+from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv
 from robot_toolkit_msgs.msg import touch_msg
 
 from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
@@ -55,6 +48,7 @@ class Task_module:
         ################### GLOBAL VARIABLES ###################
         self.follow_you_active = True
         self.labels = dict()
+        self.say_go_ahead = True
         self.object_found = False
         self.isTouched = False
         self.navigation_status = 0
@@ -77,6 +71,7 @@ class Task_module:
                 "/perception_utilities/turn_camera_srv", turn_camera_srv
             )
 
+
             print(
                 self.consoleFormatter.format(
                     "Waiting for perception_utilities/get_labels...", "WARNING"
@@ -86,6 +81,8 @@ class Task_module:
             self.get_labels_proxy = rospy.ServiceProxy(
                 "/perception_utilities/get_labels_srv", get_labels_srv
             )
+
+
 
             print(
                 self.consoleFormatter.format(
@@ -181,51 +178,23 @@ class Task_module:
         self.speech = speech
 
         if speech:
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for SPEECH services...", "WARNING"
-                )
-            )
+            print(self.consoleFormatter.format("Waiting for SPEECH services...","WARNING"))
 
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for speech_utilities/talk_speech...", "WARNING"
-                )
-            )
-            rospy.wait_for_service("/speech_utilities/talk_speech_srv")
-            self.talk_proxy = rospy.ServiceProxy(
-                "/speech_utilities/talk_speech_srv", talk_speech_srv
-            )
+            print(self.consoleFormatter.format("Waiting for speech_utilities/talk_speech...", "WARNING"))
+            rospy.wait_for_service('/speech_utilities/talk_speech_srv')
+            self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_speech_srv)
 
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for speech_utilities/speech2text...", "WARNING"
-                )
-            )
-            rospy.wait_for_service("speech_utilities/speech2text_srv")
-            self.speech2text_srv_proxy = rospy.ServiceProxy(
-                "speech_utilities/speech2text_srv", speech2text_srv
-            )
+            print(self.consoleFormatter.format("Waiting for speech_utilities/speech2text...", "WARNING"))
+            rospy.wait_for_service('speech_utilities/speech2text_srv')
+            self.speech2text_srv_proxy = rospy.ServiceProxy('speech_utilities/speech2text_srv', speech2text_srv)
 
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for speech_utilities/q_a_speech...", "WARNING"
-                )
-            )
-            rospy.wait_for_service("/speech_utilities/q_a_speech_srv")
-            self.q_a_proxy = rospy.ServiceProxy(
-                "/speech_utilities/q_a_speech_srv", q_a_speech_srv
-            )
+            print(self.consoleFormatter.format("Waiting for speech_utilities/q_a_speech...", "WARNING"))
+            rospy.wait_for_service('/speech_utilities/q_a_speech_srv')
+            self.q_a_proxy = rospy.ServiceProxy('/speech_utilities/q_a_speech_srv', q_a_speech_srv)
 
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for speech_utilities/answer...", "WARNING"
-                )
-            )
-            rospy.wait_for_service("/speech_utilities/answers_srv")
-            self.answer_proxy = rospy.ServiceProxy(
-                "/speech_utilities/answers_srv", answer_srv
-            )
+            print(self.consoleFormatter.format("Waiting for speech_utilities/answer...", "WARNING"))
+            rospy.wait_for_service('/speech_utilities/answers_srv')
+            self.answer_proxy = rospy.ServiceProxy('/speech_utilities/answers_srv', answer_srv)
 
             print(self.consoleFormatter.format("Waiting for speech_utilities/hotword...", "WARNING"))
             rospy.wait_for_service('/speech_utilities/hotword_srv')
@@ -453,33 +422,23 @@ class Task_module:
             )
             rospy.wait_for_service("/pytoolkit/ALMotion/set_security_distance_srv")
             self.set_security_distance_proxy = rospy.ServiceProxy(
-                "/pytoolkit/ALMotion/set_security_distance_srv",
-                set_security_distance_srv,
+                "/pytoolkit/ALMotion/set_security_distance_srv", set_security_distance_srv
             )
 
             print(
                 self.consoleFormatter.format(
-                    "Waiting for pytoolkit/ALMotion/set_security_distance_srv...",
-                    "WARNING",
+                    "Waiting for pytoolkit/ALMotion/set_security_distance_srv...", "WARNING"
                 )
             )
 
             rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
-            self.autonomous_life_proxy = rospy.ServiceProxy(
-                "/pytoolkit/ALAutonomousLife/set_state_srv", SetBool
-            )
+            self.autonomous_life_proxy = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
 
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for pytoolkit/stop_tracker...", "WARNING"
-                )
-            )
+            print(self.consoleFormatter.format("Waiting for pytoolkit/stop_tracker...", "WARNING"))
             rospy.wait_for_service("/pytoolkit/ALTracker/stop_tracker_srv")
-            self.stop_tracker_proxy = rospy.ServiceProxy(
-                "/pytoolkit/ALTracker/stop_tracker_srv", battery_service_srv
-            )
+            self.stop_tracker_proxy = rospy.ServiceProxy("/pytoolkit/ALTracker/stop_tracker_srv",battery_service_srv)
 
-            print(self.consoleFormatter.format("PYTOOLKIT services enabled", "OKGREEN"))
+            print(self.consoleFormatter.format("PYTOOLKIT services enabled","OKGREEN"))
 
             print(self.consoleFormatter.format("PYTOOLKIT services enabled", "OKGREEN"))
 
@@ -496,9 +455,7 @@ class Task_module:
         Initializes the pepper robot with default parameteres
         """
         if self.pytoolkit and self.perception:
-            self.turn_camera(
-                "front_camera", "custom", self.camera_resolution, self.frames_per_second
-            )
+            self.turn_camera("front_camera","custom",1,15)
             self.start_recognition("front_camera")
             # quedarse como un coco
         else:
@@ -577,7 +534,7 @@ class Task_module:
 
     def get_labels(self, bool):
         if self.perception:
-
+    
             try:
                 return self.get_labels_proxy.call(bool)
             except rospy.ServiceException as e:
@@ -832,14 +789,6 @@ class Task_module:
                     self.i = 0
                     return id_max_tuple
 
-    def get_closer_person(self, labels_actuales):
-        for label in labels_actuales:
-            if label == "person":
-                max_tuple = max(labels_actuales[label], key=lambda x: x[3])
-                # print(max_tuple)
-                self.i = 0
-                return max_tuple
-
     ################### SPEECH SERVICES ###################
 
     def talk(self, text: str, language="English", wait=True, animated=False) -> bool:
@@ -880,7 +829,7 @@ class Task_module:
             try:
                 text = self.speech2text_srv_proxy(file_name, seconds, transcription)
                 return text.answer
-            except rospy.ServiceException as e:
+            except rospy.ServiceException as e  :
                 print("Service call failed: %s" % e)
                 return ""
         else:
@@ -993,12 +942,12 @@ class Task_module:
         specified in the request message.
         """
         if self.navigation:
-            approved = False
+            approved=False
             try:
                 self.set_move_arms_enabled(False)
                 if self.pytoolkit:
-                    approved = self.go_to_relative_point_proxy(x, y, theta)
-                if approved == "approved":
+                    approved = self.go_to_relative_point_proxy(x,y,theta)
+                if approved=="approved":
                     return True
                 else:
                     return False
@@ -1041,7 +990,7 @@ class Task_module:
                         self.stop_tracker_proxy()
                         self.stop_tracker_proxy()
                         self.stop_tracker_proxy()
-                if approved == "approved":
+                if approved=="approved":
                     return True
                 else:
                     return False
@@ -1104,70 +1053,20 @@ class Task_module:
                 error_x = target_x - center_x
                 angular_vel = 0.004 * error_x
                 cmd_vel_msg.linear.x = linear_vel
+                cmd_vel_msg.linear.x = linear_vel
                 cmd_vel_msg.angular.z = angular_vel
             else:
                 self.i+=1
             self.cmd_velPublisher.publish(cmd_vel_msg)
             if self.i >= 20:
-                self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
-                #print("I have lost you, please stand in front of me, I will tell you when you can continue")
-                rospy.sleep(5)
-                id_max_tuple = self.get_closer_person()
-                self.talk_proxy("GO AHEAD!", "English", True, False)
-                #print("GO AHEAD!")
-
-    def follow_you_srv_thread(self):
-        self.i=0
-        id_max_tuple = self.get_closer_person()
-        while self.follow_you_active:
-            cmd_vel_msg = Twist()
-            if "person" in self.labels:
-                result = [tuple for tuple in self.labels["person"] if tuple[0] == id_max_tuple]
-                if len(result) == 0:
-                    self.cmd_velPublisher.publish(cmd_vel_msg)
-                    self.i+=1
-                    continue
-                else:
-                    self.i=0
-                target_x = result[0][1]
-                center_x = 320 / 2
-                linear_vel = 0.15
-                error_x = target_x - center_x
-                angular_vel = 0.004 * error_x
-                cmd_vel_msg.linear.x = linear_vel
-                cmd_vel_msg.angular.z = angular_vel
-            else:     
-                self.i+=1
-            self.cmd_velPublisher.publish(cmd_vel_msg)
-            if self.i >= 20:
-                self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
-                rospy.sleep(5)
-                id_max_tuple = self.get_closer_person()
                 if self.say_go_ahead:
+                    self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
+                    rospy.sleep(5)
+                    id_max_tuple = self.get_closer_person()
                     self.talk_proxy("GO AHEAD!", "English", True, False)
     
-    def set_say_go_ahead( self, command: bool):
-        self.say_go_ahead = command
-    
-    def momvimiento_persona_horizontal(self, w0,h0, w1,h1):
-        """
-        mira si una persona se mueve a la izquierda o a la derecha
-        
-        """
-        punto_inicial = (w0+h0)/2
-        punto_final =  (w1+h1)/2
-        delta = punto_final- punto_inicial
-        
-        tolerancia = 0
-        if abs(delta) < toleracia :
-            print("la persona no semovio")
-        elif delta <0:
-            print("la persona se movio a la izquierda")
-        else:
-            print("la persona se movio a la derecha")        
-        
-        
-                
+    def set_say_go_ahead(self, comand:bool):
+        self.say_go_ahead = comand
 
     def robot_stop_srv(self) -> bool:
         """
@@ -1437,11 +1336,7 @@ class Task_module:
             try:
                 self.setMoveArms_srv.call(False, False)
                 self.execute_trayectory("request_help_both_arms")
-                self.talk(
-                    "Could you place the " + object_name + " in my hands, please?",
-                    "English",
-                    wait=True,
-                )
+                self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=True)
                 rospy.sleep(9)
                 self.go_to_pose("almost_open_both_hands")
                 return True
@@ -1461,10 +1356,10 @@ class Task_module:
         """
         if self.manipulation:
             try:
-                self.talk("Please pick up the " + object_name, "English", wait=True)
+                self.talk("Please pick up the "+object_name,"English",wait=True)
                 rospy.sleep(7)
-                self.execute_trayectory("place_both_arms")
-                self.setMoveArms_srv.call(True, True)
+                self.execute_trayectory("place_both_arms") 
+                self.setMoveArms_srv.call(True, True)           
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -1549,7 +1444,7 @@ class Task_module:
         """
         Input: True turn on || False turn off
         Output: True if the service was called correctly, False if not
-        ----------
+        ----------  
         Sets the autonomous life of the robot
         """
         if self.pytoolkit:
@@ -1565,14 +1460,14 @@ class Task_module:
         else:
             print("pytoolkit as false")
             return False
-
-    def set_security_distance(self, state: bool) -> bool:
-        if self.pytoolkit:
-            try:
+        
+    def set_security_distance(self, state:bool) -> bool: 
+        if self.pytoolkit: 
+            try: 
                 approved = self.set_security_distance_proxy(state)
-                if approved == "OK":
+                if approved == "OK": 
                     return True
-                else:
+                else: 
                     return False
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)

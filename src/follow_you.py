@@ -32,7 +32,7 @@ class FOLLOW_YOU(object):
         self.task_name = "TEST"
         self.isTouched = False
         states = ['TEST', 'INIT', 'FOLLOW_YOU', 'FINISH']
-        self.tm = tm(perception = True, speech=False, manipulation=False, navigation=True, pytoolkit=True)
+        self.tm = tm(perception = True, speech=True, manipulation=False, navigation=True, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [

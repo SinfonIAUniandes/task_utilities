@@ -72,13 +72,15 @@ class MERCADITO(object):
         self.tm.talk("When you have a question regarding your food please say Hey Pepper. If you want me to stop and hand you the basket say Stop","English")
         self.tm.hot_word(["hello","stop"])
         self.tm.follow_you(True) #TODO 
+        self.tm.set_say_go_ahead(True)
         while not self.is_done:
             if self.hey_pepper:
-                tm.set_say_go_ahead(False)
+                self.tm.set_say_go_ahead(False)
                 self.hey_pepper_function()
                 self.hey_pepper=False
+                print("aaaaaaaaaaaaaaaa")
             time.sleep(0.1)
-
+     
         self.market_ready()
 
     def on_enter_FININSH(self):
@@ -104,7 +106,7 @@ class MERCADITO(object):
         if word == "stop":
             self.tm.follow_you(False)
             self.is_done = True
-        elif word == "hello":
+        elif word == "the":
             self.hey_pepper = True
     
     def check_rospy(self):
