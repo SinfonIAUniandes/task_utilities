@@ -78,7 +78,7 @@ class MERCADITO(object):
                 self.tm.set_say_go_ahead(False)
                 self.hey_pepper_function()
                 self.hey_pepper=False
-                print("aaaaaaaaaaaaaaaa")
+                self.tm.set_say_go_ahead(True)
             time.sleep(0.1)
      
         self.market_ready()
