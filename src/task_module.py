@@ -1043,20 +1043,15 @@ class Task_module:
         if self.navigation and self.pytoolkit:
             try:
                 if  command:
-                    print("1")
                     self.set_move_arms_enabled(False)
                     self.follow_you_active = command
                     self.setDistance_srv.call(0.3)
-                    print("2")
                     head_thread = Thread(target=self.follow_you_srv_thread)
                     head_thread.start()
-                    print("3")
                     service_thread = Thread(target=self.head_srv_thread)
                     service_thread.start()
-                    print("4")
                     closer_thread = Thread(target=self.get_closer_person)
                     closer_thread.start()
-                    print("5")
                     self.follow_you_proxy(command)
                 else:
                     self.set_move_arms_enabled(True)

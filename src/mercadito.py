@@ -49,6 +49,7 @@ class MERCADITO(object):
         
         # Crear la máquina de estados
         self.machine = Machine(model=self, states=states, transitions=transitions, initial='MERCADITO')
+        subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
         
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
@@ -63,23 +64,21 @@ class MERCADITO(object):
         self.tm.go_to_pose("basket", 0.1)
         self.tm.go_to_pose("open_both_hands", 0.1)
         self.tm.talk("Hello I will help you with your shopping today, when you are ready put your basket in my hands","English")
-        subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
         self.beggining()
 
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
-        self.tm.talk("When you have a question regarding your food please say Hey Pepper. If you want me to stop and hand you the basket say Stop","English")
+        self.tm.talk("When you have a question regarding your food please say Hey Pepper. If you want me to stop and hand you the basket say Stop","English", wait=False)
+        time.sleep(1)
         self.tm.hot_word(["hey pepper","stop"])
         self.tm.follow_you(True) 
         while not self.is_done:
             if self.hey_pepper:
-                # self.tm.set_say_go_ahead(False)
                 print(self.consoleFormatter.format("Hey Pepper detected ", "WARNING"))
                 self.hey_pepper_function()
                 self.hey_pepper=False
-                # self.tm.set_say_go_ahead(True)
             time.sleep(0.1)
-     
+        print(self.consoleFormatter.format("Stop detected ", "WARNING"))
         self.market_ready()
 
     def on_enter_FININSH(self):
@@ -121,13 +120,13 @@ class MERCADITO(object):
         while not rospy.is_shutdown():
             self.start()
     
-    def callback_hand_sensor_subscriber(self, msg: touch_msg):
-        if "hand" in msg.name:
-            self.hey_pepper = True
-        if "head" in msg.name:
-            print("head_touched")
-            self.tm.follow_you(False)
-            self.is_done = True
+    # def callback_hand_sensor_subscriber(self, msg: touch_msg):
+    #     if "hand" in msg.name:
+    #         self.hey_pepper = True
+    #     if "head" in msg.name:
+    #         print("head_touched")
+    #         self.tm.follow_you(False)
+    #         self.is_done = True
     
 # Crear una instancia de la maquina de estados
 if __name__ == "__main__":
