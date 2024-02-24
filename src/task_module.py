@@ -13,12 +13,12 @@ from threading import Thread
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv
+from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv
 from robot_toolkit_msgs.msg import touch_msg
 
 from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
 
-from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest, hotword_srv ,hotword_srvRequest, answer_srv, answer_srvRequest
+from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest, hotword_srv ,hotword_srvRequest, answer_srv, answer_srvRequest, live_transcription_srv
 
 from perception_msgs.srv import start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv #,get_person_description_srv
 
@@ -47,6 +47,7 @@ class Task_module:
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
         ################### GLOBAL VARIABLES ###################
         self.follow_you_active = True
+        self.max_tuple = [0,0,0,0,0]
         self.labels = dict()
         self.object_found = False
         self.isTouched = False
@@ -180,24 +181,24 @@ class Task_module:
             print(self.consoleFormatter.format("Waiting for SPEECH services...","WARNING"))
 
             print(self.consoleFormatter.format("Waiting for speech_utilities/talk_speech...", "WARNING"))
-            rospy.wait_for_service('/speech_utilities/talk_speech_srv')
-            self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_speech_srv)
+            #rospy.wait_for_service('/speech_utilities/talk_speech_srv')
+            #self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_speech_srv)
 
             print(self.consoleFormatter.format("Waiting for speech_utilities/speech2text...", "WARNING"))
             rospy.wait_for_service('speech_utilities/speech2text_srv')
             self.speech2text_srv_proxy = rospy.ServiceProxy('speech_utilities/speech2text_srv', speech2text_srv)
 
             print(self.consoleFormatter.format("Waiting for speech_utilities/q_a_speech...", "WARNING"))
-            rospy.wait_for_service('/speech_utilities/q_a_speech_srv')
-            self.q_a_proxy = rospy.ServiceProxy('/speech_utilities/q_a_speech_srv', q_a_speech_srv)
+            #rospy.wait_for_service('/speech_utilities/q_a_speech_srv')
+            #self.q_a_proxy = rospy.ServiceProxy('/speech_utilities/q_a_speech_srv', q_a_speech_srv)
 
             print(self.consoleFormatter.format("Waiting for speech_utilities/answer...", "WARNING"))
             rospy.wait_for_service('/speech_utilities/answers_srv')
             self.answer_proxy = rospy.ServiceProxy('/speech_utilities/answers_srv', answer_srv)
 
-            print(self.consoleFormatter.format("Waiting for speech_utilities/hotword...", "WARNING"))
-            rospy.wait_for_service('/speech_utilities/hotword_srv')
-            self.hot_word_proxy = rospy.ServiceProxy('/speech_utilities/hotword_srv', hotword_srv)
+            print(self.consoleFormatter.format("Waiting for speech_utilities/live_transcription...", "WARNING"))
+            rospy.wait_for_service('/speech_utilities/live_transcription_srv')
+            self.live_transcription_proxy = rospy.ServiceProxy('/speech_utilities/live_transcription_srv', live_transcription_srv)
 
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
 
@@ -377,6 +378,21 @@ class Task_module:
                 self.consoleFormatter.format(
                     "Waiting for PYTOOLKIT services...", "WARNING"
                 )
+            )
+
+            self.setMoveHead_srv = rospy.ServiceProxy(
+                "/pytoolkit/ALMotion/move_head_srv",
+                move_head_srv
+            )
+            
+            self.setDistance_srv = rospy.ServiceProxy(
+                "/pytoolkit/ALMotion/set_security_distance_srv",
+                set_security_distance_srv
+            )
+
+            self.setRPosture_srv = rospy.ServiceProxy(
+                "/pytoolkit/ALRobotPosture/go_to_posture_srv",
+                go_to_posture_srv
             )
 
             self.setMoveArms_srv = rospy.ServiceProxy(
@@ -782,11 +798,8 @@ class Task_module:
             labels_actuales = self.labels
             for label in labels_actuales:
                 if label == "person":
-                    max_tuple = max(labels_actuales[label], key=lambda x: x[3])
-                    id_max_tuple = max_tuple[0]
-                    print(id_max_tuple)
+                    self.max_tuple = max(labels_actuales[label], key=lambda x: x[3])
                     self.i = 0
-                    return id_max_tuple
 
     ################### SPEECH SERVICES ###################
 
@@ -803,7 +816,7 @@ class Task_module:
         """
         if self.speech:
             try:
-                self.talk_proxy(text, language, wait, animated)
+                #self.talk_proxy(text, language, wait, animated)
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -835,24 +848,45 @@ class Task_module:
             print("speech as false")
             return ""
         
-    def hot_word(self, hot_words:list)->bool:
+    def callback_hot_word(self, data):
+        if self.detect_hotword:
+            for word in self.hot_words:
+                if word in data.data:
+                    self.detected_hotword = word  
+        
+    def hot_word(self, hot_words:list):
         """
         Input: hot_words
-        Output: True if the service was called correctly, False if not
+        Output:
         ----------
         Activates the hot word detection
         """
+        self.hot_words = hot_words
+        self.detect_hotword = True
+        self.detected_hotword = None
+                
         if self.speech:
             try:
-                approved = self.hot_word_proxy(hot_words)
-                return approved.answer
+                print(self.consoleFormatter.format("Waiting for /live_transcription", "WARNING"))
+                self.subscriber_live_transcription = rospy.Subscriber("/live_transcription", String, self.callback_hot_word)
+                
+                live_transcription_thread = Thread(target=self.live_transcription_proxy_thread())
+                live_transcription_thread.start()
+                
+                if self.detected_hotword != None:
+                    return self.detected_hotword
+                
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return False
         else:
             print("speech as false")
             return False
-
+        
+    def live_transcription_proxy_thread(self):
+        self.live_transcription_proxy(True)
+        rospy.time(1000)
+        
     def answer_question(self, question:str, temperature = 0.5, save_conversation = True, fill_time = True)->str:
         """
         Input: 
@@ -1009,15 +1043,20 @@ class Task_module:
         Follows the person in front of the robot until the person touches the head of the robot
         """
         rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
-        self.cmd_velPublisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+        self.cmd_velPublisher = rospy.Publisher('/pytoolkit/ALMotion/move', Twist, queue_size=10)
         
         if self.navigation and self.pytoolkit:
             try:
                 if  command:
                     self.set_move_arms_enabled(False)
                     self.follow_you_active = command
-                    service_thread = Thread(target=self.follow_you_srv_thread)
+                    self.setDistance_srv.call(0.3)
+                    head_thread = Thread(target=self.follow_you_srv_thread)
+                    head_thread.start()
+                    service_thread = Thread(target=self.head_srv_thread)
                     service_thread.start()
+                    closer_thread = Thread(target=self.get_closer_person())
+                    closer_thread.start()
                     self.follow_you_proxy(command)
                 else:
                     self.set_move_arms_enabled(True, True)
@@ -1032,36 +1071,76 @@ class Task_module:
         else:
             print("navigation as false")
             return False
-        
+    
+    def head_srv_thread(self):
+        while True:
+            self.setMoveHead_srv.call("up")
+            rospy.sleep(8)
+    
     def follow_you_srv_thread(self):
+        moviendose = False
+        cerca = False
         self.i=0
-        id_max_tuple = self.get_closer_person()
+        target_x = 0
+        center_x = 320 / 2
+        linear_vel = 0.5
+        error_x = target_x - center_x
+        angular_vel = 0
+        id_max_tuple = self.max_tuple[0]
         while True and self.follow_you_active: 
             cmd_vel_msg = Twist()
             if "person" in self.labels:
-                result = [tuple for tuple in self.labels["person"] if tuple[0] == id_max_tuple]
-                if len(result) == 0:
+                result = [tuple for tuple in self.labels if tuple[0] == id_max_tuple]
+                if len(result) == 0 and moviendose:
+                    print("estaba antes")
+                    moviendose = False
                     self.cmd_velPublisher.publish(cmd_vel_msg)
                     self.i+=1
                     continue
                 else:
                     self.i=0
                 target_x = result[0][1]
-                center_x = 320 / 2
-                linear_vel = 0.15
                 error_x = target_x - center_x
                 angular_vel = 0.004 * error_x
-                cmd_vel_msg.linear.x = linear_vel
-                cmd_vel_msg.angular.z = angular_vel
+                if self.max_tuple[3]>=170:
+                    cerca = True
+                    if moviendose:
+                        print("el robot parara")
+                        print("muy cerca")
+                        moviendose = False
+                        cmd_vel_msg.linear.x = 0
+                        cmd_vel_msg.angular.z = 0
+                        self.cmd_velPublisher.publish(cmd_vel_msg)
+                else:
+                    cerca = False
+                if (abs(angular_vel) > 0.25 or not moviendose) and not cerca:
+                    moviendose = True
+                    print("el robot se movera")
+                    cmd_vel_msg = Twist()
+                    cmd_vel_msg.linear.x = linear_vel
+                    cmd_vel_msg.angular.z = angular_vel
+                    self.cmd_velPublisher.publish(cmd_vel_msg)
+                    rospy.sleep(0.2)
+                    cmd_vel_msg = Twist()
+                    cmd_vel_msg.linear.x = linear_vel
+                    cmd_vel_msg.angular.z = 0
+                    self.cmd_velPublisher.publish(cmd_vel_msg)
             else:
                 self.i+=1
-            self.cmd_velPublisher.publish(cmd_vel_msg)
             if self.i >= 20:
-                self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
+                print("el robot parara")
+                print("persona")
+                moviendose = False
+                cmd_vel_msg.linear.x = 0
+                cmd_vel_msg.angular.z = 0
+                self.cmd_velPublisher.publish(cmd_vel_msg)
+                #self.setRPosture_srv.call("stand")
+                self.setMoveHead_srv.call("up")
+                #self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
                 #print("I have lost you, please stand in front of me, I will tell you when you can continue")
                 rospy.sleep(5)
-                id_max_tuple = self.get_closer_person()
-                self.talk_proxy("GO AHEAD!", "English", True, False)
+                id_max_tuple = self.max_tuple[0]
+                #self.talk_proxy("GO AHEAD!", "English", True, False)
                 #print("GO AHEAD!")
 
     def robot_stop_srv(self) -> bool:
