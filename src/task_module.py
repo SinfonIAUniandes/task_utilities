@@ -869,7 +869,7 @@ class Task_module:
         if self.speech:
             try:
                 print(self.consoleFormatter.format("Waiting for /live_transcription", "WARNING"))
-                self.subscriber_live_transcription = rospy.Subscriber("/live_transcription", String, self.callback_hot_word)
+                self.subscriber_live_transcription = rospy.Subscriber("", String, self.callback_hot_word)
                 
                 live_transcription_thread = Thread(target=self.live_transcription_proxy_thread())
                 live_transcription_thread.start()
@@ -1060,7 +1060,7 @@ class Task_module:
                     closer_thread.start()
                     self.follow_you_proxy(command)
                 else:
-                    self.set_move_arms_enabled(True, True)
+                    self.set_move_arms_enabled(True)
                     self.follow_you_active = command
                     self.follow_you_proxy(command)
                     self.talk("Finished following")
@@ -1091,7 +1091,8 @@ class Task_module:
         while True and self.follow_you_active: 
             cmd_vel_msg = Twist()
             if "person" in self.labels:
-                result = [tuple for tuple in self.labels if tuple[0] == id_max_tuple]
+                personL = self.labels["person"]
+                result = [tuple for tuple in personL if tuple[0] == id_max_tuple]
                 if len(result) == 0 and moviendose:
                     print("estaba antes")
                     moviendose = False
@@ -1100,9 +1101,10 @@ class Task_module:
                     continue
                 else:
                     self.i=0
-                target_x = result[0][1]
-                error_x = target_x - center_x
-                angular_vel = 0.004 * error_x
+                if len(result) != 0:
+                    target_x = result[0][1]
+                    error_x = target_x - center_x
+                    angular_vel = 0.004 * error_x
                 if self.max_tuple[3]>=170:
                     cerca = True
                     if moviendose:
