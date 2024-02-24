@@ -32,7 +32,6 @@ class MERCADITO(object):
         self.task_name = "MERCADITO"
         self.is_done = False
         self.hey_pepper=False
-        self.isTouched = False
         states = ['MERCADITO','INIT', 'FOLLOW_YOU','FINISH','MERCADITO_DONE']
         self.tm = tm(perception = True,speech=True,manipulation=True, navigation=True, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
@@ -61,24 +60,24 @@ class MERCADITO(object):
         self.tm.initialize_pepper()
         self.tm.talk("I am going to do the shopping task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        self.tm.talk("Hello I will help you with your shopping today, when you are ready put your basket in my hands","English")
         self.tm.go_to_pose("basket", 0.1)
         self.tm.go_to_pose("open_both_hands", 0.1)
+        self.tm.talk("Hello I will help you with your shopping today, when you are ready put your basket in my hands","English")
         #subscriber = rospy.Subscriber("/speech_utilities/hotword",String,self.callback_hot_word)
         self.beggining()
 
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
         self.tm.talk("When you have a question regarding your food please say Hey Pepper. If you want me to stop and hand you the basket say Stop","English")
-        #self.tm.hot_word(["hello","stop"])
+        #self.tm.hot_word(["hello","stofollow_youp"])
         self.tm.follow_you(True) 
-        print("Si esto no hace print todo mal")
         while not self.is_done:
             if self.hey_pepper:
-                self.tm.set_say_go_ahead(False)
+                # self.tm.set_say_go_ahead(False)
+                print(self.consoleFormatter.format("Hey Pepper detected ", "WARNING"))
                 self.hey_pepper_function()
                 self.hey_pepper=False
-                self.tm.set_say_go_ahead(True)
+                # self.tm.set_say_go_ahead(True)
             time.sleep(0.1)
      
         self.market_ready()
@@ -94,10 +93,11 @@ class MERCADITO(object):
         os._exit(os.EX_OK)
 
     def hey_pepper_function(self):
+        self.tm.talk("What is your question?","English")
         self.tm.get_labels(True)
         text = self.tm.speech2text_srv() 
         labels=self.tm.get_labels(False)
-        request = f"""The person asked: {text}.While the person spoke, you saw the next objects: {", ".join(labels)}"""
+        request = f"""The person asked: {text}.While the person spoke, you saw the next objects: {labels}"""
         answer=self.tm.answer_question(request) #TODO
         self.tm.talk(answer,"English")
 
@@ -122,10 +122,9 @@ class MERCADITO(object):
     
     def callback_hand_sensor_subscriber(self, msg: touch_msg):
         if "hand" in msg.name:
-            self.isTouched = msg.state
-            
             self.hey_pepper = True
-        else:
+        if "head" in msg.name:
+            print("head_touched")
             self.tm.follow_you(False)
             self.is_done = True
     
