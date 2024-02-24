@@ -49,6 +49,7 @@ class Task_module:
         self.follow_you_active = True
         self.max_tuple = [0,0,0,0,0]
         self.labels = dict()
+        self.say_go_ahead = True
         self.object_found = False
         self.isTouched = False
         self.navigation_status = 0
