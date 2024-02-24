@@ -13,7 +13,7 @@ from threading import Thread
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv
+from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv
 from robot_toolkit_msgs.msg import touch_msg
 
 from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
@@ -418,6 +418,21 @@ class Task_module:
                     "WARNING",
                 )
             )
+
+            print(self.consoleFormatter.format("Waiting for pytoolkit/ALSpeechRecognition/set_speechrecognition_srv...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALSpeechRecognition/set_speechrecognition_srv")
+            self.speech_recognition = rospy.ServiceProxy("/pytoolkit/ALSpeechRecognition/set_speechrecognition_srv", set_speechrecognition_srv)
+
+            print(self.consoleFormatter.format("Waiting for pytoolkit/ALSpeechRecognition/set_words_srv...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALSpeechRecognition/set_words_srv")
+            self.set_words = rospy.ServiceProxy("/pytoolkit/ALSpeechRecognition/set_words_srv", speech_recognition_srv)
+
+            rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
+            self.awareness_proxy = rospy.ServiceProxy(
+                "/pytoolkit/ALBasicAwareness/set_awareness_srv", SetBool
+            )
+
+
             rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
             self.show_image_proxy = rospy.ServiceProxy(
                 "/pytoolkit/ALTabletService/show_image_srv", tablet_service_srv
@@ -857,34 +872,23 @@ class Task_module:
             print("speech as false")
             return ""
         
-    def callback_hot_word(self, data):
-        if self.detect_hotword:
-            for word in self.hot_words:
-                if word in data.data:
-                    self.detected_hotword = word  
-        
-    def hot_word(self, hot_words:list):
+    def hot_word(self, hot_words:list,threshold = 0.4):
         """
         Input: hot_words
         Output:
         ----------
         Activates the hot word detection
         """
-        self.hot_words = hot_words
-        self.detect_hotword = True
-        self.detected_hotword = None
-                
-        if self.speech:
+        if self.pytoolkit:
             try:
-                print(self.consoleFormatter.format("Waiting for /live_transcription", "WARNING"))
-                self.subscriber_live_transcription = rospy.Subscriber("", String, self.callback_hot_word)
-                
-                live_transcription_thread = Thread(target=self.live_transcription_proxy_thread())
-                live_transcription_thread.start()
-                
-                if self.detected_hotword != None:
-                    return self.detected_hotword
-                
+                if hot_words == []:
+                    self.speech_recognition(False,False,False)
+                else:
+                    print("speech_recogntion")
+                    self.speech_recognition(True,False,False)
+                    print("hot_words")
+                    self.set_words(hot_words,threshold)
+                return True                
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return False

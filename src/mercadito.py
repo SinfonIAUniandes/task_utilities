@@ -16,7 +16,7 @@ from code_generation import ls_generate as gen
 from code_generation import generate_utils 
 from code_generation.database.models import Model
 
-from robot_toolkit_msgs.msg import touch_msg
+from robot_toolkit_msgs.msg import touch_msg,speech_recognition_status_msg
 
 from navigation_msgs.srv import constant_spin_srv
 from navigation_msgs.msg import simple_feedback_msg
@@ -43,9 +43,9 @@ class MERCADITO(object):
             {'trigger': 'finish', 'source': 'FINISH', 'dest': 'MERCADITO_DONE'},
         ]
 
-        self.handSensorSubscriber = rospy.Subscriber(
-            "/touch", touch_msg, self.callback_hand_sensor_subscriber
-        )
+        # self.handSensorSubscriber = rospy.Subscriber(
+        #     "/touch", touch_msg, self.callback_hand_sensor_subscriber
+        # )
         
         # Crear la máquina de estados
         self.machine = Machine(model=self, states=states, transitions=transitions, initial='MERCADITO')
@@ -63,13 +63,13 @@ class MERCADITO(object):
         self.tm.go_to_pose("basket", 0.1)
         self.tm.go_to_pose("open_both_hands", 0.1)
         self.tm.talk("Hello I will help you with your shopping today, when you are ready put your basket in my hands","English")
-        #subscriber = rospy.Subscriber("/speech_utilities/hotword",String,self.callback_hot_word)
+        subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
         self.beggining()
 
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
         self.tm.talk("When you have a question regarding your food please say Hey Pepper. If you want me to stop and hand you the basket say Stop","English")
-        #self.tm.hot_word(["hello","stofollow_youp"])
+        self.tm.hot_word(["hey pepper","stop"])
         self.tm.follow_you(True) 
         while not self.is_done:
             if self.hey_pepper:
@@ -93,20 +93,21 @@ class MERCADITO(object):
         os._exit(os.EX_OK)
 
     def hey_pepper_function(self):
-        self.tm.talk("What is your question?","English")
         self.tm.get_labels(True)
+        self.tm.talk("What is your question?","English",wait=False)
+        time.sleep(0.5)
         text = self.tm.speech2text_srv() 
         labels=self.tm.get_labels(False)
         request = f"""The person asked: {text}.While the person spoke, you saw the next objects: {labels}"""
-        answer=self.tm.answer_question(request) #TODO
+        answer=self.tm.answer_question(request)
         self.tm.talk(answer,"English")
 
     def callback_hot_word(self,data):
-        word = data.data
+        word = data.status
         if word == "stop":
             self.tm.follow_you(False)
             self.is_done = True
-        elif word == "hello":
+        elif word == "hey pepper":
             self.hey_pepper = True
     
     def check_rospy(self):
