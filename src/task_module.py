@@ -1046,10 +1046,10 @@ class Task_module:
                     self.set_move_arms_enabled(False)
                     self.follow_you_active = command
                     self.setDistance_srv.call(0.3)
-                    head_thread = Thread(target=self.follow_you_srv_thread)
-                    head_thread.start()
-                    service_thread = Thread(target=self.head_srv_thread)
+                    service_thread = Thread(target=self.follow_you_srv_thread)
                     service_thread.start()
+                    head_thread = Thread(target=self.head_srv_thread)
+                    head_thread.start()
                     closer_thread = Thread(target=self.get_closer_person)
                     closer_thread.start()
                     self.follow_you_proxy(command)
@@ -1057,6 +1057,10 @@ class Task_module:
                     self.set_move_arms_enabled(True)
                     self.follow_you_active = command
                     self.follow_you_proxy(command)
+                    cmd_vel_msg = Twist() 
+                    cmd_vel_msg.linear.x = 0
+                    cmd_vel_msg.angular.z = 0
+                    self.cmd_velPublisher.publish(cmd_vel_msg)
                     self.talk("Finished following")
                     print("Finished following")
                     return True
@@ -1068,7 +1072,7 @@ class Task_module:
             return False
     
     def head_srv_thread(self):
-        while True:
+        while self.follow_you_active: 
             self.setMoveHead_srv.call("up")
             rospy.sleep(8)
     
@@ -1078,32 +1082,34 @@ class Task_module:
         self.i=0
         target_x = 0
         center_x = 320 / 2
-        linear_vel = 0.5
+        linear_vel = 0.3
         error_x = target_x - center_x
         angular_vel = 0
         id_max_tuple = self.max_tuple[0]
-        while True and self.follow_you_active: 
+        while self.follow_you_active: 
             cmd_vel_msg = Twist()
+            id_max_tuple = self.max_tuple[0]
             if "person" in self.labels:
-                personL = self.labels["person"]
-                result = [tuple for tuple in personL if tuple[0] == id_max_tuple]
+                if self.labels["person"][0][0] == id_max_tuple:
+                    result = self.labels["person"][0]
+                else:
+                    continue
                 if len(result) == 0 and moviendose:
-                    # print("estaba antes")
                     moviendose = False
+                    cmd_vel_msg.linear.x = 0
+                    cmd_vel_msg.angular.z = 0
                     self.cmd_velPublisher.publish(cmd_vel_msg)
                     self.i+=1
                     continue
                 else:
                     self.i=0
                 if len(result) != 0:
-                    target_x = result[0][1]
+                    target_x = result[1]
                     error_x = target_x - center_x
                     angular_vel = 0.004 * error_x
                 if self.max_tuple[3]>=170:
                     cerca = True
                     if moviendose:
-                        # print("el robot parara")
-                        # print("muy cerca")
                         moviendose = False
                         cmd_vel_msg.linear.x = 0
                         cmd_vel_msg.angular.z = 0
@@ -1112,7 +1118,6 @@ class Task_module:
                     cerca = False
                 if (abs(angular_vel) > 0.25 or not moviendose) and not cerca:
                     moviendose = True
-                    # print("el robot se movera")
                     cmd_vel_msg = Twist()
                     cmd_vel_msg.linear.x = linear_vel
                     cmd_vel_msg.angular.z = angular_vel
@@ -1125,20 +1130,17 @@ class Task_module:
             else:
                 self.i+=1
             if self.i >= 20:
-                # print("el robot parara")
-                # print("persona")
                 moviendose = False
                 cmd_vel_msg.linear.x = 0
                 cmd_vel_msg.angular.z = 0
                 self.cmd_velPublisher.publish(cmd_vel_msg)
-                #self.setRPosture_srv.call("stand")
                 self.setMoveHead_srv.call("up")
-                #self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
-                #print("I have lost you, please stand in front of me, I will tell you when you can continue")
+                self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
+                print("I have lost you, please stand in front of me, I will tell you when you can continue")
                 rospy.sleep(5)
                 id_max_tuple = self.max_tuple[0]
-                #self.talk_proxy("GO AHEAD!", "English", True, False)
-                #print("GO AHEAD!")
+                self.talk_proxy("GO AHEAD!", "English", True, False)
+                print("GO AHEAD!")
 
     def robot_stop_srv(self) -> bool:
         """
