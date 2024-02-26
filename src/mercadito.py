@@ -71,6 +71,8 @@ class MERCADITO(object):
         self.tm.talk("When you have a question regarding your food please say Hey Pepper. If you want me to stop and hand you the basket say Stop","English", wait=False)
         time.sleep(1)
         self.tm.hot_word(["hey pepper","stop"])
+        print("true")
+        self.tm.get_labels(True)
         self.tm.follow_you(True) 
         while not self.is_done:
             if self.hey_pepper:
@@ -83,6 +85,7 @@ class MERCADITO(object):
 
     def on_enter_FININSH(self):
         print(self.consoleFormatter.format("FINISH", "HEADER"))
+        print("False")
         self.tm.follow_you(False)
         self.finish()
 
@@ -94,19 +97,24 @@ class MERCADITO(object):
     def hey_pepper_function(self):
         self.tm.get_labels(True)
         self.tm.talk("What is your question?","English",wait=False)
-        time.sleep(0.5)
+        time.sleep(1)
         text = self.tm.speech2text_srv() 
         labels=self.tm.get_labels(False)
         request = f"""The person asked: {text}.While the person spoke, you saw the next objects: {labels}"""
         answer=self.tm.answer_question(request)
         self.tm.talk(answer,"English")
+        self.tm.get_labels(True)
+        self.tm.follow_you(True)
 
     def callback_hot_word(self,data):
         word = data.status
         if word == "stop":
+            print("False")
             self.tm.follow_you(False)
             self.is_done = True
         elif word == "hey pepper":
+            print("False")
+            self.tm.follow_you(False)
             self.hey_pepper = True
     
     def check_rospy(self):
