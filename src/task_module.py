@@ -18,7 +18,7 @@ from robot_toolkit_msgs.msg import touch_msg
 
 from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
 
-from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest, hotword_srv ,hotword_srvRequest, answer_srv, calibrate_srv
+from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest, hotword_srv ,hotword_srvRequest, answer_srv, calibrate_srv, hot_word_srv
 
 from perception_msgs.srv import start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv #,get_person_description_srv
 
@@ -199,9 +199,9 @@ class Task_module:
             rospy.wait_for_service('/speech_utilities/answers_srv')
             self.answer_proxy = rospy.ServiceProxy('/speech_utilities/answers_srv', answer_srv)
 
-            # print(self.consoleFormatter.format("Waiting for speech_utilities/live_transcription...", "WARNING"))
-            # rospy.wait_for_service('/speech_utilities/live_transcription_srv')
-            # self.live_transcription_proxy = rospy.ServiceProxy('/speech_utilities/live_transcription_srv', live_transcription_srv)
+            print(self.consoleFormatter.format('Waiting for speech_utilities/hot_word_srv service!', 'WARNING'))  
+            rospy.wait_for_service('/speech_utilities/hot_word_srv')
+            self.hot_word_srv= rospy.Service("/speech_utilities/hot_word_srv", hot_word_srv)
 
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
 
@@ -820,6 +820,28 @@ class Task_module:
         if self.speech:
             try:
                 self.talk_proxy(text, language, wait, animated)
+                return True
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("speech as false")
+            return False
+        
+    def hot_word(self, words: list, noise = False, eyes = False, threshold = 0.4):
+        """
+        Input:
+        words -> list of words to detect
+        noise -> True || False if there is a noise when the hot worrd is detected
+        eyes -> True || False if the eyes shine 
+        threshold -> Threshold to detect a word
+        Output: True if everything ok || False if not
+        ----------
+        Allows the robot to detect hot words
+        """
+        if self.speech:
+            try:
+                self.hot_word_srv(words, noise, eyes, threshold)
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
