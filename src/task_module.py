@@ -47,11 +47,11 @@ class Task_module:
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
         ################### GLOBAL VARIABLES ###################
         self.follow_you_active = True
-        self.max_tuple = [0,0,0,0,0]
+        self.closest_person = [0,0,0,0,0]
         self.labels = dict()
         self.say_go_ahead = True
         self.object_found = False
-        self.isTouched = False
+        self.iterationssTouched = False
         self.navigation_status = 0
         self.perception = perception
         if perception:
@@ -441,21 +441,18 @@ class Task_module:
             print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
             rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
             self.show_topic_proxy = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_topic_srv", tablet_service_srv)
-
-            print(self.consoleFormatter.format("Waiting for pytoolkit/autononumusLife...", "WARNING"))
             
             rospy.wait_for_service("/pytoolkit/ALMotion/set_security_distance_srv")
             self.set_security_distance_proxy = rospy.ServiceProxy("/pytoolkit/ALMotion/set_security_distance_srv", set_security_distance_srv)
             print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_security_distance_srv...", "WARNING"))
 
+            print(self.consoleFormatter.format("Waiting for pytoolkit/autonomousLife...", "WARNING"))
             rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
             self.autonomous_life_proxy = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
 
             print(self.consoleFormatter.format("Waiting for pytoolkit/stop_tracker...", "WARNING"))
             rospy.wait_for_service("/pytoolkit/ALTracker/stop_tracker_srv")
             self.stop_tracker_proxy = rospy.ServiceProxy("/pytoolkit/ALTracker/stop_tracker_srv",battery_service_srv)
-
-            print(self.consoleFormatter.format("PYTOOLKIT services enabled","OKGREEN"))
 
             print(self.consoleFormatter.format("PYTOOLKIT services enabled", "OKGREEN"))
 
@@ -796,13 +793,21 @@ class Task_module:
             print("perception as false")
             return False
     
-    def get_closer_person(self):
+    def get_closer_person(self) -> None:
+        """
+        Input: None
+        Output: None
+        ----------
+        Updates the information of the person that is closest to the robot.
+        Runs in a thread in follow you
+        """
+        # follow_you_active is used to halt thread execution
         while self.follow_you_active:
             labels_actuales = self.labels
             for label in labels_actuales:
                 if label == "person":
-                    self.max_tuple = max(labels_actuales[label], key=lambda x: x[3])
-                    self.i = 0
+                    self.closest_person = max(labels_actuales[label], key=lambda x: x[3])
+                    self.iterations = 0
 
     ################### SPEECH SERVICES ###################
 
@@ -937,7 +942,7 @@ class Task_module:
                 response = self.answer_proxy(question,save_conversation, temperature, "").answer
             except rospy.ServiceException as e:
                 print("Service call failedL %s"%e)
-                response = "I could not find relevant results for your question "
+                response = "I could not find relevant followed_persons for your question "
         return response
     
     def q_a_speech(self, tag:str)->str:
@@ -1051,39 +1056,71 @@ class Task_module:
             print("navigation as false")
             return False
 
-    def follow_you(self, command: bool) -> bool:
+    def start_moving(self, x: float,y: float,rotate: float) -> None:
         """
-        Input:
-        start: Start to follow a person
+        Input: 
+        x: The speed with which the robot will move forward or backward -> [0.0,0.5]
+        y: The speed with which the robot will move left or right -> [0.0,0.5]
+        rotate: The speed with which the robot will rotate left or right -> [0.0,0.5]
+        Output: None
+        ----------
+        The robots starts moving with the parameters given AND DOESN'T STOP until stopped (by calling stop_moving).
+        """
+
+        movement_msg = Twist()
+        movement_msg.linear.x = x
+        movement_msg.linear.y = y
+        movement_msg.angular.z = rotate
+        self.move_publisher.publish(movement_msg)
+
+
+    def stop_moving(self) -> None:
+        """
+        Input: None
+        Output: None
+        ----------
+        The robots stops moving.
+        """
+        
+        movement_msg = Twist()
+        movement_msg.linear.x = 0
+        movement_msg.linear.y = 0
+        movement_msg.angular.z = 0
+        self.move_publisher.publish(movement_msg)
+
+
+    def follow_you(self, command: bool, speed: float) -> bool:
+        """
+        Input: 
+        command: Whether to start following whoever is closests or not.
+        speed: The speed with which the robot will move forward or backward -> [0.0,0.5]
         Output: True if the service was called correctly, False if not
         ----------
-        Follows the person in front of the robot until the person touches the head of the robot
+        Starts following the closest person to the robot
         """
-        rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
-        self.cmd_velPublisher = rospy.Publisher('/pytoolkit/ALMotion/move', Twist, queue_size=10)
-        
+
+        self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
+        self.move_publisher = rospy.Publisher('/pytoolkit/ALMotion/move', Twist, queue_size=10)
+
         if self.navigation and self.pytoolkit:
             try:
-                if  command:
-                    self.set_move_arms_enabled(False)
+                if command:
                     self.follow_you_active = command
+                    self.set_move_arms_enabled(False)
                     self.setDistance_srv.call(0.3)
-                    service_thread = Thread(target=self.follow_you_srv_thread)
-                    service_thread.start()
+                    follow_thread = Thread(target=self.follow_you_srv_thread, args=speed)
+                    follow_thread.start()
                     head_thread = Thread(target=self.head_srv_thread)
                     head_thread.start()
-                    closer_thread = Thread(target=self.get_closer_person)
-                    closer_thread.start()
+                    person_thread = Thread(target=self.get_closer_person)
+                    person_thread.start()
                     self.follow_you_proxy(command)
+                    print("Started following")
                 else:
                     self.set_move_arms_enabled(True)
                     self.follow_you_active = command
                     self.follow_you_proxy(command)
-                    cmd_vel_msg = Twist() 
-                    cmd_vel_msg.linear.x = 0
-                    cmd_vel_msg.angular.z = 0
-                    self.cmd_velPublisher.publish(cmd_vel_msg)
-                    self.talk("Finished following")
+                    self.stop_moving()
                     print("Finished following")
                     return True
             except rospy.ServiceException as e:
@@ -1093,76 +1130,86 @@ class Task_module:
             print("navigation as false")
             return False
     
-    def head_srv_thread(self):
-        while self.follow_you_active: 
-            self.setMoveHead_srv.call("up")
-            rospy.sleep(8)
-    
-    def follow_you_srv_thread(self):
-        moviendose = False
-        cerca = False
-        self.i=0
-        target_x = 0
-        center_x = 320 / 2
-        linear_vel = 0.3
-        error_x = target_x - center_x
+    def follow_you_srv_thread(self, speed: float) -> None:
+        """
+        Input:
+        speed: The speed with which the robot will move forward or backward -> [0.0,0.5]
+        Output: None
+        ----------
+        A thread dedicated to following the person.
+        """
+        # Number of iterations with no person in sight
+        self.iterations=0
+        moving = False
+        close = False
+        center_x = 160 # 360 degrees / 2
+        linear_vel = speed
         angular_vel = 0
-        id_max_tuple = self.max_tuple[0]
         while self.follow_you_active: 
-            cmd_vel_msg = Twist()
-            id_max_tuple = self.max_tuple[0]
+            person_id = self.closest_person[0]
+            person_width = self.closest_person[3]
+            # If a person was found
             if "person" in self.labels:
-                if self.labels["person"][0][0] == id_max_tuple:
-                    result = self.labels["person"][0]
+                # If that person is the closest person
+                if self.labels["person"][0][0] == person_id:
+                    followed_person = self.labels["person"][0]
                 else:
                     continue
-                if len(result) == 0 and moviendose:
-                    moviendose = False
-                    cmd_vel_msg.linear.x = 0
-                    cmd_vel_msg.angular.z = 0
-                    self.cmd_velPublisher.publish(cmd_vel_msg)
-                    self.i+=1
-                    continue
+
+                # If the followed person has no data
+                if len(followed_person) == 0:
+                    if moving:
+                        moving = False
+                        self.stop_moving()
+                        self.iterations+=1
+                        continue
                 else:
-                    self.i=0
-                if len(result) != 0:
-                    target_x = result[1]
+                    # Person seen
+                    self.iterations=0
+                    # Calculate moving speed
+                    target_x = followed_person[1]
                     error_x = target_x - center_x
                     angular_vel = 0.004 * error_x
-                if self.max_tuple[3]>=170:
-                    cerca = True
-                    if moviendose:
-                        moviendose = False
-                        cmd_vel_msg.linear.x = 0
-                        cmd_vel_msg.angular.z = 0
-                        self.cmd_velPublisher.publish(cmd_vel_msg)
+                
+                # 170 is a value that worked well in testing
+                if person_width>=170:
+                    close = True
+                    if moving:
+                        moving = False
+                        self.stop_moving()
                 else:
-                    cerca = False
-                if (abs(angular_vel) > 0.25 or not moviendose) and not cerca:
-                    moviendose = True
-                    cmd_vel_msg = Twist()
-                    cmd_vel_msg.linear.x = linear_vel
-                    cmd_vel_msg.angular.z = angular_vel
-                    self.cmd_velPublisher.publish(cmd_vel_msg)
-                    rospy.sleep(0.2)
-                    cmd_vel_msg = Twist()
-                    cmd_vel_msg.linear.x = linear_vel
-                    cmd_vel_msg.angular.z = 0
-                    self.cmd_velPublisher.publish(cmd_vel_msg)
+                    close = False
+
+                # If the rotation is big or the robot is not moving
+                if (abs(angular_vel) > 0.25 or not moving):
+                    if close:
+                        # Start rotating to center person in frame
+                        self.start_moving(0, 0, angular_vel)
+                        rospy.sleep(0.2)
+                        # Stop rotating
+                        self.stop_moving()
+                    else:
+                        moving = True
+                        # Start moving and rotating to center person in frame
+                        self.start_moving(linear_vel, 0, angular_vel)
+                        rospy.sleep(0.2)
+                        # Stop rotating but keeping moving forward
+                        self.start_moving(linear_vel, 0, 0)
             else:
-                self.i+=1
-            if self.i >= 20:
-                moviendose = False
-                cmd_vel_msg.linear.x = 0
-                cmd_vel_msg.angular.z = 0
-                self.cmd_velPublisher.publish(cmd_vel_msg)
+                self.iterations+=1
+
+            # If a person has not been seen for 20 iterations
+            if self.iterations >= 20:
+                moving = False
+                self.stop_moving()
                 self.setMoveHead_srv.call("up")
                 self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
                 print("I have lost you, please stand in front of me, I will tell you when you can continue")
-                rospy.sleep(5)
-                id_max_tuple = self.max_tuple[0]
+                rospy.sleep(3)
+                person_id = self.closest_person[0]
                 self.talk_proxy("GO AHEAD!", "English", True, False)
                 print("GO AHEAD!")
+
 
     def robot_stop_srv(self) -> bool:
         """
@@ -1350,8 +1397,19 @@ class Task_module:
         else:
             print("manipulation as false")
             return False
-
-    ############ MANIPULATION SERVICES ###############
+    
+    def head_srv_thread(self) -> None:
+        """
+        Input: None
+        Output: None
+        ---------
+        Thread dedicated to keeping the robot's head up.
+        (Pepper's head falls down when moving due to vibration)
+        """
+        while self.follow_you_active: 
+            self.setMoveHead_srv.call("up")
+            rospy.sleep(8)
+            
 
     def saveState(self, name: str) -> bool:
         """
@@ -1598,7 +1656,7 @@ class Task_module:
 
     def callback_head_sensor_subscriber(self, msg):
         if "head" in msg.name:
-            self.isTouched = msg.state
+            self.iterationssTouched = msg.state
             
     def callback_get_labels_subscriber(self, msg):
         self.labels = {}
