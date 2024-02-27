@@ -201,7 +201,7 @@ class Task_module:
 
             print(self.consoleFormatter.format('Waiting for speech_utilities/hot_word_srv service!', 'WARNING'))  
             rospy.wait_for_service('/speech_utilities/hot_word_srv')
-            self.hot_word_srv= rospy.Service("/speech_utilities/hot_word_srv", hot_word_srv)
+            self.hot_word_srv= rospy.ServiceProxy("/speech_utilities/hot_word_srv", hot_word_srv)
 
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
 
@@ -1089,7 +1089,7 @@ class Task_module:
         self.move_publisher.publish(movement_msg)
 
 
-    def follow_you(self, command: bool, speed: float) -> bool:
+    def follow_you(self, command: bool, speed: float = 0.4) -> bool:
         """
         Input: 
         command: Whether to start following whoever is closests or not.
@@ -1108,7 +1108,7 @@ class Task_module:
                     self.follow_you_active = command
                     self.set_move_arms_enabled(False)
                     self.setDistance_srv.call(0.3)
-                    follow_thread = Thread(target=self.follow_you_srv_thread, args=speed)
+                    follow_thread = Thread(target=self.follow_you_srv_thread, args=[speed])
                     follow_thread.start()
                     head_thread = Thread(target=self.head_srv_thread)
                     head_thread.start()
@@ -1171,8 +1171,8 @@ class Task_module:
                     error_x = target_x - center_x
                     angular_vel = 0.004 * error_x
                 
-                # 170 is a value that worked well in testing
-                if person_width>=170:
+                # 150 is a value that worked well in testing
+                if person_width>=150:
                     close = True
                     if moving:
                         moving = False
@@ -1199,13 +1199,13 @@ class Task_module:
                 self.iterations+=1
 
             # If a person has not been seen for 20 iterations
-            if self.iterations >= 20:
+            if self.iterations >= 30:
                 moving = False
                 self.stop_moving()
                 self.setMoveHead_srv.call("up")
                 self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
                 print("I have lost you, please stand in front of me, I will tell you when you can continue")
-                rospy.sleep(3)
+                rospy.sleep(2)
                 person_id = self.closest_person[0]
                 self.talk_proxy("GO AHEAD!", "English", True, False)
                 print("GO AHEAD!")
