@@ -1151,8 +1151,9 @@ class Task_module:
             # If a person was found
             if "person" in self.labels:
                 # If that person is the closest person
-                if self.labels["person"][0][0] == person_id:
-                    followed_person = self.labels["person"][0]
+                local_labels = self.labels.copy()
+                if local_labels["person"][0][0] == person_id:
+                    followed_person = local_labels["person"][0]
                 else:
                     continue
 
@@ -1171,8 +1172,8 @@ class Task_module:
                     error_x = target_x - center_x
                     angular_vel = 0.004 * error_x
                 
-                # 150 is a value that worked well in testing
-                if person_width>=150:
+                # 130 is a value that worked well in testing
+                if person_width>=130:
                     close = True
                     if moving:
                         moving = False
@@ -1182,13 +1183,7 @@ class Task_module:
 
                 # If the rotation is big or the robot is not moving
                 if (abs(angular_vel) > 0.25 or not moving):
-                    if close:
-                        # Start rotating to center person in frame
-                        self.start_moving(0, 0, angular_vel)
-                        rospy.sleep(0.2)
-                        # Stop rotating
-                        self.stop_moving()
-                    else:
+                    if not close:
                         moving = True
                         # Start moving and rotating to center person in frame
                         self.start_moving(linear_vel, 0, angular_vel)
