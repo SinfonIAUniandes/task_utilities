@@ -67,6 +67,7 @@ class MERCADITO(object):
             self.tm.talk("I am going to do the shopping task","English")
             
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
+        print("levantar brazos")
         self.tm.go_to_pose("basket", 0.1)
         self.tm.go_to_pose("open_both_hands", 0.1)
         if self.language == "Spanish":

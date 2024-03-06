@@ -734,7 +734,7 @@ class Task_module:
         attributes = {}
         if self.perception:
             try:
-                response = self.img_description_proxy()
+                response = self.img_description_proxy(prompt)
                 attributes = {
                     "status": response.approved,
                     "message": response.message
@@ -1156,7 +1156,7 @@ class Task_module:
                 if end_time-start_time >= 5:
                     if(person_width>=close_threshold):
                         self.talk("You're too close", "English", True, False)
-                    elif(person_width<=far_threshold):
+                    if(person_width<=far_threshold):
                         self.talk("You're too far", "English", True, False)
                     start_time = time.time()
                 if (int(person_width) in range(int(far_threshold),int(close_threshold))):
@@ -1213,13 +1213,13 @@ class Task_module:
                     close = True
                     if self.linear_vel != 0:
                         self.stop_moving()
-                        self.calibrate_follow_distance(max_width,min_width)
                 else:
                     close = False
 
                 if person_width<min_width:
                     if self.linear_vel != 0:
                         self.stop_moving()
+                        self.talk("You're too far", "English", True, False)
                         self.calibrate_follow_distance(max_width,min_width)
                 
                 # If the rotation is big or the robot is not moving
@@ -1237,15 +1237,7 @@ class Task_module:
 
             # If a person has not been seen for 30 iterations
             if self.iterations >= 60:
-                self.stop_moving()
-                self.setMoveHead_srv.call("up")
-                self.talk("I have lost you", "English", True, False)
-                print("I have lost you")
-                print(self.closest_person)
-                while not ("person" in self.labels):
-                    rospy.sleep(0.03)
-                self.talk("GO AHEAD!", "English", True, False)
-                print("GO AHEAD!")
+                self.calibrate_follow_distance(max_width,min_width)
 
 
     def robot_stop_srv(self) -> bool:

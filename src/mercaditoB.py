@@ -67,6 +67,7 @@ class MERCADITO(object):
             self.tm.talk("I am going to do the shopping task","English")
             
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
+        print("levantar brazos")
         self.tm.go_to_pose("basket", 0.1)
         self.tm.go_to_pose("open_both_hands", 0.1)
         if self.language == "Spanish":
@@ -83,6 +84,7 @@ class MERCADITO(object):
         else:
             self.tm.talk("When you have a question regarding your food please say Hey nova. Stop if you want me to stop and hand you the basket say Stop","English", wait=False)
             
+        self.tm.show_topic("/perception_utilities/yolo_publisher")
         time.sleep(1)
         if self.language == "Spanish":
             self.tm.hot_word(["hey nova","oye nova" ,"stop", "detente nova"], thresholds= [0.4, 0.3, 0.6, 0.3 ])
@@ -122,16 +124,14 @@ class MERCADITO(object):
         time.sleep(1)
         text = self.tm.speech2text_srv()         
         # labels=self.tm.get_labels(False)
-        labels = ""
-        gpt_vision_prompt = "Que objetos tiene la persona, responde con un texto en formato de lista de python donde cada item de la lista es el nombre cada objeto sostenido por la persona"
-        labels = self.tm.img_description(gpt_vision_prompt)["message"]
-        print(labels)
-        if self.language =="Spanish":
-            request = f"""La persona pregunto: {text}. Mientras la persona habló, tu viste los siguientes objetos: {labels}. Por favor contesta en español."""
-        else:
-            request = f"""The person asked: {text}.While the person spoke, you saw the next objects: {labels}"""
-        answer=self.tm.answer_question(request)
-        self.tm.talk(answer,self.language)
+        gpt_vision_prompt = f"The person asked {text}, please answer concisely"
+        answer = self.tm.img_description(gpt_vision_prompt)["message"]
+        # if self.language =="Spanish":
+        #     request = f"""La persona pregunto: {text}. Mientras la persona habló, tu viste los siguientes objetos: {labels}. Por favor contesta en español."""
+        # else:
+        #     request = f"""The person asked: {text}.While the person spoke, you saw the next objects: {labels}"""
+        # answer=self.tm.answer_question(request)
+        self.tm.talk(answer,self.language, wait=False)
         self.tm.get_labels(True)
         self.tm.follow_you(True)
 
