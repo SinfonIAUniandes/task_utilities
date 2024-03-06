@@ -89,7 +89,7 @@ class MERCADITO(object):
         if self.language == "Spanish":
             self.tm.hot_word(["hey nova","oye nova" ,"stop", "detente nova"], thresholds= [0.4, 0.3, 0.6, 0.3 ])
         else:
-            self.tm.hot_word(["hey nova","stop"], thresholds= [0.4, 0.6])
+            self.tm.hot_word(["hey nova","stop"], thresholds= [0.45, 0.6])
         self.tm.get_labels(True)
         self.tm.follow_you(True) 
         while not self.is_done:

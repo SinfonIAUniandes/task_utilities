@@ -1170,6 +1170,7 @@ class Task_module:
                 while not ("person" in self.labels):
                     rospy.sleep(0.03)
         self.talk("Perfect. Try to keep at that distance", "English", True, False)
+        self.iterations=0
             
     
     def follow_you_srv_thread(self, speed) -> None:
