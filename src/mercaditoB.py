@@ -74,6 +74,7 @@ class MERCADITO(object):
             self.tm.talk("Hola soy nova, te voy a ayudar con tus compras hoy, cuando estes listo pon la canasta en mis manos", self.language)
         else:
             self.tm.talk("Hello I will help you with your shopping today, when you are ready put your basket in my hands","English")
+        self.tm.show_topic("/perception_utilities/yolo_publisher")
         self.beggining()
 
     def on_enter_FOLLOW_YOU(self):
@@ -82,14 +83,14 @@ class MERCADITO(object):
  
             self.tm.talk("Cuando tengas una pregunta sobre la comida por favor di Hey nova y espera a que yo responda. Si quieres que pare y te entregue la canasta por favor di detente nova","Spanish", wait=False)
         else:
-            self.tm.talk("When you have a question regarding your food please say Hey nova. Stop if you want me to stop and hand you the basket say Stop","English", wait=False)
+            self.tm.talk("When you have a question regarding your food please say Hey nova. If you want me to stop and hand you the basket please say Stop. Please talk slow, clear and loud.","English")
             
         self.tm.show_topic("/perception_utilities/yolo_publisher")
         time.sleep(1)
         if self.language == "Spanish":
-            self.tm.hot_word(["hey nova","oye nova" ,"stop", "detente nova"], thresholds= [0.4, 0.3, 0.6, 0.3 ])
+            self.tm.hot_word(["hey nova","oye nova" ,"stop", "detente nova"], thresholds= [0.4, 0.3, 0.5, 0.3 ])
         else:
-            self.tm.hot_word(["hey nova","stop"], thresholds= [0.45, 0.6])
+            self.tm.hot_word(["hey nova","stop"], thresholds= [0.4, 0.5])
         self.tm.get_labels(True)
         self.tm.follow_you(True) 
         while not self.is_done:
@@ -99,6 +100,7 @@ class MERCADITO(object):
                 self.hey_pepper=False
             time.sleep(0.1)
         print(self.consoleFormatter.format("Stop detected ", "WARNING"))
+        self.tm.talk("I am pleased to serve you in your shopping today, you may grab your basket now. Have a nice day")
         self.market_ready()
 
     def on_enter_FININSH(self):
@@ -117,14 +119,12 @@ class MERCADITO(object):
     def hey_pepper_function(self):
         self.tm.get_labels(True)
         if self.language == "Spanish":
-            self.tm.talk("Cual es tu pregunta?","Spanish",wait=False)
+            self.tm.talk("Cual es tu pregunta?","Spanish")
         else:
-            self.tm.talk("What is your question?","English",wait=False)
-            
-        time.sleep(1)
+            self.tm.talk("What is your question?","English")
         text = self.tm.speech2text_srv()         
         # labels=self.tm.get_labels(False)
-        gpt_vision_prompt = f"The person asked {text}, please answer concisely"
+        gpt_vision_prompt = f"You are a Pepper robot named Nova from Universidad de los Andes Bogota, Colombia, in this precise moment you are assisting in a supermakert, your function is to answer questions from the users. You can make assumptions. If you don't see anything relevant in the image, just ignore the image. The person asked {text}, please answer concisely, make sure that your answers are short and to the point. Do not try to keep up with the conversation, never ask questions to the person."
         answer = self.tm.img_description(gpt_vision_prompt)["message"]
         # if self.language =="Spanish":
         #     request = f"""La persona pregunto: {text}. Mientras la persona habló, tu viste los siguientes objetos: {labels}. Por favor contesta en español."""

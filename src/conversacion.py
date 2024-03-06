@@ -55,33 +55,36 @@ class MERCADITO(object):
    def on_enter_INIT(self):
        print(self.consoleFormatter.format("INIT", "HEADER"))
        self.tm.initialize_pepper()
-       #self.tm.talk("I am going to do the conversation task","English")
+       self.tm.talk("I am going to do the conversation task","English")
        print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
        subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
        self.beggining()
 
    def on_enter_HABLAR(self):
        print(self.consoleFormatter.format("HABLAR", "HEADER"))
-       #self.tm.talk("Hello my name is Nova, say hey nova to talk with me","English")
-       self.tm.hot_word(["hey nova", "goodbye Nova"])
+       self.tm.talk("Hello my name is Nova, say hey nova to talk with me. Please talk slow, clear and loud.","English")
+       self.tm.hot_word(["hey nova", "stop"], thresholds=[0.4, 0.5])
        while not self.is_done:
             if self.hey_pepper:
                 self.hey_pepper_function()
                 self.hey_pepper=False
             time.sleep(0.1)
+       self.tm.talk("have a great day!")
+       self.tm.talk("I have finished the "+self.task_name+" task","English")
        self.hablar_ready()
 
    def on_enter_FININSH(self):
        print(self.consoleFormatter.format("FINISH", "HEADER"))
-      
+       
        self.finish()
 
    def on_enter_CONVERSACION_DONE(self):
        print(self.consoleFormatter.format("CONVERSACION_DONE", "HEADER"))
-       self.tm.talk("I have finished the "+self.task_name+" task","English")
+       
        os._exit(os.EX_OK)
 
    def hey_pepper_function(self):
+       self.tm.talk("What is your question?","English")
        text = self.tm.speech2text_srv() 
        request = f"""The person asked: {text}."""
        answer=self.tm.answer_question(request) 
@@ -89,7 +92,8 @@ class MERCADITO(object):
 
    def callback_hot_word(self,data):
        word = data.status
-       if word == "goodbye nova":
+       print(word, " listened")
+       if word == "stop":
             self.is_done = True
        elif word == "hey nova":
             self.hey_pepper = True

@@ -1190,8 +1190,8 @@ class Task_module:
         # 140 is a value that worked well in testing
         max_width = 140
         # 60 is a value that worked well in testing
-        min_width = 60
-        #speed = 0.5/(max_width-min_width)if speed is None else speed
+        min_width = 55
+        speed = 0.5/(max_width-min_width)if speed is None else speed
         angular_vel = 0
         while self.follow_you_active: 
             # If a person was found
@@ -1203,9 +1203,9 @@ class Task_module:
                 self.iterations=0
                 # Calculate moving speed
                 target_x = followed_person[1]
-                a = (0.1-0.5)/(max_width-min_width)**2
-                #calculated_vel = speed*(max_width-person_width) if person_width <max_width else 0
-                calculated_vel = (a*(person_width-min_width)**2)+0.5 if person_width <max_width else 0
+                # a = (0.1-0.5)/(max_width-min_width)**2
+                calculated_vel = speed*(max_width-person_width)+speed if person_width <max_width else 0
+                # calculated_vel = (a*(person_width-min_width)**2)+0.5 if person_width <max_width else 0
                 error_x = target_x - center_x
                 # 0.005 worked well
                 angular_vel = 0.005 * error_x
@@ -1222,9 +1222,10 @@ class Task_module:
                         self.stop_moving()
                         self.talk("You're too far", "English", True, False)
                         self.calibrate_follow_distance(max_width,min_width)
+                        continue
                 
                 # If the rotation is big or the robot is not moving
-                change_motion =(abs(angular_vel) > 0.13 and person_width>min_width) or abs(self.linear_vel-calculated_vel)>0.025
+                change_motion =(abs(angular_vel) > 0.20 and person_width>min_width) or abs(self.linear_vel-calculated_vel)>0.025
                 if change_motion:
                     self.linear_vel=calculated_vel
                     if not close:
@@ -1237,8 +1238,10 @@ class Task_module:
                 self.iterations+=1
 
             # If a person has not been seen for 30 iterations
-            if self.iterations >= 60:
+            if self.iterations >=60:
+                self.stop_moving()
                 self.calibrate_follow_distance(max_width,min_width)
+            time.sleep(0.05)
 
 
     def robot_stop_srv(self) -> bool:
