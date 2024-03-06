@@ -138,7 +138,7 @@ class MERCADITO(object):
     def callback_hot_word(self,data):
         word = data.status
         print(word)
-        if word == "stop pepper" or word=="detente nova":
+        if word == "stop" or word=="detente nova":
             self.tm.follow_you(False)
             self.is_done = True
         elif word == "hey nova" or word =="oye nova": 
