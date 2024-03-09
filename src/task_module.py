@@ -201,7 +201,7 @@ class Task_module:
 
             print(self.consoleFormatter.format('Waiting for speech_utilities/hot_word_srv service!', 'WARNING'))  
             rospy.wait_for_service('/speech_utilities/hot_word_srv')
-            self.hot_word_srv= rospy.Service("/speech_utilities/hot_word_srv", hot_word_srv)
+            self.hot_word_srv= rospy.ServiceProxy("/speech_utilities/hot_word_srv", hot_word_srv)
 
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
 
@@ -1083,8 +1083,6 @@ class Task_module:
                     cmd_vel_msg.linear.x = 0
                     cmd_vel_msg.angular.z = 0
                     self.cmd_velPublisher.publish(cmd_vel_msg)
-                    self.talk("Finished following")
-                    print("Finished following")
                     return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -1159,7 +1157,7 @@ class Task_module:
                 self.setMoveHead_srv.call("up")
                 self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
                 print("I have lost you, please stand in front of me, I will tell you when you can continue")
-                rospy.sleep(5)
+                rospy.sleep(3)
                 id_max_tuple = self.max_tuple[0]
                 self.talk_proxy("GO AHEAD!", "English", True, False)
                 print("GO AHEAD!")

@@ -58,6 +58,7 @@ class MERCADITO(object):
 
     def on_enter_INIT(self):
         print(self.consoleFormatter.format("INIT", "HEADER"))
+        print(self.consoleFormatter.format("Calibrating Pepper: "+self.task_name, "WARNING"))
         self.tm.initialize_pepper()
         self.tm.talk("I am going to do the shopping task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
