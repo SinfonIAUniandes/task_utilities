@@ -1106,7 +1106,7 @@ class Task_module:
         self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
         self.move_publisher = rospy.Publisher('/pytoolkit/ALMotion/move', Twist, queue_size=10)
 
-        if self.navigation and self.pytoolkit:
+        if self.pytoolkit:
             try:
                 if command:
                     self.follow_you_active = command
@@ -1117,12 +1117,12 @@ class Task_module:
                     head_thread.start()
                     person_thread = Thread(target=self.get_closer_person)
                     person_thread.start()
-                    self.follow_you_proxy(command)
+                    #self.follow_you_proxy(command)
                     print("Started following")
                 else:
-                    self.set_move_arms_enabled(True)
+                    #self.set_move_arms_enabled(True)
                     self.follow_you_active = command
-                    self.follow_you_proxy(command)
+                    #self.follow_you_proxy(command)
                     self.stop_moving()
                     print("Finished following")
                     return True
@@ -1130,7 +1130,7 @@ class Task_module:
                 print("Service call failed: %s" % e)
                 return False
         else:
-            print("navigation as false")
+            print("pytoolkit as false")
             return False
         
     def calibrate_follow_distance(self,max_width,min_width):
@@ -1152,6 +1152,7 @@ class Task_module:
             followed_person = self.closest_person
             person_width = followed_person[3]
             if "person" in self.labels: 
+                self.iterations=0
                 end_time = time.time()
                 if end_time-start_time >= 5:
                     if(person_width>=close_threshold):
@@ -1161,6 +1162,7 @@ class Task_module:
                     start_time = time.time()
                 if (int(person_width) in range(int(far_threshold),int(close_threshold))):
                     perfect = True
+                    continue
             else:
                 self.iterations+=1
             if self.iterations >= 60:
@@ -1184,14 +1186,14 @@ class Task_module:
         # Number of iterations with no person in sight
         self.iterations=0
         close = False
-        center_x = 160 # 360 degrees / 2
+        center_x = 180 # 360 degrees / 2
         calculated_vel = self.linear_vel
         # Variables to check if too close or too far
         # 140 is a value that worked well in testing
         max_width = 140
         # 60 is a value that worked well in testing
         min_width = 55
-        speed = 0.5/(max_width-min_width)if speed is None else speed
+        speed = 0.4/(max_width-min_width)if speed is None else speed
         angular_vel = 0
         while self.follow_you_active: 
             # If a person was found
@@ -1204,7 +1206,7 @@ class Task_module:
                 # Calculate moving speed
                 target_x = followed_person[1]
                 # a = (0.1-0.5)/(max_width-min_width)**2
-                calculated_vel = speed*(max_width-person_width)+speed if person_width <max_width else 0
+                calculated_vel = speed*(max_width-person_width)+0.05 if person_width <max_width else 0
                 # calculated_vel = (a*(person_width-min_width)**2)+0.5 if person_width <max_width else 0
                 error_x = target_x - center_x
                 # 0.005 worked well
@@ -1225,7 +1227,7 @@ class Task_module:
                         continue
                 
                 # If the rotation is big or the robot is not moving
-                change_motion =(abs(angular_vel) > 0.20 and person_width>min_width) or abs(self.linear_vel-calculated_vel)>0.025
+                change_motion =(abs(angular_vel) > 0.17 and person_width>min_width) or abs(self.linear_vel-calculated_vel)>0.025
                 if change_motion:
                     self.linear_vel=calculated_vel
                     if not close:
