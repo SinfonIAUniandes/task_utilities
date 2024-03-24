@@ -13,7 +13,7 @@ from std_srvs.srv import Trigger, TriggerRequest, SetBool
 from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv #, set_security_distance_srv
 from robot_toolkit_msgs.msg import touch_msg
 
-from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
+from manipulation_msgs_pytoolkit.srv import go_to_position, play_action, grasp_object, move_head
 
 from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest, hot_word_srvRequest, answer_srv
 
@@ -319,33 +319,45 @@ class Task_module:
 
             print(
                 self.consoleFormatter.format(
-                    "Waiting for manipulation_utilitites/goToState", "WARNING"
+                    "Waiting for manipulation_utilitites/go_to_pose", "WARNING"
                 )
             )
-            rospy.wait_for_service("manipulation_utilities/goToState")
+            rospy.wait_for_service("manipulation_utilities/go_to_pose")
             self.go_to_pose_proxy = rospy.ServiceProxy(
-                "manipulation_utilities/goToState", GoToState
+                "manipulation_utilities/go_to_pose", go_to_pose
             )
 
             print(
                 self.consoleFormatter.format(
-                    "Waiting for manipulation_utilitites/goToAction", "WARNING"
+                    "Waiting for manipulation_utilitites/play_action", "WARNING"
                 )
             )
-            rospy.wait_for_service("manipulation_utilities/goToAction")
+            rospy.wait_for_service("manipulation_utilities/play_action")
             self.go_to_action_proxy = rospy.ServiceProxy(
-                "manipulation_utilities/goToAction", GoToAction
+                "manipulation_utilities/play_action", play_action
             )
 
             print(
                 self.consoleFormatter.format(
-                    "Waiting for manipulation_utilitites/graspObject", "WARNING"
+                    "Waiting for manipulation_utilitites/grasp_object", "WARNING"
                 )
             )
-            rospy.wait_for_service("manipulation_utilities/graspObject")
+            rospy.wait_for_service("manipulation_utilities/grasp_object")
             self.grasp_object_proxy = rospy.ServiceProxy(
-                "manipulation_utilities/graspObject", GraspObject
+                "manipulation_utilities/grasp_object", grasp_object
             )
+            
+            print(
+                self.consoleFormatter.format(
+                    "Waiting for manipulation_utilitites/move_head", "WARNING"
+                )
+            )
+            rospy.wait_for_service("manipulation_utilities/move_head")
+            self.move_head_proxy = rospy.ServiceProxy(
+                "manipulation_utilities/move_head", move_head
+            )
+            
+            
 
             print(
                 self.consoleFormatter.format("MANIPULATION services enabled", "OKGREEN")
@@ -561,7 +573,7 @@ class Task_module:
         # spins until the object is found or timeout
         if self.perception and self.navigation:
             try:
-                # self.go_to_pose("default_head")
+                # self.go_to_position("default_head")
                 self.look_for_object(object_name)
                 self.constant_spin_srv(15)
                 found = self.wait_for_object(timeout)
@@ -583,7 +595,7 @@ class Task_module:
         if self.perception and self.navigation and self.manipulation:
             try:
                 counter = 0
-                self.go_to_pose("default_head")
+                self.go_to_position("default_head")
                 self.look_for_object(object_name, ignore_already_seen=True)
                 self.constant_spin_srv(15)
                 t1 = time.time()
@@ -1114,7 +1126,7 @@ class Task_module:
         """
         if self.manipulation:
             try:
-                approved = self.go_to_pose_proxy(pose, velocity)
+                approved = self.go_to_position_proxy(pose, velocity)
                 if approved == "OK":
                     return True
                 else:
@@ -1126,68 +1138,19 @@ class Task_module:
             print("manipulation as false")
             return False
 
-    ############ MANIPULATION SERVICES ###############
-
-    def saveState(self, name: str) -> bool:
+    def play_action(self, action: str) -> bool:
         """
-        Input: state as name
-        Output: True if the state was created or False if is not
-        ---------
-        Saves the current state of the robot's joints to a CSV file
-        """
-        if self.manipulation:
-            try:
-                name_msg = String()
-                name_msg.data = name
-                save_state = self.saveState_proxy(name_msg)
-                if save_state:
-                    return True
-                else:
-                    return False
-            except rospy.ServiceException as e:
-                print("Service call failed: %s" % e)
-                return False
-        else:
-            print("manipulation as false")
-            return False
-
-    def execute_trayectory(self, trayectory: str) -> bool:
-        """
-        Input: trayectory options ->("place_both_arms","place_left_arm","place_right_arm")
+        Input: action options ->("place_both_arms","place_left_arm","place_right_arm")
         Output: True if the service was called correctly, False if not
         ----------
-        Executes trayectory with the hands
+        Executes actions with the arms
         """
         if self.manipulation:
             try:
-                approved = self.go_to_action_proxy(trayectory)
+                approved = self.play_action_proxy(action)
                 if approved == "OK":
                     return True
                 else:
-                    return False
-            except rospy.ServiceException as e:
-                print("Service call failed: %s" % e)
-                return False
-        else:
-            print("manipulation as false")
-            return False
-
-    def goToState(self, name: str) -> bool:
-        """
-        Input: state to be executed.
-        Output: True after the robot moves.
-        ---------
-        Performs a series of actions to move the robot's arms to a desired configuration defined by joint_group_positions.
-        """
-        if self.manipulation:
-            try:
-                name_msg = String()
-                name_msg.data = name
-                go_to_state = self.goToState_proxy(name_msg)
-                if go_to_state:
-                    return True
-                else:
-                    print("ccannot move")
                     return False
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -1206,7 +1169,7 @@ class Task_module:
         if self.manipulation:
             try:
                 self.setMoveArms_srv.call(False, False)
-                self.execute_trayectory("request_help_both_arms")
+                self.play_action("request_help_both_arms")
                 self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=True)
                 rospy.sleep(9)
                 self.go_to_pose("almost_open_both_hands")
@@ -1229,7 +1192,7 @@ class Task_module:
             try:
                 self.talk("Please pick up the "+object_name,"English",wait=True)
                 rospy.sleep(7)
-                self.execute_trayectory("place_both_arms") 
+                self.play_action("place_both_arms") 
                 self.setMoveArms_srv.call(True, True)           
                 return True
             except rospy.ServiceException as e:
