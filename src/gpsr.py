@@ -73,7 +73,7 @@ class GPSR(object):
         print(self.consoleFormatter.format("GPSR", "HEADER"))
         self.tm.look_for_object("")
         self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. Talk to me now: ","English")
-        task = self.tm.speech2text_srv("gpsr",10,True)
+        task = self.tm.speech2text_srv(10)
         print("task",task)
         self.tm.talk("Processing your request")
         generate_utils.load_code_gen_config()

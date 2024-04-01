@@ -238,7 +238,7 @@ class RECEPTIONIST(object):
                 not_introduced_persons = ", ".join(not_introduced)
                 self.tm.talk("{} I am sorry I was not able to recognize you, please introduce yourself to {}".format(not_introduced_persons,self.actual_person["name"]),"English",wait=True)
                 self.introduced_everyone()
-        # El robot busca una perosona
+        # El robot busca una persona
         else:
             self.move_head_srv("default")
             self.tm.go_to_defined_angle_srv(self.chair_angles[self.angle_index])
