@@ -453,6 +453,8 @@ class Task_module:
             print(self.consoleFormatter.format("Waiting for pytoolkit/stop_tracker...", "WARNING"))
             rospy.wait_for_service("/pytoolkit/ALTracker/stop_tracker_srv")
             self.stop_tracker_proxy = rospy.ServiceProxy("/pytoolkit/ALTracker/stop_tracker_srv",battery_service_srv)
+            
+            self.move_publisher = rospy.Publisher('/pytoolkit/ALMotion/move', Twist, queue_size=10)
 
             print(self.consoleFormatter.format("PYTOOLKIT services enabled", "OKGREEN"))
 
@@ -1062,9 +1064,9 @@ class Task_module:
     def start_moving(self, x: float,y: float,rotate: float) -> None:
         """
         Input: 
-        x: The speed with which the robot will move forward or backward -> [0.0,0.5]
-        y: The speed with which the robot will move left or right -> [0.0,0.5]
-        rotate: The speed with which the robot will rotate left or right -> [0.0,0.5]
+        x: The speed with which the robot will move forward or backward -> [-0.5,0.5]
+        y: The speed with which the robot will move left or right -> [-0.5,0.5]
+        rotate: The speed with which the robot will rotate left or right -> [-0.5,0.5]
         Output: None
         ----------
         The robots starts moving with the parameters given AND DOESN'T STOP until stopped (by calling stop_moving).
@@ -1442,7 +1444,7 @@ class Task_module:
         (Pepper's head falls down when moving due to vibration)
         """
         while self.follow_you_active: 
-            self.setMoveHead_srv.call("up")
+            self.setMoveHead_srv.call("default")
             rospy.sleep(8)
             
 
