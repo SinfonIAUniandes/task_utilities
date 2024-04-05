@@ -13,7 +13,7 @@ from std_srvs.srv import Trigger, TriggerRequest, SetBool
 from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv #, set_security_distance_srv
 from robot_toolkit_msgs.msg import touch_msg
 
-from manipulation_msgs_pytoolkit.srv import go_to_position, play_action, grasp_object, move_head
+from manipulation_msgs_pytoolkit.srv import *
 
 from speech_msgs.srv import q_a_speech_srv, talk_speech_srv, speech2text_srv, q_a_speech_srvRequest, talk_speech_srvRequest, speech2text_srvRequest, hot_word_srvRequest, answer_srv
 
@@ -356,8 +356,6 @@ class Task_module:
             self.move_head_proxy = rospy.ServiceProxy(
                 "manipulation_utilities/move_head", move_head
             )
-            
-            
 
             print(
                 self.consoleFormatter.format("MANIPULATION services enabled", "OKGREEN")
@@ -1201,6 +1199,14 @@ class Task_module:
         else:
             print("manipulation as false")
             return False
+        
+    # def approach_the_object(self, object_name: str):
+    #     if self.manipulation:
+    #         try:
+    #             self.talk("I will try to grab the "+object_name,"English",wait=True)
+    #             rospy.sleep(7)
+    #             self.go_to_pose("arms_forward")
+                
 
     ################ PYTOOLKIT ################
 
