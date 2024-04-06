@@ -24,7 +24,7 @@ from perception_msgs.srv import start_recognition_srv, get_labels_srv, start_rec
 
 from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
-from perception_msgs.msg import get_labels_msg
+from perception_msgs.msg import get_labels_msg, get_clothes_color_msg
 
 class Task_module:
     def __init__(
@@ -730,6 +730,30 @@ class Task_module:
         else:
             print("perception as false")
             return {}
+        
+    def get_clothes_color(self) -> str:
+        """
+        Input:
+        Output: color of the clothes of the person
+        ----------
+        Returns the color of the clothes of the person
+        """
+        if self.perception:
+            try:
+                response = self.get_clothes_color_from_publisher()
+                return response
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return ""
+        else:
+            print("perception as false")
+            return ""
+        
+    def get_clothes_color_from_publisher(self):
+        self.get_clothges_color_subscriber = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_clothes_color_msg, self.callback_get_clothes_color_subscriber)
+        print(self.clothes_color)
+        return self.clothes_color
+        
         
     def img_description(self, prompt: str) -> dict:
         attributes = {}
@@ -1707,3 +1731,6 @@ class Task_module:
                 self.labels[labels_msg[label]] = [(ids[label], x_coordinates_msg[label], y_coordinates_msg[label], widths[label], heights[label])]
             else:
                 self.labels[labels_msg[label]].append((ids[label], x_coordinates_msg[label], y_coordinates_msg[label], widths[label], heights[label]))
+                
+    def callback_get_clothes_color_subscriber(self, msg):
+        self.clothes_color = msg.colors[0]
