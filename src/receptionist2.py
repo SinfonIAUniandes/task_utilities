@@ -36,7 +36,7 @@ class RECEPTIONIST(object):
         # Definir los estados posibles del semáforo
         self.task_name = "receptionist"
         states = ['INIT', 'WAIT4GUEST', 'QA', 'SAVE_FACE','INTRODUCE_NEW','INTRODUCE_OLD','GO2LIVING','GO2DOOR','LOOK4PERSON','LOOK4CHAIR','SIGNAL_SOMETHING']
-        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=True)
+        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=True, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
