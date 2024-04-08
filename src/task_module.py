@@ -20,7 +20,7 @@ from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
 
 from speech_msgs.srv import q_a_srv, talk_srv, speech2text_srv , talk_srvRequest, speech2text_srvRequest, answer_srv, calibrate_srv, hot_word_srv
 
-from perception_msgs.srv import start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv, get_person_description_srv
+from perception_msgs.srv import img_description_with_gpt_vision_srv, get_clothes_color_srv, start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv, get_person_description_srv
 
 from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
@@ -50,6 +50,7 @@ class Task_module:
         self.linear_vel = 0
         self.closest_person = [0,0,0,0,0]
         self.labels = dict()
+        self.clothes_color = "pink"
         self.say_go_ahead = True
         self.object_found = False
         self.iterationssTouched = False
@@ -82,6 +83,16 @@ class Task_module:
             self.get_labels_proxy = rospy.ServiceProxy(
                 "/perception_utilities/get_labels_srv", get_labels_srv
             )
+            
+            print(
+                self.consoleFormatter.format(
+                    "Waiting for perception_utilities/get_labels...", "WARNING"
+                )
+            )
+            rospy.wait_for_service("/perception_utilities/get_clothes_color_srv")
+            self.get_clothes_color_proxy = rospy.ServiceProxy(
+                "/perception_utilities/get_clothes_color_srv", get_clothes_color_srv
+            )
 
 
             print(
@@ -104,16 +115,15 @@ class Task_module:
                 "/perception_utilities/look_for_object_srv", look_for_object_srv
             )
             
-            # print(
-            #     self.consoleFormatter.format(
-            #         "Waiting for perception_utilities/img_description_with_gpt_vision...", "WARNING"
-            #     )
-            # )
-            
-            # rospy.wait_for_service("perception_utilities/img_description_with_gpt_vision_srv")
-            # self.img_description_proxy = rospy.ServiceProxy(
-            #     "perception_utilities/img_description_with_gpt_vision_srv", img_description_with_gpt_vision_srv
-            # )
+            print(
+                self.consoleFormatter.format(
+                    "Waiting for perception_utilities/img_description_with_gpt_vision...", "WARNING"
+                )
+            )
+            rospy.wait_for_service("perception_utilities/img_description_with_gpt_vision_srv")
+            self.img_description_proxy = rospy.ServiceProxy(
+                "perception_utilities/img_description_with_gpt_vision_srv", img_description_with_gpt_vision_srv
+            )
 
             print(
                 self.consoleFormatter.format(
@@ -556,6 +566,15 @@ class Task_module:
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
             return ""
+        
+    def get_colors(self, bool):
+        if self.perception:
+    
+            try:
+                return self.get_clothes_color_proxy.call(bool)
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+            return ""
             
     def look_for_object(self, object_name: str, ignore_already_seen=False) -> bool:
         """
@@ -750,7 +769,8 @@ class Task_module:
             return ""
         
     def get_clothes_color_from_publisher(self):
-        self.get_clothges_color_subscriber = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_clothes_color_msg, self.callback_get_clothes_color_subscriber)
+        
+        self.get_clothges_color_subscriber = rospy.Subscriber('/perception_utilities/get_clothes_publisher', get_clothes_color_msg, self.callback_get_clothes_color_subscriber)
         print(self.clothes_color)
         return self.clothes_color
         
