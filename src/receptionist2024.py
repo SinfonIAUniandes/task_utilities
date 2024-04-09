@@ -219,7 +219,7 @@ class RECEPTIONIST(object):
         has_beard_str = "has a beard" if self.actual_person["has_beard"] else "does not have a beard"
         has_glasses_str = "wears glasses" if self.actual_person["has_glasses"] else "does not wear glasses"
         has_hat_str = "wears a hat" if self.actual_person["has_hat"] else "does not wear a hat"
-        self.tm.talk(f'Hello everyone, this is {self.actual_person["name"]}, {self.actual_person["pronoun"]} is a {self.actual_person["gender"]}.  {self.actual_person["pronoun"]} is around {self.actual_person["age"]} years old and {self.actual_person["pronoun"]} likes to drink {self.actual_person["drink"]}.',"English")
+        self.tm.talk(f'Hello everyone, this is {self.actual_person["name"]}, {self.actual_person["pronoun"]} is a {self.actual_person["gender"]}.  {self.actual_person["pronoun"]} is around {self.actual_person["age"]} years old and {self.actual_person["pronoun"]} likes to drink {self.actual_person["drink"]}. {self.actual_person["pronoun"]} {has_beard_str}, {has_hat_str} and {has_glasses_str}',"English")
         #Turns on recognition and looks for  person
         self.tm.start_recognition("front_camera")
         # Reiniciar las variables de presentacion de personas y sillas
