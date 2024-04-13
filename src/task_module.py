@@ -13,7 +13,7 @@ from threading import Thread
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv
+from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv
 from robot_toolkit_msgs.msg import touch_msg
 
 from manipulation_msgs_pytoolkit.srv import GoToState, GoToAction, GraspObject
@@ -54,7 +54,6 @@ class Task_module:
         self.isTouched = False
         self.navigation_status = 0
         self.perception = perception
-        self.conversation_gpt = [{"role":"system","content":"You are a Pepper robot named Nova from the University of the Andes, specially from the research group SinfonIA, you serve as a Social Robot and you are able to perform tasks such as guiding, answering questions, recognizing objects, people and faces, among others. Asnwer all questions in the most accurate but nice way possible."}]
         if perception:
             print(
                 self.consoleFormatter.format(
@@ -82,7 +81,6 @@ class Task_module:
             self.get_labels_proxy = rospy.ServiceProxy(
                 "/perception_utilities/get_labels_srv", get_labels_srv
             )
-
 
 
             print(
@@ -181,29 +179,25 @@ class Task_module:
         if speech:
             print(self.consoleFormatter.format("Waiting for SPEECH services...","WARNING"))
 
-            print(self.consoleFormatter.format("Waiting for speech_utilities/talk...", "WARNING"))
-            #rospy.wait_for_service('/speech_utilities/talk_srv')
-            #self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_srv', talk_srv)
+            print(self.consoleFormatter.format("Waiting for speech_utilities/talk_speech...", "WARNING"))
+            #rospy.wait_for_service('/speech_utilities/talk_speech_srv')
+            #self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_speech_srv)
 
             print(self.consoleFormatter.format("Waiting for speech_utilities/speech2text...", "WARNING"))
             rospy.wait_for_service('speech_utilities/speech2text_srv')
             self.speech2text_srv_proxy = rospy.ServiceProxy('speech_utilities/speech2text_srv', speech2text_srv)
 
-            print(self.consoleFormatter.format("Waiting for speech_utilities/q_a_srv...", "WARNING"))
-            #rospy.wait_for_service('/speech_utilities/q_a_srv')
-            #self.q_a_proxy = rospy.ServiceProxy('/speech_utilities/q_asrv', q_a_srv)
+            print(self.consoleFormatter.format("Waiting for speech_utilities/q_a_speech...", "WARNING"))
+            #rospy.wait_for_service('/speech_utilities/q_a_speech_srv')
+            #self.q_a_proxy = rospy.ServiceProxy('/speech_utilities/q_a_speech_srv', q_a_speech_srv)
 
             print(self.consoleFormatter.format("Waiting for speech_utilities/answer...", "WARNING"))
             rospy.wait_for_service('/speech_utilities/answers_srv')
             self.answer_proxy = rospy.ServiceProxy('/speech_utilities/answers_srv', answer_srv)
-            
-            print(self.consoleFormatter.format('Waiting for speech_utilities/hot_word_srv service!', 'WARNING'))  
-            rospy.wait_for_service('/speech_utilities/hot_word_srv')
-            self.hot_word_srv= rospy.ServiceProxy("/speech_utilities/hot_word_srv", hot_word_srv)
 
-            #print(self.consoleFormatter.format("Waiting for speech_utilities/live_transcription...", "WARNING"))
-            #rospy.wait_for_service('/speech_utilities/live_transcription_srv')
-            #self.live_transcription_proxy = rospy.ServiceProxy('/speech_utilities/live_transcription_srv', live_transcription_srv)
+            print(self.consoleFormatter.format("Waiting for speech_utilities/live_transcription...", "WARNING"))
+            rospy.wait_for_service('/speech_utilities/live_transcription_srv')
+            self.live_transcription_proxy = rospy.ServiceProxy('/speech_utilities/live_transcription_srv', live_transcription_srv)
 
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
 
@@ -420,36 +414,35 @@ class Task_module:
                     "WARNING",
                 )
             )
+
+            print(self.consoleFormatter.format("Waiting for pytoolkit/ALSpeechRecognition/set_speechrecognition_srv...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALSpeechRecognition/set_speechrecognition_srv")
+            self.speech_recognition = rospy.ServiceProxy("/pytoolkit/ALSpeechRecognition/set_speechrecognition_srv", set_speechrecognition_srv)
+
+            print(self.consoleFormatter.format("Waiting for pytoolkit/ALSpeechRecognition/set_words_srv...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALSpeechRecognition/set_words_srv")
+            self.set_words = rospy.ServiceProxy("/pytoolkit/ALSpeechRecognition/set_words_srv", speech_recognition_srv)
+
+            rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
+            self.awareness_proxy = rospy.ServiceProxy(
+                "/pytoolkit/ALBasicAwareness/set_awareness_srv", SetBool
+            )
+
+
             rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
             self.show_image_proxy = rospy.ServiceProxy(
                 "/pytoolkit/ALTabletService/show_image_srv", tablet_service_srv
             )
 
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for pytoolkit/show_topic...", "WARNING"
-                )
-            )
+            print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
             rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
-            self.show_topic_proxy = rospy.ServiceProxy(
-                "/pytoolkit/ALTabletService/show_topic_srv", tablet_service_srv
-            )
+            self.show_topic_proxy = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_topic_srv", tablet_service_srv)
 
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for pytoolkit/autononumusLife...", "WARNING"
-                )
-            )
+            print(self.consoleFormatter.format("Waiting for pytoolkit/autononumusLife...", "WARNING"))
+            
             rospy.wait_for_service("/pytoolkit/ALMotion/set_security_distance_srv")
-            self.set_security_distance_proxy = rospy.ServiceProxy(
-                "/pytoolkit/ALMotion/set_security_distance_srv", set_security_distance_srv
-            )
-
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for pytoolkit/ALMotion/set_security_distance_srv...", "WARNING"
-                )
-            )
+            self.set_security_distance_proxy = rospy.ServiceProxy("/pytoolkit/ALMotion/set_security_distance_srv", set_security_distance_srv)
+            print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_security_distance_srv...", "WARNING"))
 
             rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
             self.autonomous_life_proxy = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
@@ -477,6 +470,7 @@ class Task_module:
         if self.pytoolkit and self.perception:
             self.turn_camera("front_camera","custom",1,15)
             self.start_recognition("front_camera")
+            self.calibrate_srv(5)
             # quedarse como un coco
         else:
             print("pytoolkit or perception as false")
@@ -559,7 +553,7 @@ class Task_module:
                 return self.get_labels_proxy.call(bool)
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
-            return []
+            return ""
             
     def look_for_object(self, object_name: str, ignore_already_seen=False) -> bool:
         """
@@ -821,7 +815,29 @@ class Task_module:
         """
         if self.speech:
             try:
-                #self.talk_proxy(text, language, wait, animated)
+                self.talk_proxy(text, language, wait, animated)
+                return True
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("speech as false")
+            return False
+        
+    def hot_word(self, words: list, noise = False, eyes = False, threshold = 0.4):
+        """
+        Input:
+        words -> list of words to detect
+        noise -> True || False if there is a noise when the hot worrd is detected
+        eyes -> True || False if the eyes shine 
+        threshold -> Threshold to detect a word
+        Output: True if everything ok || False if not
+        ----------
+        Allows the robot to detect hot words
+        """
+        if self.speech:
+            try:
+                self.hot_word_srv(words, noise, eyes, threshold)
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -830,8 +846,29 @@ class Task_module:
             print("speech as false")
             return False
 
+    def calibrate_srv(self, duration = 5)->bool:
+        """
+        Input: duration in seconds
+        Output: True if the service was called correctly, False if not
+        ----------
+        Calibrates the robot's microphone for <duration> seconds
+        """
+        if self.speech:
+            try:
+                threshold = self.calibrate_speech_proxy(duration)
+                if threshold:
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("speech as false")
+            return False
+
     def speech2text_srv(
-        self, file_name="prueba", seconds=0, transcription=True
+        self, seconds=0
     ) -> bool:
         """
         Input:
@@ -844,8 +881,8 @@ class Task_module:
         """
         if self.speech:
             try:
-                text = self.speech2text_srv_proxy(file_name, seconds, transcription)
-                return text.answer
+                text = self.speech2text_srv_proxy(seconds)
+                return text.transcription
             except rospy.ServiceException as e  :
                 print("Service call failed: %s" % e)
                 return ""
@@ -853,34 +890,23 @@ class Task_module:
             print("speech as false")
             return ""
         
-    def callback_hot_word(self, data):
-        if self.detect_hotword:
-            for word in self.hot_words:
-                if word in data.data:
-                    self.detected_hotword = word  
-        
-    def hot_word(self, hot_words:list):
+    def hot_word(self, hot_words:list,threshold = 0.4):
         """
         Input: hot_words
         Output:
         ----------
         Activates the hot word detection
         """
-        self.hot_words = hot_words
-        self.detect_hotword = True
-        self.detected_hotword = None
-                
-        if self.speech:
+        if self.pytoolkit:
             try:
-                print(self.consoleFormatter.format("Waiting for /live_transcription", "WARNING"))
-                self.subscriber_live_transcription = rospy.Subscriber("/live_transcription", String, self.callback_hot_word)
-                
-                live_transcription_thread = Thread(target=self.live_transcription_proxy_thread())
-                live_transcription_thread.start()
-                
-                if self.detected_hotword != None:
-                    return self.detected_hotword
-                
+                if hot_words == []:
+                    self.speech_recognition(False,False,False)
+                else:
+                    print("speech_recogntion")
+                    self.speech_recognition(True,False,False)
+                    print("hot_words")
+                    self.set_words(hot_words,threshold)
+                return True                
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return False
@@ -904,29 +930,11 @@ class Task_module:
         """
         if self.speech:
             try:
-                if fill_time:
-                    self.talk("I am processing your question",wait=False)
-                if not save_conversation:
-                    self.conversation_gpt = [{"role":"system","content":"You are a Pepper robot named Nova from the University of the Andes, specially from the research group SinfonIA, you serve as a Social Robot and you are able to perform tasks such as guiding, answering questions, recognizing objects, people and faces, among others. Asnwer all questions in the most accurate but nice way possible."}]
-                self.conversation_gpt.append({"role":"user","content":question})
-                request_json = {"question":self.conversation_gpt,"temperature":temperature}
-                json_request = json.dumps(request_json)
-                string_json_request = str(json_request)
-                #{{"role":"assistant","conten":respuesta}}
-                #json STRING de la respuesta de chatgpt 
-                response = self.answer_proxy(string_json_request).answer
-                response_json = json.loads(response)
-                if "content" in response_json:
-                    answer = response_json["content"]
-                    self.conversation_gpt.append(response_json)
-                    if answer== "": 
-                        answer = "I could not find relevant results for your question "
-                else:
-                    answer = "I could not find relevant results for your question "
+                response = self.answer_proxy(question,save_conversation, temperature, "").answer
             except rospy.ServiceException as e:
                 print("Service call failedL %s"%e)
-                answer = "I could not find relevant results for your question "
-        return answer
+                response = "I could not find relevant results for your question "
+        return response
     
     def q_a(self, tag:str)->str:
         """
@@ -1056,19 +1064,21 @@ class Task_module:
                     self.set_move_arms_enabled(False)
                     self.follow_you_active = command
                     self.setDistance_srv.call(0.3)
-                    head_thread = Thread(target=self.follow_you_srv_thread)
-                    head_thread.start()
-                    service_thread = Thread(target=self.head_srv_thread)
+                    service_thread = Thread(target=self.follow_you_srv_thread)
                     service_thread.start()
-                    closer_thread = Thread(target=self.get_closer_person())
+                    head_thread = Thread(target=self.head_srv_thread)
+                    head_thread.start()
+                    closer_thread = Thread(target=self.get_closer_person)
                     closer_thread.start()
                     self.follow_you_proxy(command)
                 else:
-                    self.set_move_arms_enabled(True, True)
+                    self.set_move_arms_enabled(True)
                     self.follow_you_active = command
                     self.follow_you_proxy(command)
-                    self.talk("Finished following")
-                    print("Finished following")
+                    cmd_vel_msg = Twist() 
+                    cmd_vel_msg.linear.x = 0
+                    cmd_vel_msg.angular.z = 0
+                    self.cmd_velPublisher.publish(cmd_vel_msg)
                     return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -1078,7 +1088,7 @@ class Task_module:
             return False
     
     def head_srv_thread(self):
-        while True:
+        while self.follow_you_active: 
             self.setMoveHead_srv.call("up")
             rospy.sleep(8)
     
@@ -1088,30 +1098,34 @@ class Task_module:
         self.i=0
         target_x = 0
         center_x = 320 / 2
-        linear_vel = 0.5
+        linear_vel = 0.3
         error_x = target_x - center_x
         angular_vel = 0
         id_max_tuple = self.max_tuple[0]
-        while True and self.follow_you_active: 
+        while self.follow_you_active: 
             cmd_vel_msg = Twist()
+            id_max_tuple = self.max_tuple[0]
             if "person" in self.labels:
-                result = [tuple for tuple in self.labels if tuple[0] == id_max_tuple]
+                if self.labels["person"][0][0] == id_max_tuple:
+                    result = self.labels["person"][0]
+                else:
+                    continue
                 if len(result) == 0 and moviendose:
-                    print("estaba antes")
                     moviendose = False
+                    cmd_vel_msg.linear.x = 0
+                    cmd_vel_msg.angular.z = 0
                     self.cmd_velPublisher.publish(cmd_vel_msg)
                     self.i+=1
                     continue
                 else:
                     self.i=0
-                target_x = result[0][1]
-                error_x = target_x - center_x
-                angular_vel = 0.004 * error_x
+                if len(result) != 0:
+                    target_x = result[1]
+                    error_x = target_x - center_x
+                    angular_vel = 0.004 * error_x
                 if self.max_tuple[3]>=170:
                     cerca = True
                     if moviendose:
-                        print("el robot parara")
-                        print("muy cerca")
                         moviendose = False
                         cmd_vel_msg.linear.x = 0
                         cmd_vel_msg.angular.z = 0
@@ -1120,7 +1134,6 @@ class Task_module:
                     cerca = False
                 if (abs(angular_vel) > 0.25 or not moviendose) and not cerca:
                     moviendose = True
-                    print("el robot se movera")
                     cmd_vel_msg = Twist()
                     cmd_vel_msg.linear.x = linear_vel
                     cmd_vel_msg.angular.z = angular_vel
@@ -1133,20 +1146,17 @@ class Task_module:
             else:
                 self.i+=1
             if self.i >= 20:
-                print("el robot parara")
-                print("persona")
                 moviendose = False
                 cmd_vel_msg.linear.x = 0
                 cmd_vel_msg.angular.z = 0
                 self.cmd_velPublisher.publish(cmd_vel_msg)
-                #self.setRPosture_srv.call("stand")
                 self.setMoveHead_srv.call("up")
-                #self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
-                #print("I have lost you, please stand in front of me, I will tell you when you can continue")
-                rospy.sleep(5)
+                self.talk_proxy("I have lost you, please stand in front of me, I will tell you when you can continue", "English", True, False)
+                print("I have lost you, please stand in front of me, I will tell you when you can continue")
+                rospy.sleep(3)
                 id_max_tuple = self.max_tuple[0]
-                #self.talk_proxy("GO AHEAD!", "English", True, False)
-                #print("GO AHEAD!")
+                self.talk_proxy("GO AHEAD!", "English", True, False)
+                print("GO AHEAD!")
 
     def robot_stop_srv(self) -> bool:
         """
