@@ -66,7 +66,7 @@ class GPSR(object):
         # self.tm.go_to_defined_angle_srv(0)
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.start_recognition("front_camera")
-        self.tm.go_to_pose("default_head")
+        self.tm.go_to_state("default_head")
         self.beggining()
 
     def on_enter_GPSR(self):

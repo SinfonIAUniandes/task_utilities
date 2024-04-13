@@ -25,7 +25,7 @@ class LongStringGenerator:
 
         Navigation functions:
         self.tm.go_to_place(place_name): Allows the robot to go to a place, the only possible places with their exact syntax are: {self.place_names}
-        self.tm.follow_you(): Allows the robot to follow the user
+        self.tm.follow_you(command): If command is True it Allows the robot to follow the user, if False it stops following the user
         self.tm.robot_stop_srv(): Allows the robot to stop
         self.tm.add_place(place_name): Allows the robot to add a place to the map
 
