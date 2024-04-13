@@ -16,7 +16,7 @@ from threading import Thread
 from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv
 from robot_toolkit_msgs.msg import touch_msg
 
-from manipulation_msgs_pytoolkit.srv import *
+from manipulation_msgs.srv import *
 
 from speech_msgs.srv import q_a_srv, talk_srv, speech2text_srv , talk_srvRequest, speech2text_srvRequest, answer_srv, calibrate_srv, hot_word_srv
 

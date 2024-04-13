@@ -55,8 +55,12 @@ class SERVE_BREAKFAST(object):
 
     def on_enter_GRAB_OBJECT(self):
         object_prompt = f"Just tell me the number of what I am going to ask you, don't answer anything else.
-        How much do I have to move to be exactly aligned with the object {self.ingredients[self.j]}. "
+        How much do I have to move to be exactly aligned with the object {self.ingredients[self.j]}.
+        Taking into account that we are at a reference point 0, to the left are negative numbers and to
+        the right are positive numbers."
         self.approach = self.tm.img_description(object_prompt)["message"]
+        self.tm.go_to_relative_point(0,self.approach,0)
+        
 
         self.go_drop_place()
 
