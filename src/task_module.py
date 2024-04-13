@@ -373,7 +373,7 @@ class Task_module:
                 )
             )
             rospy.wait_for_service("manipulation_utilities/go_to_pose")
-            self.go_to_state_proxy = rospy.ServiceProxy(
+            self.go_to_pose_proxy = rospy.ServiceProxy(
                 "manipulation_utilities/go_to_pose", go_to_pose
             )
             print(
@@ -1470,7 +1470,7 @@ class Task_module:
 
     ############ MANIPULATION SERVICES ###############
 
-    def go_to_state(self, pose: str, velocity=0.05) -> bool:
+    def go_to_pose(self, pose: str, velocity=0.05) -> bool:
         """
         Input: pose options ->("bowl","box","cylinder","medium_object", "small_object_left_hand","small_object_right_hand","tray","head_up","head_down","head_default")
         Output: True if the service was called correctly, False if not
@@ -1561,7 +1561,7 @@ class Task_module:
                 self.play_action("request_help_both_arms")
                 self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=True)
                 rospy.sleep(9)
-                self.go_to_state("almost_open_both_hands")
+                self.go_to_pose("almost_open_both_hands")
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
