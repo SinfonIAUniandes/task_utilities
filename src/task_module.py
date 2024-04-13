@@ -163,7 +163,7 @@ class Task_module:
 
             print(self.consoleFormatter.format("Waiting for speech_utilities/talk_speech...", "WARNING"))
             rospy.wait_for_service('/speech_utilities/talk_speech_srv')
-            self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_speech_srv)
+            self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_srv)
 
             print(self.consoleFormatter.format("Waiting for speech_utilities/speech2text...", "WARNING"))
             rospy.wait_for_service('speech_utilities/speech2text_srv')
@@ -319,14 +319,13 @@ class Task_module:
 
             print(
                 self.consoleFormatter.format(
-                    "Waiting for manipulation_utilitites/go_to_pose", "WARNING"
+                    "Waiting for manipulation_utilitites/goToState", "WARNING"
                 )
             )
-            rospy.wait_for_service("manipulation_utilities/go_to_pose")
-            self.go_to_pose_proxy = rospy.ServiceProxy(
-                "manipulation_utilities/go_to_pose", go_to_pose
+            rospy.wait_for_service("manipulation_utilities/goToState")
+            self.go_to_state_proxy = rospy.ServiceProxy(
+                "manipulation_utilities/goToState", GoToState
             )
-
             print(
                 self.consoleFormatter.format(
                     "Waiting for manipulation_utilitites/play_action", "WARNING"
@@ -1115,7 +1114,7 @@ class Task_module:
 
     ############ MANIPULATION SERVICES ###############
 
-    def go_to_pose(self, pose: str, velocity=0.05) -> bool:
+    def go_to_state(self, pose: str, velocity=0.05) -> bool:
         """
         Input: pose options ->("bowl","box","cylinder","medium_object", "small_object_left_hand","small_object_right_hand","tray","head_up","head_down","head_default")
         Output: True if the service was called correctly, False if not
@@ -1170,7 +1169,7 @@ class Task_module:
                 self.play_action("request_help_both_arms")
                 self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=True)
                 rospy.sleep(9)
-                self.go_to_pose("almost_open_both_hands")
+                self.go_to_state("almost_open_both_hands")
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -1205,7 +1204,7 @@ class Task_module:
     #         try:
     #             self.talk("I will try to grab the "+object_name,"English",wait=True)
     #             rospy.sleep(7)
-    #             self.go_to_pose("arms_forward")
+    #             self.go_to_state("arms_forward")
                 
 
     ################ PYTOOLKIT ################
