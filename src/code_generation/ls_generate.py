@@ -21,7 +21,7 @@ class LongStringGenerator:
         self.tm.talk(text): Allows the robot to say the input of the service.
         self.tm.speech2text_srv()->str: Allows the robot to listen to the user and returns the text that the robot heard
         self.tm.q_a_speech(tag)->str: Allows the robot to ASK a question and returns the answer of the user, the list of possible questions with exact syntax is: {self.question_tags}
-        self.tm.answer_question()->bool: Allows the robot to ANSWER a question made by a person
+        self.tm.answer_question(question)->bool: Allows the robot to ANSWER a question made by a person 
 
         Navigation functions:
         self.tm.go_to_place(place_name): Allows the robot to go to a place, the only possible places with their exact syntax are: {self.place_names}
