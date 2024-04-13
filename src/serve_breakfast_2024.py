@@ -43,46 +43,20 @@ class SERVE_BREAKFAST(object):
         self.tm.go_to_place("cupboard")
         self.look_for_object()
 
-    def on_enter_LOOK_FOR_OBJECT(self):
-        self.tm.talk("I am ready for grabbing the "+self.objects[self.object_i])
-        rospy.sleep(2)
-        self.tm.go_to_state("default_head")
+    def on_enter_LOOK_FOR_OBJECTS(self):
+        self.tm.go_to_state("down_head")
+        ingredients_prompt = f"Just give me in a python list the objects that are considered as food
+        or ingredients that you see below, from left to right. Do not answer aboslutely anything else."
+        self.ingredients = self.tm.img_description(ingredients_prompt)["message"]
+        for i in self.ingredients:
+            self.tm.talk("The objects I am looking at are, " + str(i), "English", wait=False)
+        self.j = 0
         self.grab_object()
 
-
     def on_enter_GRAB_OBJECT(self):
-        self.setMoveArms_srv.call(False, False)
-        if self.objects[self.object_i] == "bowl":
-            self.tm.play_action('request_help_both_arms')
-            self.tm.go_to_state('almost_open_both_hands', 0.1)
-            rospy.sleep(2)
-            self.tm.talk("Can you place the "+self.objects[self.object_i]+" inside my arms, please?, when you are ready touch my head")
-            rospy.sleep(7)
-            
-        elif self.objects[self.object_i] == "spoon" or self.objects[self.object_i] == "cereal box" or self.objects[self.object_i] == "milk":
-            if self.objects[self.object_i] == "cereal box":
-                self.tm.show_image("cereal_pose")
-                self.tm.talk("Put the ceral box just as I am showing you in my tablet")
-
-
-                
-            self.tm.go_to_pose('small_object_right_hand', 0.1)
-            rospy.sleep(2)
-            self.tm.talk("Can you place the "+self.objects[self.object_i]+" inside my hand, please?, when you are ready touch my head")
-            rospy.sleep(7)
-            self.tm.go_to_pose('close_right_hand', 0.2)
-            rospy.sleep(1)
-
-        #elif self.objects[self.object_i] == "cereal" or self.objects[self.object_i] == "milk":
-        #    self.tm.go_to_pose('box', 0.2)
-        #    rospy.sleep(2)
-        #    self.tm.talk("Could you place the "+self.objects[self.object_i]+" between my hands, please?, when you are ready touch my head")
-        #    while not self.isTouched:
-        #        rospy.sleep(0.1)
-        #   self.tm.go_to_pose('cylinder', 0.1)
-        #    rospy.sleep(2)
-        #    self.tm.go_to_pose('close_both_hands', 0.2)
-        #    rospy.sleep(1)
+        object_prompt = f"Just tell me the number of what I am going to ask you, don't answer anything else.
+        How much do I have to move to be exactly aligned with the object {self.ingredients[self.j]}"
+        self.approach = self.tm.img_description(object_prompt)["message"]
 
         self.go_drop_place()
 

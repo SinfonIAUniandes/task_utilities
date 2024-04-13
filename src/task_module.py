@@ -369,12 +369,12 @@ class Task_module:
 
             print(
                 self.consoleFormatter.format(
-                    "Waiting for manipulation_utilitites/goToState", "WARNING"
+                    "Waiting for manipulation_utilitites/go_to_pose", "WARNING"
                 )
             )
-            rospy.wait_for_service("manipulation_utilities/goToState")
+            rospy.wait_for_service("manipulation_utilities/go_to_pose")
             self.go_to_state_proxy = rospy.ServiceProxy(
-                "manipulation_utilities/goToState", GoToState
+                "manipulation_utilities/go_to_pose", go_to_pose
             )
             print(
                 self.consoleFormatter.format(

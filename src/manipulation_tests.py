@@ -31,7 +31,7 @@ class MANIPULATION_TEST(object):
         # Definir los estados posibles del semáforo
         self.task_name = "MANIPULATION_TEST"
         states = ['INIT', 'GO2POSE', 'GRASPOBJ', 'PLAYACTION', 'MOVEHEAD', 'FINISH']
-        self.tm = tm(perception = False,speech=False,manipulation=False, navigation=True, pytoolkit=True)
+        self.tm = tm(perception = False,speech=False,manipulation=True, navigation=False, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
