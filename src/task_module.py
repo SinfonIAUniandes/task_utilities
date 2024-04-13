@@ -224,7 +224,7 @@ class Task_module:
 
             print(self.consoleFormatter.format("Waiting for /speech_utilities/calibrate_srv...", "WARNING"))
             rospy.wait_for_service('/speech_utilities/calibrate_srv')
-            self.calibrate_speech_proxy = rospy.ServiceProxy('/speech_utilities/calibrate_srv', calibrate_srv)
+            self.calibrate_proxy = rospy.ServiceProxy('/speech_utilities/calibrate_srv', calibrate_srv)
 
             print(self.consoleFormatter.format("Waiting for speech_utilities/answer...", "WARNING"))
             rospy.wait_for_service('/speech_utilities/answers_srv')
@@ -236,6 +236,7 @@ class Task_module:
             self.hot_word_srv= rospy.ServiceProxy("/speech_utilities/hot_word_srv", hot_word_srv)
 
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
+
 
         self.navigation = navigation
         if navigation:
@@ -657,7 +658,7 @@ class Task_module:
         # spins until the object is found or timeout
         if self.perception and self.navigation:
             try:
-                # self.go_to_position("default_head")
+                # self.go_to_state("default_head")
                 self.look_for_object(object_name)
                 self.constant_spin_srv(15)
                 found = self.wait_for_object(timeout)
@@ -679,7 +680,7 @@ class Task_module:
         if self.perception and self.navigation and self.manipulation:
             try:
                 counter = 0
-                self.go_to_position("default_head")
+                self.go_to_state("default_head")
                 self.look_for_object(object_name, ignore_already_seen=True)
                 self.constant_spin_srv(15)
                 t1 = time.time()
@@ -950,7 +951,7 @@ class Task_module:
         """
         if self.speech:
             try:
-                threshold = self.calibrate_speech_proxy(duration)
+                threshold = self.calibrate_proxy(duration)
                 if threshold:
                     return True
                 else:
@@ -1007,7 +1008,7 @@ class Task_module:
                 response = "I could not find relevant followed_persons for your question"
         return response
     
-    def q_a_speech(self, tag:str)->str:
+    def q_a(self, tag:str)->str:
         """
         Input: tag in lowercase: options -> ("age", "name", "drink")
         Output: answer
@@ -1480,7 +1481,7 @@ class Task_module:
         """
         if self.manipulation:
             try:
-                approved = self.go_to_position_proxy(pose, velocity)
+                approved = self.go_to_state_proxy(pose, velocity)
                 if approved == "OK":
                     return True
                 else:
