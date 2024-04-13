@@ -63,7 +63,7 @@ class GPSR(object):
     def on_enter_INIT(self):
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        self.tm.go_to_defined_angle_srv(0)
+        # self.tm.go_to_defined_angle_srv(0)
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.start_recognition("front_camera")
         self.tm.go_to_pose("default_head")
@@ -90,8 +90,8 @@ class GPSR(object):
     def on_enter_GO2GPSR(self):
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
         self.tm.talk("I am going to the GPSR location","English")
-        self.tm.go_to_place(self.location)
-        self.tm.go_to_defined_angle_srv(0)
+        #self.tm.go_to_place(self.location)
+        #self.tm.go_to_defined_angle_srv(0)
         self.go_to_gpsr()
 
     def on_enter_WAIT4GUEST(self):

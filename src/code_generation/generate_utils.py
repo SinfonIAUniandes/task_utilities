@@ -26,8 +26,8 @@ def load_task_config()->dict:
     return TASK_VARS
 
 def load_code_gen_config():
-    openai.api_type = os.getenv("OPENAI_API_TYPE", "open_ai")
-    openai.api_version = os.getenv("OPENAI_API_VERSION", "2023-05-15" if openai.api_type in ("azure", "azure_ad", "azuread") else None)
+    openai.api_type="azure"
+    openai.api_version = "2023-05-15"
 
 def get_task_module_code()-> str:
     global codebase
@@ -62,24 +62,28 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
 
     elif openai.api_version is None:
         print("Entro openai.api_version is None")
+        openai.api_type="azure"
+        openai.api_version = "2023-05-15"
         prediction = openai.ChatCompletion.create(
-            model=model,
-            temperature=temperature,
-            messages=messages
-        )
+                    api_key= os.getenv("GPT_API"),
+                    api_base="https://sinfonia.openai.azure.com/" ,
+                    engine="GPSR-Test",
+                    temperature= temperature,
+                    max_tokens=100,
+                    messages = messages
+                )
     else:
         print("Entro else")
-        api_key = os.getenv("OPENAI3_KEY") if model_type == Model.GPT35 else os.getenv("OPENAI4_KEY")
-        print("API KEY", api_key)
-        api_base = os.getenv("OPENAI3_API_BASE", "https://api.openai.com/v1") if model_type == Model.GPT35 else os.getenv("OPENAI4_API_BASE", "https://api.openai.com/v1")
-        deployment_name=os.getenv("OPENAI3_DEPLOYMENT_NAME", "gpt-35-turbo") if model_type == Model.GPT35 else os.getenv("OPENAI4_DEPLOYMENT_NAME", "gpt-4")
+        openai.api_type="azure"
+        openai.api_version = "2023-05-15"
         prediction = openai.ChatCompletion.create(
-            api_key=api_key,
-            api_base=api_base,
-            engine=deployment_name,
-            temperature=temperature,
-            messages=messages
-        )
+                    api_key= os.getenv("GPT_API"),
+                    api_base="https://sinfonia.openai.azure.com/" ,
+                    engine="GPSR-Test",
+                    temperature= temperature,
+                    max_tokens=100,
+                    messages = messages
+                )
     if model_type != Model.LLAMA2:
         answer = prediction['choices'][0]['message']['content']
     if is_code:
