@@ -569,7 +569,6 @@ class Task_module:
 
     def get_labels(self, bool):
         if self.perception:
-    
             try:
                 return self.get_labels_proxy.call(bool)
             except rospy.ServiceException as e:
@@ -741,6 +740,9 @@ class Task_module:
                     "gender": response.gender,
                     "age": int(response.age),
                     "race": response.attributes,
+                    "has_glasses": response.has_glasses,
+                    "has_beard": response.has_beard,
+                    "has_hat": response.has_hat
                 }
                 return attributes
             except rospy.ServiceException as e:

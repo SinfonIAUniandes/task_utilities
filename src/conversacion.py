@@ -34,7 +34,7 @@ class MERCADITO(object):
        self.hey_pepper=False
        self.isTouched = False
        states = ['CONVERSACION','INIT', 'HABLAR','FINISH','CONVERSACION_DONE']
-       self.tm = tm(perception = True,speech=True, pytoolkit=True)
+       self.tm = tm(speech=True, pytoolkit=True)
        self.tm.initialize_node(self.task_name)
        # Definir las transiciones permitidas entre los estados
        transitions = [
