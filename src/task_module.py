@@ -179,27 +179,32 @@ class Task_module:
         if speech:
             print(self.consoleFormatter.format("Waiting for SPEECH services...","WARNING"))
 
-            print(self.consoleFormatter.format("Waiting for speech_utilities/talk_speech...", "WARNING"))
-            #rospy.wait_for_service('/speech_utilities/talk_speech_srv')
-            #self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_speech_srv', talk_speech_srv)
+            print(self.consoleFormatter.format("Waiting for /speech_utilities/talk_srv...", "WARNING"))
+            rospy.wait_for_service('/speech_utilities/talk_srv')
+            self.talk_proxy = rospy.ServiceProxy('/speech_utilities/talk_srv', talk_srv)
 
             print(self.consoleFormatter.format("Waiting for speech_utilities/speech2text...", "WARNING"))
             rospy.wait_for_service('speech_utilities/speech2text_srv')
             self.speech2text_srv_proxy = rospy.ServiceProxy('speech_utilities/speech2text_srv', speech2text_srv)
 
-            print(self.consoleFormatter.format("Waiting for speech_utilities/q_a_speech...", "WARNING"))
-            #rospy.wait_for_service('/speech_utilities/q_a_speech_srv')
-            #self.q_a_proxy = rospy.ServiceProxy('/speech_utilities/q_a_speech_srv', q_a_speech_srv)
+            print(self.consoleFormatter.format("Waiting for /speech_utilities/q_a_srv...", "WARNING"))
+            rospy.wait_for_service('/speech_utilities/q_a_srv')
+            self.q_a_proxy = rospy.ServiceProxy('/speech_utilities/q_a_srv', q_a_srv)
+
+            print(self.consoleFormatter.format("Waiting for /speech_utilities/calibrate_srv...", "WARNING"))
+            rospy.wait_for_service('/speech_utilities/calibrate_srv')
+            self.calibrate_proxy = rospy.ServiceProxy('/speech_utilities/calibrate_srv', calibrate_srv)
 
             print(self.consoleFormatter.format("Waiting for speech_utilities/answer...", "WARNING"))
             rospy.wait_for_service('/speech_utilities/answers_srv')
             self.answer_proxy = rospy.ServiceProxy('/speech_utilities/answers_srv', answer_srv)
 
-            print(self.consoleFormatter.format("Waiting for speech_utilities/live_transcription...", "WARNING"))
-            rospy.wait_for_service('/speech_utilities/live_transcription_srv')
-            self.live_transcription_proxy = rospy.ServiceProxy('/speech_utilities/live_transcription_srv', live_transcription_srv)
+            print(self.consoleFormatter.format('Waiting for speech_utilities/hot_word_srv service!', 'WARNING'))  
+            rospy.wait_for_service('/speech_utilities/hot_word_srv')
+            self.hot_word_srv= rospy.ServiceProxy("/speech_utilities/hot_word_srv", hot_word_srv)
 
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
+
 
         self.navigation = navigation
         if navigation:
@@ -343,7 +348,7 @@ class Task_module:
                 )
             )
             rospy.wait_for_service("manipulation_utilities/goToState")
-            self.go_to_pose_proxy = rospy.ServiceProxy(
+            self.go_to_state_proxy = rospy.ServiceProxy(
                 "manipulation_utilities/goToState", GoToState
             )
 
@@ -627,7 +632,7 @@ class Task_module:
         # spins until the object is found or timeout
         if self.perception and self.navigation:
             try:
-                # self.go_to_pose("default_head")
+                # self.go_to_state("default_head")
                 self.look_for_object(object_name)
                 self.constant_spin_srv(15)
                 found = self.wait_for_object(timeout)
@@ -649,7 +654,7 @@ class Task_module:
         if self.perception and self.navigation and self.manipulation:
             try:
                 counter = 0
-                self.go_to_pose("default_head")
+                self.go_to_state("default_head")
                 self.look_for_object(object_name, ignore_already_seen=True)
                 self.constant_spin_srv(15)
                 t1 = time.time()
@@ -855,7 +860,7 @@ class Task_module:
         """
         if self.speech:
             try:
-                threshold = self.calibrate_speech_proxy(duration)
+                threshold = self.calibrate_proxy(duration)
                 if threshold:
                     return True
                 else:
@@ -1324,7 +1329,7 @@ class Task_module:
 
     ############ MANIPULATION SERVICES ###############
 
-    def go_to_pose(self, pose: str, velocity=0.05) -> bool:
+    def go_to_state(self, pose: str, velocity=0.05) -> bool:
         """
         Input: pose options ->("bowl","box","cylinder","medium_object", "small_object_left_hand","small_object_right_hand","tray","head_up","head_down","head_default")
         Output: True if the service was called correctly, False if not
@@ -1333,7 +1338,7 @@ class Task_module:
         """
         if self.manipulation:
             try:
-                approved = self.go_to_pose_proxy(pose, velocity)
+                approved = self.go_to_state_proxy(pose, velocity)
                 if approved == "OK":
                     return True
                 else:
@@ -1428,7 +1433,7 @@ class Task_module:
                 self.execute_trayectory("request_help_both_arms")
                 self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=True)
                 rospy.sleep(9)
-                self.go_to_pose("almost_open_both_hands")
+                self.go_to_state("almost_open_both_hands")
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
