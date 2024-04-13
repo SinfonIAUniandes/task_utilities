@@ -678,7 +678,7 @@ class Task_module:
         if self.perception and self.navigation and self.manipulation:
             try:
                 counter = 0
-                self.go_to_position("default_head")
+                self.go_to_pose("default_head")
                 self.look_for_object(object_name, ignore_already_seen=True)
                 self.constant_spin_srv(15)
                 t1 = time.time()
@@ -1479,7 +1479,7 @@ class Task_module:
         """
         if self.manipulation:
             try:
-                approved = self.go_to_position_proxy(pose, velocity)
+                approved = self.go_to_pose_proxy(pose, velocity)
                 if approved == "OK":
                     return True
                 else:
@@ -1590,13 +1590,6 @@ class Task_module:
         else:
             print("manipulation as false")
             return False
-        
-    # def approach_the_object(self, object_name: str):
-    #     if self.manipulation:
-    #         try:
-    #             self.talk("I will try to grab the "+object_name,"English",wait=True)
-    #             rospy.sleep(7)
-    #             self.go_to_state("arms_forward")
                 
 
     ################ PYTOOLKIT ################

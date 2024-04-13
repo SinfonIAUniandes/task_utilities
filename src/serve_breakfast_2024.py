@@ -55,56 +55,20 @@ class SERVE_BREAKFAST(object):
 
     def on_enter_GRAB_OBJECT(self):
         object_prompt = f"Just tell me the number of what I am going to ask you, don't answer anything else.
-        How much do I have to move to be exactly aligned with the object {self.ingredients[self.j]}"
+        How much do I have to move to be exactly aligned with the object {self.ingredients[self.j]}. "
         self.approach = self.tm.img_description(object_prompt)["message"]
 
         self.go_drop_place()
 
     def on_enter_GO_DROP_PLACE(self):
-        navigation_drop_place = self.object_instructions[self.objects[self.object_i]]["drop_place"]
-        self.tm.talk("I am navigating to the "+navigation_drop_place)
-        self.tm.go_to_place(navigation_drop_place)
-        self.tm.go_to_defined_angle_srv(180)
         self.drop_object()
 
     def on_enter_DROP_OBJECT(self):
-        # TODO prints en todos los estados para saver que vergas esta pasando
-        self.tm.talk("I am going to place the "+self.objects[self.object_i]+" on the table")
-        previousPosition = self.currentPositionOdom.position
-        decreaseDistance = 0
-        while True:
-            distanceTraveled = self.calculateEuclideanDistance(self.currentPositionOdom.position.x, self.currentPositionOdom.position.y, previousPosition.x, previousPosition.y) 
-            if distanceTraveled < 0.1-decreaseDistance:
-                self.tm.go_to_relative_point(self.object_instructions[self.objects[self.object_i]]["forward_distance"]-(distanceTraveled), 0, 0)
-                decreaseDistance += 0.05
-            else:
-                break
-        if self.objects[self.object_i] == "spoon" or self.objects[self.object_i] == "cereal box" or self.objects[self.object_i] == "milk":
-            if self.objects[self.object_i] == "cereal box":
-                self.tm.execute_trayectory('place_right_cereal')
-                self.tm.go_to_relative_point(0,-0.1,0)
-                self.tm.execute_trayectory("place_right_arm")
-           
-        else:
-            self.tm.execute_trayectory("place_both_arms")
-        self.tm.go_to_relative_point(-self.object_instructions[self.objects[self.object_i]]["backward_distance"], 0, 0)
-        self.setMoveArms_srv.call(True, True)
-        self.object_i += 1
-        if self.object_i < len(self.objects):
-            self.tm.talk("I am ready for grabbing the "+self.objects[self.object_i])
-            self.again()
-        else:
             self.end()
 
     def on_enter_END(self):
-        self.tm.talk("I have finished serving breakfast, thank you for your help")
+        self.tm.talk("I have finished serving breakfast")
         return
-
-    def calculateEuclideanDistance(self, xPoint1, yPoint1, xPoint2, yPoint2):
-        return np.linalg.norm(np.array([xPoint1, yPoint1])-np.array([xPoint2, yPoint2]))
-    
-    def callback_odom_subscriber(self,msg:Odometry):
-        self.currentPositionOdom = msg.pose.pose
 
     def check_rospy(self):
         while not rospy.is_shutdown():
