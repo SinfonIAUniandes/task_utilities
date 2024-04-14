@@ -382,7 +382,7 @@ class Task_module:
                 )
             )
             rospy.wait_for_service("manipulation_utilities/play_action")
-            self.go_to_action_proxy = rospy.ServiceProxy(
+            self.play_action_proxy = rospy.ServiceProxy(
                 "manipulation_utilities/play_action", play_action
             )
 
@@ -1527,7 +1527,7 @@ class Task_module:
             print("manipulation as false")
             return False
 
-    def execute_trayectory(self, trayectory: str) -> bool:
+    def play_action(self, action: str) -> bool:
         """
         Input: action options ->("place_both_arms","place_left_arm","place_right_arm")
         Output: True if the service was called correctly, False if not

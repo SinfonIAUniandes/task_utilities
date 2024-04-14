@@ -6,11 +6,7 @@ import numpy as np
 import ConsoleFormatter
 
 from transitions import Machine
-from nav_msgs.msg import Odometry
 from task_module import Task_module as tm
-from robot_toolkit_msgs.msg import touch_msg
-from robot_toolkit_msgs.srv import set_move_arms_enabled_srv, set_security_distance_srv,  misc_tools_srv, misc_tools_srvRequest, set_security_distance_srvRequest
-
 
 class SERVE_BREAKFAST(object):
     def __init__(self) -> None:
@@ -36,42 +32,71 @@ class SERVE_BREAKFAST(object):
 
 
     def on_enter_INIT(self):
-        self.tm.talk("I am going to serve breakfast")
+        self.tm.talk("I will serve breakfast")
         self.start()
 
     def on_enter_GO_GRAB_PLACE(self):
-        self.tm.go_to_place("cupboard")
+        #TODO Poner el lugar de destino para recoger las cosas cuando este listo el mapa
+        self.tm.talk("I am going to go pick up the stuff for breakfast")
+        self.tm.go_to_place("")
         self.look_for_object()
 
     def on_enter_LOOK_FOR_OBJECTS(self):
         self.tm.go_to_state("down_head")
-        ingredients_prompt = f"Just give me in a python list the objects that are considered as food
-        or ingredients that you see below, from left to right. Do not answer aboslutely anything else."
-        self.ingredients = self.tm.img_description(ingredients_prompt)["message"]
+        ingredients_prompt = f"Just give me in a python list the objects that are considered realted with food
+        or ingredients that you see below, from left to right. Do not answer aboslutely anything else. For example the answer
+        will be [milk, cereal, spon, bowl]"
+        self.ingredients = list(self.tm.img_description(ingredients_prompt)["message"])
+        self.tm.talk("I can see ", "English", wait=False)
         for i in self.ingredients:
-            self.tm.talk("The objects I am looking at are, " + str(i), "English", wait=False)
+            self.tm.talk( f"a {str(i)}", "English", wait=False)
         self.j = 0
         self.grab_object()
 
     def on_enter_GRAB_OBJECT(self):
         object_prompt = f"Just tell me the number of what I am going to ask you, don't answer anything else.
-        How much do I have to move to be exactly aligned with the object {self.ingredients[self.j]}.
+        How much (in meters) do I have to move to be exactly aligned with the object {int(self.ingredients[self.j])}.
         Taking into account that we are at a reference point 0, to the left are negative numbers and to
-        the right are positive numbers."
+        the right are positive numbers. In case that you are alligned with the object only answer 0. For example,
+        your answer will be 1 or 0 or -1, etc"
         self.approach = self.tm.img_description(object_prompt)["message"]
         self.tm.go_to_relative_point(0,self.approach,0)
-        
-
+        if self.ingredients[self.j] == "milk":
+            # TODO crear y añadir la pose correspondiente
+            self.tm.play_action("")
+        elif self.ingredients[self.j] == "bowl":
+            # TODO crear y añadir la pose correspondiente
+            self.tm.play_action("")
+        elif self.ingredients[self.j] == "cereal":
+            # TODO crear y añadir la pose correspondiente
+            self.tm.play_action("")
+        elif self.ingredients[self.j] == "spon":
+            # TODO crear y añadir la pose correspondiente
+            self.tm.play_action("")
         self.go_drop_place()
 
     def on_enter_GO_DROP_PLACE(self):
+        self.tm.talk(f"I am going to take the {self.ingredients[self.j]} to the table, please wait", "English", wait=False)
+        #TODO Poner el lugar de destino para dejar las cosas cuando este listo el mapa
+        self.tm.go_to_place("")
         self.drop_object()
 
     def on_enter_DROP_OBJECT(self):
-            self.end()
+        #TODO Crear y añadir pose para soltar objeto
+        self.tm.play_action("")
+        if self.ingredients[self.j] == self.ingredients[-1]:
+            self.make_breakfast()
+        else:
+            self.j += 1
+            self.again()
+    
+    def on_enter_MAKE_BREAKFAST(self):
+        self.tm.talk("I am ready to prepare breakfast", "English", wait=False)
+        #TODO Crear estado para preparar el desayuno (para esto se pueden crear más estados)
+        self.end()
 
     def on_enter_END(self):
-        self.tm.talk("I have finished serving breakfast")
+        self.tm.talk("I finished serving breakfast, enjoy it")
         return
 
     def check_rospy(self):
