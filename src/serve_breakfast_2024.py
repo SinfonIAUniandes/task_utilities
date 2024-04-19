@@ -12,7 +12,7 @@ class SERVE_BREAKFAST(object):
     def __init__(self) -> None:
         
         self.j = 0 #Contador para saber que ingrediente se esta manipulando
-        self.ingredients = ["milk_carton", "cereal_box", "bowl", "spoon"] # Lista de ingredientes
+        self.ingredients = ["milk_carton", "bowl", "cereal_box", "spoon"] # Lista de ingredientes
         
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
         self.tm = tm(navigation=True, manipulation=True, speech=True, perception = False, pytoolkit=True)
@@ -34,40 +34,50 @@ class SERVE_BREAKFAST(object):
         rospy_check.start()
 
     def on_enter_INIT(self):
-        self.tm.go_to_pose("standard")
-        self.tm.go_to_pose("default_head")
+        self.tm.go_to_pose("standard",0.15)
+        self.tm.go_to_pose("default_head",0.15)
+        self.tm.set_security_distance(False)
         self.tm.talk("I will serve the breakfast", "English", wait=True)
         self.start()
 
     def on_enter_GO_2_CUPBOARD(self):
-        self.tm.talk("I am going to go pick up the stuff for breakfast")
+        self.tm.talk(f"I am going to go pick up the {self.ingredients[self.j]} for breakfast")
         #TODO Poner el lugar de destino para recoger las cosas cuando este listo el mapa
-        self.tm.go_to_place("")
+        #self.tm.go_to_place("")
         self.grab_ingredient()
 
     def on_enter_GRAB_OBJECT(self):
         if self.ingredients[self.j] == "milk_carton":
-            # TODO definir el lugar del objeto y poner un relative_point
-            # TODO crear y añadir la animacion correspoondiente
-            pass
+            self.tm.go_to_relative_point(0.0,0.5,0.0)
+            self.tm.go_to_pose("open_both_arms",0.1)
+            time.sleep(7)
+            self.tm.go_to_relative_point(0.76, 0.0, 0.0)
+            self.tm.go_to_pose("open_both_hands",0.1)
+            time.sleep(3)
+            self.tm.go_to_pose("close_both_arms_milk",0.1)
+            time.sleep(5)
+            self.tm.go_to_pose("raise_both_arms_milk",0.1)
+            time.sleep(10)
+            self.tm.go_to_pose("default_head",0.1)
+            self.tm.go_to_relative_point(-0.76, 0.0, 0.0)
+            time.sleep(1)
+            self.tm.go_to_relative_point(0.0, -0.5, 0.0)
         elif self.ingredients[self.j] == "bowl":
             # TODO definir el lugar del objeto y poner un relative_point
             # TODO crear y añadir la animacion correspoondiente
             pass
         elif self.ingredients[self.j] == "cereal_box":
-            # TODO definir el lugar del objeto y ajustar el relative_point
-            self.tm.go_to_relative_point(-0.2,0,0)
-            self.tm.go_to_pose("both_arms")
-            time.sleep(10)
-            # TODO ajustar go_to_relative_point
-            self.tm.go_to_relative_point(0, 0.1, 0)
-            self.tm.go_to_pose("open_both_hands")
+            self.tm.go_to_pose("open_both_arms",0.1)
+            time.sleep(7)
+            self.tm.go_to_relative_point(0.76, 0.0, 0.0)
+            self.tm.go_to_pose("open_both_hands",0.1)
             time.sleep(3)
-            self.tm.go_to_pose("close_both_arms")
+            self.tm.go_to_pose("close_both_arms_cereal",0.1)
             time.sleep(5)
-            self.tm.go_to_pose("raise_closed_arms")
+            self.tm.go_to_pose("raise_both_arms_milk",0.1)
             time.sleep(10)
-            self.tm.go_to_pose("default_head")
+            self.tm.go_to_pose("default_head",0.1)
+            self.tm.go_to_relative_point(-0.76, 0.0, 0.0)
         elif self.ingredients[self.j] == "spoon":
             # TODO definir el lugar del objeto y poner un relative_point
             # TODO crear y añadir la animacion correspoondiente
@@ -77,28 +87,37 @@ class SERVE_BREAKFAST(object):
     def on_enter_GO_DROP_PLACE(self):
         self.tm.talk(f"I am going to take the {self.ingredients[self.j]} to the table, please wait", "English", wait=False)
         #TODO Poner el lugar de destino para dejar las cosas cuando este listo el mapa
-        self.tm.go_to_place("")
+        # self.tm.go_to_place("")
         self.drop_object()
 
     def on_enter_DROP_OBJECT(self):
         if self.ingredients[self.j] == "milk_carton":
-            # TODO definir el lugar del objeto y poner un relative_point
-            # TODO crear y añadir la pose correspoondiente para soltar
-            pass
+            self.tm.go_to_relative_point(0.0,0.5,0.0)
+            time.sleep(1)
+            self.tm.go_to_relative_point(0.76,0.0,0.0)
+            self.tm.go_to_pose("close_both_arms_milk",0.1)
+            time.sleep(2)
+            self.tm.go_to_pose("open_both_arms",0.1)
+            self.tm.go_to_relative_point(-0.76,0.0,0.0)
+            time.sleep(1)
+            self.tm.go_to_relative_point(0.0,-0.5,0.0)
+            
         elif self.ingredients[self.j] == "bowl":
             # TODO definir el lugar del objeto y poner un relative_point (tiene que estar en la mitad de los objetos)
             # TODO crear y añadir la pose correspoondiente para soltar
             pass
         elif self.ingredients[self.j] == "cereal_box":
-            # TODO definir el lugar del objeto y ajustar el relative_point
-            self.tm.go_to_relative_point()
-            # TODO ajustar la pose correspoondiente para soltar el objeto
-            self.tm.go_to_pose("both_arms")
+            self.tm.go_to_relative_point(0.76,0.0,0.0)
+            time.sleep(2)
+            self.tm.go_to_pose("close_both_arms_cereal",0.1)
+            time.sleep(2)
+            self.tm.go_to_pose("open_both_arms",0.1)
+            self.tm.go_to_relative_point(-0.76,0.0,0.0)
         elif self.ingredients[self.j] == "spoon":
             # TODO definir el lugar del objeto y poner un relative_point
             # TODO TODO crear y añadir la pose correspoondiente para soltar
             pass
-        self.tm.go_to_pose("standard")
+        self.tm.go_to_pose("standard", 0.15)
         if self.ingredients[self.j] == self.ingredients[-1]:
             self.tm.talk("I am ready to prepare breakfast", "English", wait=True)
             self.make_breakfast()
