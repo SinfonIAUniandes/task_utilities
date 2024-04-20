@@ -42,16 +42,18 @@ class SERVE_BREAKFAST(object):
 
     def on_enter_GO_2_CUPBOARD(self):
         self.tm.talk(f"I am going to go pick up the {self.ingredients[self.j]} for breakfast")
-        #TODO Poner el lugar de destino para recoger las cosas cuando este listo el mapa
-        #self.tm.go_to_place("")
+        # self.tm.go_to_place("kitchen")
         self.grab_ingredient()
 
     def on_enter_GRAB_OBJECT(self):
+        
+        self.tm.go_to_relative_point(0.45,0,0);
+        
         if self.ingredients[self.j] == "milk_carton":
-            self.tm.go_to_relative_point(0.0,0.5,0.0)
+            self.tm.go_to_relative_point(0.0,0.345,0.0)
             self.tm.go_to_pose("open_both_arms",0.1)
             time.sleep(7)
-            self.tm.go_to_relative_point(0.76, 0.0, 0.0)
+            self.tm.go_to_relative_point(0.405, 0.0, 0.0)
             self.tm.go_to_pose("open_both_hands",0.1)
             time.sleep(3)
             self.tm.go_to_pose("close_both_arms_milk",0.1)
@@ -59,17 +61,28 @@ class SERVE_BREAKFAST(object):
             self.tm.go_to_pose("raise_both_arms_milk",0.1)
             time.sleep(10)
             self.tm.go_to_pose("default_head",0.1)
-            self.tm.go_to_relative_point(-0.76, 0.0, 0.0)
+            self.tm.go_to_relative_point(-0.41, 0.0, 0.0)
             time.sleep(1)
-            self.tm.go_to_relative_point(0.0, -0.5, 0.0)
+            self.tm.go_to_relative_point(0.0, -0.35, 0.0)
         elif self.ingredients[self.j] == "bowl":
-            # TODO definir el lugar del objeto y poner un relative_point
-            # TODO crear y añadir la animacion correspoondiente
-            pass
+            self.tm.go_to_relative_point(0.0,0.-0.345,0.0)
+            self.tm.go_to_pose("open_arms_bowl",0.1)
+            time.sleep(7)
+            self.tm.go_to_relative_point(0.41, 0.0, 0.0)
+            self.tm.go_to_pose("open_both_hands",0.1)
+            time.sleep(3)
+            self.tm.go_to_pose("close_arms_bowl",0.1)
+            time.sleep(5)
+            self.tm.go_to_pose("raise_arms_bowl",0.1)
+            time.sleep(10)
+            self.tm.go_to_pose("default_head",0.1)
+            self.tm.go_to_relative_point(-0.41, 0.0, 0.0)
+            time.sleep(1)
+            self.tm.go_to_relative_point(0.0, 0.34, 0.0)
         elif self.ingredients[self.j] == "cereal_box":
             self.tm.go_to_pose("open_both_arms",0.1)
             time.sleep(7)
-            self.tm.go_to_relative_point(0.76, 0.0, 0.0)
+            self.tm.go_to_relative_point(0.3, 0.0, 0.0)
             self.tm.go_to_pose("open_both_hands",0.1)
             time.sleep(3)
             self.tm.go_to_pose("close_both_arms_cereal",0.1)
@@ -77,42 +90,44 @@ class SERVE_BREAKFAST(object):
             self.tm.go_to_pose("raise_both_arms_milk",0.1)
             time.sleep(10)
             self.tm.go_to_pose("default_head",0.1)
-            self.tm.go_to_relative_point(-0.76, 0.0, 0.0)
+            self.tm.go_to_relative_point(-0.3, 0.0, 0.0)
         elif self.ingredients[self.j] == "spoon":
             # TODO definir el lugar del objeto y poner un relative_point
             # TODO crear y añadir la animacion correspoondiente
             pass
+        
+        self.tm.go_to_relative_point(-0.45,0,0)
+            
         self.go_drop_place()
 
     def on_enter_GO_DROP_PLACE(self):
         self.tm.talk(f"I am going to take the {self.ingredients[self.j]} to the table, please wait", "English", wait=False)
-        #TODO Poner el lugar de destino para dejar las cosas cuando este listo el mapa
-        # self.tm.go_to_place("")
+        # self.tm.go_to_place("kitchen")
         self.drop_object()
 
     def on_enter_DROP_OBJECT(self):
         if self.ingredients[self.j] == "milk_carton":
-            self.tm.go_to_relative_point(0.0,0.5,0.0)
-            time.sleep(1)
-            self.tm.go_to_relative_point(0.76,0.0,0.0)
+            self.tm.go_to_relative_point(0.45,0.0,0.0)
+            self.tm.go_to_relative_point(0, 0.345, 0)
+            self.tm.go_to_relative_point(0.45,0.0,0.0)
             self.tm.go_to_pose("close_both_arms_milk",0.1)
             time.sleep(2)
             self.tm.go_to_pose("open_both_arms",0.1)
-            self.tm.go_to_relative_point(-0.76,0.0,0.0)
+            self.tm.go_to_relative_point(-0.3,0.0,0.0)
             time.sleep(1)
-            self.tm.go_to_relative_point(0.0,-0.5,0.0)
+            self.tm.go_to_relative_point(0.0,-0.45,0.0)
             
         elif self.ingredients[self.j] == "bowl":
             # TODO definir el lugar del objeto y poner un relative_point (tiene que estar en la mitad de los objetos)
             # TODO crear y añadir la pose correspoondiente para soltar
             pass
         elif self.ingredients[self.j] == "cereal_box":
-            self.tm.go_to_relative_point(0.76,0.0,0.0)
+            self.tm.go_to_relative_point(0.3,0.0,0.0)
             time.sleep(2)
             self.tm.go_to_pose("close_both_arms_cereal",0.1)
             time.sleep(2)
             self.tm.go_to_pose("open_both_arms",0.1)
-            self.tm.go_to_relative_point(-0.76,0.0,0.0)
+            self.tm.go_to_relative_point(-0.3,0.0,0.0)
         elif self.ingredients[self.j] == "spoon":
             # TODO definir el lugar del objeto y poner un relative_point
             # TODO TODO crear y añadir la pose correspoondiente para soltar
