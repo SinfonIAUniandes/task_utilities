@@ -44,7 +44,7 @@ class MANIPULATION_TEST(object):
         ]
         
         # Crear la máquina de estados
-        self.machine = Machine(model=self, states=states, transitions=transitions, initial='GPSR')
+        self.machine = Machine(model=self, states=states, transitions=transitions, initial='MANIPULATION_TEST')
 
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()

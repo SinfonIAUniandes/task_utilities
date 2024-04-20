@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from transitions import Machine
 from task_module import Task_module as tm
-from std_msgs.msg import Bool
 import ConsoleFormatter
 import time
 import random
@@ -11,18 +10,11 @@ import rospy
 import math
 import os
 import numpy as np
-from std_srvs.srv import SetBool
+import re
 from code_generation import ls_generate as gen
 from code_generation import generate_utils 
 from code_generation.database.models import Model
-
-
-
-from navigation_msgs.srv import constant_spin_srv
-from navigation_msgs.msg import simple_feedback_msg
-from robot_toolkit_msgs.msg import animation_msg
-from geometry_msgs.msg import PoseWithCovarianceStamped
-from tf.transformations import euler_from_quaternion
+from std_msgs.msg import String
 
 class GPSR(object):
     def __init__(self):
@@ -40,7 +32,7 @@ class GPSR(object):
         # Definir los estados posibles del semáforo
         self.task_name = "GPSR"
         states = ['INIT', 'WAIT4GUEST', 'GPSR', 'GO2GPSR']
-        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=True, pytoolkit=True)
+        self.tm = tm(perception = True,speech=True,manipulation=True, navigation=True, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
@@ -53,49 +45,64 @@ class GPSR(object):
         
         # Crear la máquina de estados
         self.machine = Machine(model=self, states=states, transitions=transitions, initial='GPSR')
-
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
-
+        self.posePublisherSubscriber = rospy.Subscriber(
+            "perception_utilities/pose_publisher", String, self.posePublisherCallback
+        )
         ############################# GLOBAL VARIABLES #############################
         self.location = "living_room"
 
     def on_enter_INIT(self):
-        self.tm.talk("I am going to do the  "+self.task_name+" task","English")
+        #self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
+        self.tm.initialize_pepper()
         # self.tm.go_to_defined_angle_srv(0)
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.start_recognition("front_camera")
-        self.tm.go_to_pose("default_head")
+        self.tm.pose_srv("front_camera", True)
         self.beggining()
 
     def on_enter_GPSR(self):
         print(self.consoleFormatter.format("GPSR", "HEADER"))
         self.tm.look_for_object("")
-        self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. Talk to me now: ","English")
-        task = self.tm.speech2text_srv(10)
-        print("task",task)
+        #self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. Talk to me now: ","English")
+        self.tm.talk("Question","English")
+        task = self.tm.speech2text_srv()
+        print(f"Task: {task}")
         self.tm.talk("Processing your request")
-        generate_utils.load_code_gen_config()
-        code = self.gen.generate_code(task,Model.GPT4)
-        print(code)
-
-        self.tm.talk("I will: ","English")
-        try:
-            exec(code)
-        except:
+        generate_utils.load_code_gen_config() 
+        contador = 0
+        while contador<3:
+            try:
+                code = self.gen.generate_code(task,Model.GPT4).replace("`","").replace("python","")
+                print(code)
+                if not "I am sorry but I cannot complete this task" in code:
+                    print("es posible la task")
+                    patron = r"self\.tm\.go_to_place\([^)]*\)"
+                    code = re.sub(patron, "", code)
+                    exec(code)
+                    contador = 5
+                contador += 1
+            except:
+                print("Fallo el codigo")
+                contador+=1
+        if contador==4:
             self.tm.talk("I cannot do this task: "+task,"English")
         self.GPSR_done()
 
     def on_enter_GO2GPSR(self):
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
-        self.tm.talk("I am going to the GPSR location","English")
+        #self.tm.talk("I am going to the GPSR location","English")
         #self.tm.go_to_place(self.location)
         #self.tm.go_to_defined_angle_srv(0)
         self.go_to_gpsr()
 
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
+        self.tm.go_to_state("default_head")
+        self.tm.setRPosture_srv("stand")
+        self.tm.setMoveHead_srv.call("up")
         self.tm.talk("Waiting for guests","English")
         self.tm.look_for_object("person")
         self.tm.wait_for_object(-1)
@@ -112,6 +119,22 @@ class GPSR(object):
         while not rospy.is_shutdown():
             self.start()
         
+
+
+    def posePublisherCallback(self, msg):
+        if msg.data == "Pointing to the left":
+            self.tm.pointing = "left"
+        elif msg.data == "Pointing to the right":
+            self.tm.pointing = "right"
+        elif msg.data=="Right hand up":
+            self.tm.pointing = "center"
+            self.tm.hand_up = "right"
+        elif msg.data=="Left hand up":
+            self.tm.pointing = "center"
+            self.tm.hand_up = "left"
+        else:
+            self.tm.pointing = "none"
+            self.tm.hand_up = "none"
     
 # Crear una instancia de la maquina de estados
 if __name__ == "__main__":

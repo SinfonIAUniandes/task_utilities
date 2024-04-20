@@ -47,10 +47,13 @@ class Task_module:
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
         ################### GLOBAL VARIABLES ###################
         self.follow_you_active = True
+        self.head_thread = False
         self.linear_vel = 0
         self.closest_person = [0,0,0,0,0]
         self.labels = dict()
         self.clothes_color = "pink"
+        self.pointing = "none"
+        self.hand_up = "none"
         self.say_go_ahead = True
         self.object_found = False
         self.iterationssTouched = False
@@ -497,13 +500,12 @@ class Task_module:
         """
         Initializes the pepper robot with default parameteres
         """
-        if self.pytoolkit and self.perception:
+        if self.perception and self.speech:
             self.turn_camera("front_camera","custom",1,15)
             self.start_recognition("front_camera")
             self.calibrate_srv(5)
-            # quedarse como un coco
         else:
-            print("pytoolkit or perception as false")
+            print("perception as false")
 
     ################### PERCEPTION SERVICES ###################
 
@@ -606,6 +608,49 @@ class Task_module:
         else:
             print("perception as false")
             return False
+            
+    def search_for_specific_person(self, class_type: str, specific_characteristic: str, timeout = 72) -> bool:
+        """
+        Input:
+        class_type: The characteristic to search for (name, pointing, raised_hands or TODO colors)
+        specific_characteristic: The specific thing to search for (example: David, Right hand up, Pointing right, blue (shirt,coat,etc))
+        timeout: Timeout in seconds || -1 for infinite
+        Output: True if person was found
+        ----------
+        Looks for a specific person. This person is pointing, raising a hand, has a specific name or TODO is wearing a color
+        """
+        if self.perception and self.manipulation:
+            try:
+                self.go_to_state("head_up")
+                self.constant_spin_srv(15)
+                self.look_for_object("person", ignore_already_seen=True)
+                specific_person_found = False
+                start_time = time.time()
+                self.head_thread = True
+                head_thread = Thread(target=self.head_srv_thread, args=(["head_up"]))
+                head_thread.start()
+                while not specific_person_found and (time.time()-start_time) < timeout:
+                    found = self.wait_for_object(24)
+                    self.robot_stop_srv()
+                    if class_type=="name":
+                        if self.recognize_face() == specific_characteristic:
+                            specific_person_found = True 
+                    elif class_type=="pointing":
+                        if self.pointing == specific_characteristic:
+                            specific_person_found = True 
+                    elif class_type=="raised_hand":
+                        if self.hand_up == specific_characteristic:
+                            specific_person_found = True
+                    rospy.sleep(1)
+                    self.constant_spin_srv(15)
+                self.robot_stop_srv()
+                return found
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("perception or manipulation as false")
+            return False
 
     def wait_for_object(self, timeout: float) -> bool:
         """
@@ -654,9 +699,9 @@ class Task_module:
         Spins while looking for <object_name> for <timeout> seconds while spinning at 15 deg/s
         """
         # spins until the object is found or timeout
-        if self.perception and self.navigation:
+        if self.perception and self.navigation and self.manipulation:
             try:
-                # self.go_to_position("default_head")
+                self.go_to_state("default_head")
                 self.look_for_object(object_name)
                 self.constant_spin_srv(15)
                 found = self.wait_for_object(timeout)
@@ -666,7 +711,7 @@ class Task_module:
                 print("Service call failed: %s" % e)
                 return False
         else:
-            print("perception, manipulation or navigation as false")
+            print("perception or navigation as false")
 
     def count_objects(self, object_name: str) -> int:
         """
@@ -678,7 +723,7 @@ class Task_module:
         if self.perception and self.navigation and self.manipulation:
             try:
                 counter = 0
-                self.go_to_position("default_head")
+                self.go_to_state("default_head")
                 self.look_for_object(object_name, ignore_already_seen=True)
                 self.constant_spin_srv(15)
                 t1 = time.time()
@@ -1087,25 +1132,9 @@ class Task_module:
         if self.navigation:
             try:
                 self.set_move_arms_enabled(False)
-                if self.pytoolkit:
-                    self.stop_tracker_proxy()
-                    self.stop_tracker_proxy()
-                    self.stop_tracker_proxy()
                 approved = self.go_to_place_proxy(place_name, graph)
-                if self.pytoolkit:
-                    self.stop_tracker_proxy()
-                    self.stop_tracker_proxy()
-                    self.stop_tracker_proxy()
                 if wait:
-                    if self.pytoolkit:
-                        self.stop_tracker_proxy()
-                        self.stop_tracker_proxy()
-                        self.stop_tracker_proxy()
                     self.wait_go_to_place()
-                    if self.pytoolkit:
-                        self.stop_tracker_proxy()
-                        self.stop_tracker_proxy()
-                        self.stop_tracker_proxy()
                 if approved=="approved":
                     return True
                 else:
@@ -1162,16 +1191,16 @@ class Task_module:
         """
 
         self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
-        self.move_publisher = rospy.Publisher('/pytoolkit/ALMotion/move', Twist, queue_size=10)
 
         if self.pytoolkit:
             try:
                 if command:
                     self.follow_you_active = command
+                    self.head_thread = command
                     self.set_move_arms_enabled(False)
                     follow_thread = Thread(target=self.follow_you_srv_thread,args=([speed]))
                     follow_thread.start()
-                    head_thread = Thread(target=self.head_srv_thread)
+                    head_thread = Thread(target=self.head_srv_thread, args=(["default"]))
                     head_thread.start()
                     person_thread = Thread(target=self.get_closer_person)
                     person_thread.start()
@@ -1180,6 +1209,7 @@ class Task_module:
                 else:
                     #self.set_move_arms_enabled(True)
                     self.follow_you_active = command
+                    self.head_thread = command
                     #self.follow_you_proxy(command)
                     self.stop_moving()
                     print("Finished following")
@@ -1251,7 +1281,7 @@ class Task_module:
         max_width = 140
         # 60 is a value that worked well in testing
         min_width = 55
-        speed = 0.4/(max_width-min_width)if speed is None else speed
+        speed = 0.5/(max_width-min_width)if speed is None else speed
         angular_vel = 0
         while self.follow_you_active: 
             # If a person was found
@@ -1285,7 +1315,7 @@ class Task_module:
                         continue
                 
                 # If the rotation is big or the robot is not moving
-                change_motion =(abs(angular_vel) > 0.17 and person_width>min_width) or abs(self.linear_vel-calculated_vel)>0.025
+                change_motion =(abs(angular_vel) > 0.2 and person_width>min_width) or abs(self.linear_vel-calculated_vel)>0.025
                 if change_motion:
                     self.linear_vel=calculated_vel
                     if not close:
@@ -1479,7 +1509,7 @@ class Task_module:
         """
         if self.manipulation:
             try:
-                approved = self.go_to_position_proxy(pose, velocity)
+                approved = self.go_to_state_proxy(pose, velocity)
                 if approved == "OK":
                     return True
                 else:
@@ -1491,18 +1521,19 @@ class Task_module:
             print("manipulation as false")
             return False
     
-    def head_srv_thread(self) -> None:
+    def head_srv_thread(self, head_position="default") -> None:
         """
-        Input: None
+        Input: 
+        head_position: the different head positions the robot can take. Options are : "default", "up", "down"
         Output: None
         ---------
         Thread dedicated to keeping the robot's head up.
         (Pepper's head falls down when moving due to vibration)
         """
-        while self.follow_you_active: 
-            self.setMoveHead_srv.call("default")
+        while self.head_thread: 
+            self.setMoveHead_srv.call(head_position)
             rospy.sleep(8)
-            
+             
 
     def saveState(self, name: str) -> bool:
         """

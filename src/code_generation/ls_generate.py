@@ -12,20 +12,21 @@ class LongStringGenerator:
         self.question_tags = self.robot_vars["question_tags"]
         self.task_module_code = f"""
         Perception functions:
-        self.tm.find_object(object_name)->bool: Returns True if the object was found, False if not, the only possible objects with their exact syntax are: {self.objects}
+        self.tm.find_object(object_name)->bool: Returns True if the object was found, False if not, the only possible objects with their exact syntax are: {self.objects}.
         self.tm.count_objects(object_name)->int: Returns the number of objects found, the only possible objects with their exact syntax are: {self.objects}
         self.tm.recognize_face()->str: Returns the name of the person that the robot is looking at
         self.tm.save_face(name)->bool: Saves the face of the person that the robot is looking at with the given name
+        self.tm.search_for_specific_person(class_type,specific_characteristic)->bool: The robot spins in place until it finds a person with a specific characteristic. The options for class_type are: "pointing", "name", "raised_hand". The options for specific_characteristic depend on class_type. If class_type is "name", options are human names like "Paris","Robin","Jaine". If class_type is "pointing" or "raised_hand" options are "right", "left", "center"
 
         Speech functions:
         self.tm.talk(text): Allows the robot to say the input of the service.
         self.tm.speech2text_srv()->str: Allows the robot to listen to the user and returns the text that the robot heard
         self.tm.q_a_speech(tag)->str: Allows the robot to ASK a question and returns the answer of the user, the list of possible questions with exact syntax is: {self.question_tags}
-        self.tm.answer_question(question)->bool: Allows the robot to ANSWER a question made by a person 
+        self.tm.answer_question(question)->bool: Returns a string with an answer to the question
 
         Navigation functions:
         self.tm.go_to_place(place_name): Allows the robot to go to a place, the only possible places with their exact syntax are: {self.place_names}
-        self.tm.follow_you(): Allows the robot to follow the user
+        self.tm.follow_you(command): Allows the robot to follow the user, if the command is True the robot follows the user, if it's False it stops following.
         self.tm.robot_stop_srv(): Allows the robot to stop
         self.tm.add_place(place_name): Allows the robot to add a place to the map
 
@@ -68,8 +69,9 @@ class LongStringGenerator:
 
         # Output Format:
         - Your output needs to be formatted in markdown as a python code snippet, do not add anything else to the output (don't add any exec calls or "Here's your code" statements), just the code.
-        - The response must be formatted as follows: ```python\n<CODE> ```
         - DO NOT INCLUDE ANY AI CHAT RESPONSES IN THE OUTPUT, JUST GENERATE THE CODE
+        - DO NOT INCLUDE ANY COMMENTS IN THE CODE
+        - The response must be formatted as follows: ```python\n<CODE> ```
 
         For example, if the task is "Grab a bottle, and bring it to the living room" you should return:
         ```python
@@ -87,6 +89,7 @@ class LongStringGenerator:
         else:
             self.tm.talk("I am sorry, I did not find the bottle")
         ```
+        Without the asterisks
 
         # Task description:
         {task}
