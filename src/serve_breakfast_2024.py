@@ -1,31 +1,30 @@
 #!/usr/bin/env python3
 import os
+import time
 import rospy
 import threading
-import numpy as np
 import ConsoleFormatter
 
 from transitions import Machine
-from nav_msgs.msg import Odometry
 from task_module import Task_module as tm
-from robot_toolkit_msgs.msg import touch_msg
-from robot_toolkit_msgs.srv import set_move_arms_enabled_srv, set_security_distance_srv,  misc_tools_srv, misc_tools_srvRequest, set_security_distance_srvRequest
-
 
 class SERVE_BREAKFAST(object):
     def __init__(self) -> None:
+        
+        self.j = 0 #Contador para saber que ingrediente se esta manipulando
+        self.ingredients = ["milk_carton", "bowl", "cereal_box", "spoon"] # Lista de ingredientes
+        
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
-        self.tm = tm(navigation=True, manipulation=True, speech=True, perception = True, pytoolkit=True)
+        self.tm = tm(navigation=True, manipulation=True, speech=True, perception = False, pytoolkit=True)
         self.tm.initialize_node('SERVE_BREAKFAST')
-
-        self.STATES = ['INIT', 'GO_2_CUPBOARD', 'LOOK_FOR_OBJECT' ,'GRAB_OBJECT', 'GO_DROP_PLACE', 'DROP_OBJECT', 'MAKE_BREAKFAST', 'END']
-        self.TRANSITIONS = [{'trigger': 'init', 'source': 'SERVE_BREAKFAST', 'dest': 'INIT'},
+ 
+        self.STATES = ['INIT', 'GO_2_CUPBOARD','GRAB_OBJECT', 'GO_DROP_PLACE', 'DROP_OBJECT', 'MAKE_BREAKFAST', 'END']
+        self.TRANSITIONS = [{'trigger': 'zero', 'source': 'SERVE_BREAKFAST', 'dest': 'INIT'},
                             {'trigger': 'start', 'source': 'INIT', 'dest': 'GO_2_CUPBOARD'},
-                            {'trigger': 'look_for_object', 'source': 'GO_2_CUPBOARD', 'dest': 'LOOK_FOR_OBJECT'},
-                            {'trigger': 'grab_ingredient', 'source': 'LOOK_FOR_OBJECT', 'dest': 'GRAB_OBJECT'},
+                            {'trigger': 'grab_ingredient', 'source': 'GO_2_CUPBOARD', 'dest': 'GRAB_OBJECT'},
                             {'trigger': 'go_drop_place', 'source': 'GRAB_OBJECT', 'dest': 'GO_DROP_PLACE'},
                             {'trigger': 'drop_object', 'source': 'GO_DROP_PLACE', 'dest': 'DROP_OBJECT'},
-                            {'trigger': 'again', 'source': 'DROP_OBJECT', 'dest': 'GO_GRAB_PLACE'},
+                            {'trigger': 'again', 'source': 'DROP_OBJECT', 'dest': 'GO_2_CUPBOARD'},
                             {'trigger': 'make_breakfast', 'source': 'DROP_OBJECT', 'dest': 'MAKE_BREAKFAST'},
                             {'trigger': 'end', 'source': 'MAKE_BREAKFAST', 'dest': 'END'}]
         
@@ -34,77 +33,107 @@ class SERVE_BREAKFAST(object):
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
 
-
     def on_enter_INIT(self):
-        self.tm.talk("I am going to serve breakfast")
+        self.tm.go_to_pose("standard",0.15)
+        self.tm.go_to_pose("default_head",0.15)
+        self.tm.set_security_distance(False)
+        self.tm.talk("I will serve the breakfast", "English", wait=True)
         self.start()
 
-    def on_enter_GO_GRAB_PLACE(self):
-        self.tm.go_to_place("cupboard")
-        self.look_for_object()
-
-    def on_enter_LOOK_FOR_OBJECTS(self):
-        self.tm.go_to_state("down_head")
-        ingredients_prompt = f"Just give me in a python list the objects that are considered as food
-        or ingredients that you see below, from left to right. Do not answer aboslutely anything else."
-        self.ingredients = self.tm.img_description(ingredients_prompt)["message"]
-        for i in self.ingredients:
-            self.tm.talk("The objects I am looking at are, " + str(i), "English", wait=False)
-        self.j = 0
-        self.grab_object()
+    def on_enter_GO_2_CUPBOARD(self):
+        self.tm.talk(f"I am going to go pick up the {self.ingredients[self.j]} for breakfast")
+        #TODO Poner el lugar de destino para recoger las cosas cuando este listo el mapa
+        #self.tm.go_to_place("")
+        self.grab_ingredient()
 
     def on_enter_GRAB_OBJECT(self):
-        object_prompt = f"Just tell me the number of what I am going to ask you, don't answer anything else.
-        How much do I have to move to be exactly aligned with the object {self.ingredients[self.j]}"
-        self.approach = self.tm.img_description(object_prompt)["message"]
-
+        if self.ingredients[self.j] == "milk_carton":
+            self.tm.go_to_relative_point(0.0,0.5,0.0)
+            self.tm.go_to_pose("open_both_arms",0.1)
+            time.sleep(7)
+            self.tm.go_to_relative_point(0.76, 0.0, 0.0)
+            self.tm.go_to_pose("open_both_hands",0.1)
+            time.sleep(3)
+            self.tm.go_to_pose("close_both_arms_milk",0.1)
+            time.sleep(5)
+            self.tm.go_to_pose("raise_both_arms_milk",0.1)
+            time.sleep(10)
+            self.tm.go_to_pose("default_head",0.1)
+            self.tm.go_to_relative_point(-0.76, 0.0, 0.0)
+            time.sleep(1)
+            self.tm.go_to_relative_point(0.0, -0.5, 0.0)
+        elif self.ingredients[self.j] == "bowl":
+            # TODO definir el lugar del objeto y poner un relative_point
+            # TODO crear y añadir la animacion correspoondiente
+            pass
+        elif self.ingredients[self.j] == "cereal_box":
+            self.tm.go_to_pose("open_both_arms",0.1)
+            time.sleep(7)
+            self.tm.go_to_relative_point(0.76, 0.0, 0.0)
+            self.tm.go_to_pose("open_both_hands",0.1)
+            time.sleep(3)
+            self.tm.go_to_pose("close_both_arms_cereal",0.1)
+            time.sleep(5)
+            self.tm.go_to_pose("raise_both_arms_milk",0.1)
+            time.sleep(10)
+            self.tm.go_to_pose("default_head",0.1)
+            self.tm.go_to_relative_point(-0.76, 0.0, 0.0)
+        elif self.ingredients[self.j] == "spoon":
+            # TODO definir el lugar del objeto y poner un relative_point
+            # TODO crear y añadir la animacion correspoondiente
+            pass
         self.go_drop_place()
 
     def on_enter_GO_DROP_PLACE(self):
-        navigation_drop_place = self.object_instructions[self.objects[self.object_i]]["drop_place"]
-        self.tm.talk("I am navigating to the "+navigation_drop_place)
-        self.tm.go_to_place(navigation_drop_place)
-        self.tm.go_to_defined_angle_srv(180)
+        self.tm.talk(f"I am going to take the {self.ingredients[self.j]} to the table, please wait", "English", wait=False)
+        #TODO Poner el lugar de destino para dejar las cosas cuando este listo el mapa
+        # self.tm.go_to_place("")
         self.drop_object()
 
     def on_enter_DROP_OBJECT(self):
-        # TODO prints en todos los estados para saver que vergas esta pasando
-        self.tm.talk("I am going to place the "+self.objects[self.object_i]+" on the table")
-        previousPosition = self.currentPositionOdom.position
-        decreaseDistance = 0
-        while True:
-            distanceTraveled = self.calculateEuclideanDistance(self.currentPositionOdom.position.x, self.currentPositionOdom.position.y, previousPosition.x, previousPosition.y) 
-            if distanceTraveled < 0.1-decreaseDistance:
-                self.tm.go_to_relative_point(self.object_instructions[self.objects[self.object_i]]["forward_distance"]-(distanceTraveled), 0, 0)
-                decreaseDistance += 0.05
-            else:
-                break
-        if self.objects[self.object_i] == "spoon" or self.objects[self.object_i] == "cereal box" or self.objects[self.object_i] == "milk":
-            if self.objects[self.object_i] == "cereal box":
-                self.tm.execute_trayectory('place_right_cereal')
-                self.tm.go_to_relative_point(0,-0.1,0)
-                self.tm.execute_trayectory("place_right_arm")
-           
+        if self.ingredients[self.j] == "milk_carton":
+            self.tm.go_to_relative_point(0.0,0.5,0.0)
+            time.sleep(1)
+            self.tm.go_to_relative_point(0.76,0.0,0.0)
+            self.tm.go_to_pose("close_both_arms_milk",0.1)
+            time.sleep(2)
+            self.tm.go_to_pose("open_both_arms",0.1)
+            self.tm.go_to_relative_point(-0.76,0.0,0.0)
+            time.sleep(1)
+            self.tm.go_to_relative_point(0.0,-0.5,0.0)
+            
+        elif self.ingredients[self.j] == "bowl":
+            # TODO definir el lugar del objeto y poner un relative_point (tiene que estar en la mitad de los objetos)
+            # TODO crear y añadir la pose correspoondiente para soltar
+            pass
+        elif self.ingredients[self.j] == "cereal_box":
+            self.tm.go_to_relative_point(0.76,0.0,0.0)
+            time.sleep(2)
+            self.tm.go_to_pose("close_both_arms_cereal",0.1)
+            time.sleep(2)
+            self.tm.go_to_pose("open_both_arms",0.1)
+            self.tm.go_to_relative_point(-0.76,0.0,0.0)
+        elif self.ingredients[self.j] == "spoon":
+            # TODO definir el lugar del objeto y poner un relative_point
+            # TODO TODO crear y añadir la pose correspoondiente para soltar
+            pass
+        self.tm.go_to_pose("standard", 0.15)
+        if self.ingredients[self.j] == self.ingredients[-1]:
+            self.tm.talk("I am ready to prepare breakfast", "English", wait=True)
+            self.make_breakfast()
         else:
-            self.tm.execute_trayectory("place_both_arms")
-        self.tm.go_to_relative_point(-self.object_instructions[self.objects[self.object_i]]["backward_distance"], 0, 0)
-        self.setMoveArms_srv.call(True, True)
-        self.object_i += 1
-        if self.object_i < len(self.objects):
-            self.tm.talk("I am ready for grabbing the "+self.objects[self.object_i])
+            self.j += 1
             self.again()
-        else:
-            self.end()
+    
+    def on_enter_MAKE_BREAKFAST(self):
+        self.j = 0
+        # TODO Crear las animaciones para servir el cereal y la leche. El bowl ya esta posicionado en el centro
+            
+        self.end()
 
     def on_enter_END(self):
-        self.tm.talk("I have finished serving breakfast, thank you for your help")
+        self.tm.talk("I finished serving breakfast, enjoy it")
         return
-
-    def calculateEuclideanDistance(self, xPoint1, yPoint1, xPoint2, yPoint2):
-        return np.linalg.norm(np.array([xPoint1, yPoint1])-np.array([xPoint2, yPoint2]))
-    
-    def callback_odom_subscriber(self,msg:Odometry):
-        self.currentPositionOdom = msg.pose.pose
 
     def check_rospy(self):
         while not rospy.is_shutdown():

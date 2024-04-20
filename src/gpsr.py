@@ -51,7 +51,7 @@ class GPSR(object):
             "perception_utilities/pose_publisher", String, self.posePublisherCallback
         )
         ############################# GLOBAL VARIABLES #############################
-        self.location = "living_room"
+        self.location = "door_living_room"
 
     def on_enter_INIT(self):
         #self.tm.talk("I am going to do the  "+self.task_name+" task","English")
@@ -100,7 +100,7 @@ class GPSR(object):
 
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
-        self.tm.go_to_state("default_head")
+        self.tm.go_to_pose("default_head")
         self.tm.setRPosture_srv("stand")
         self.tm.setMoveHead_srv.call("up")
         self.tm.talk("Waiting for guests","English")

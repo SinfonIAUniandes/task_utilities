@@ -16,7 +16,7 @@ from threading import Thread
 from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv
 from robot_toolkit_msgs.msg import touch_msg
 
-from manipulation_msgs_pytoolkit.srv import *
+from manipulation_msgs.srv import *
 
 from speech_msgs.srv import q_a_srv, talk_srv, speech2text_srv , talk_srvRequest, speech2text_srvRequest, answer_srv, calibrate_srv, hot_word_srv
 
@@ -376,7 +376,7 @@ class Task_module:
                 )
             )
             rospy.wait_for_service("manipulation_utilities/go_to_pose")
-            self.go_to_state_proxy = rospy.ServiceProxy(
+            self.go_to_pose_proxy = rospy.ServiceProxy(
                 "manipulation_utilities/go_to_pose", go_to_pose
             )
             print(
@@ -385,7 +385,7 @@ class Task_module:
                 )
             )
             rospy.wait_for_service("manipulation_utilities/play_action")
-            self.go_to_action_proxy = rospy.ServiceProxy(
+            self.play_action_proxy = rospy.ServiceProxy(
                 "manipulation_utilities/play_action", play_action
             )
 
@@ -621,7 +621,7 @@ class Task_module:
         """
         if self.perception and self.manipulation:
             try:
-                self.go_to_state("head_up")
+                self.go_to_pose("head_up")
                 self.constant_spin_srv(15)
                 self.look_for_object("person", ignore_already_seen=True)
                 specific_person_found = False
@@ -701,7 +701,7 @@ class Task_module:
         # spins until the object is found or timeout
         if self.perception and self.navigation and self.manipulation:
             try:
-                self.go_to_state("default_head")
+                self.go_to_pose("default_head")
                 self.look_for_object(object_name)
                 self.constant_spin_srv(15)
                 found = self.wait_for_object(timeout)
@@ -723,7 +723,7 @@ class Task_module:
         if self.perception and self.navigation and self.manipulation:
             try:
                 counter = 0
-                self.go_to_state("default_head")
+                self.go_to_pose("default_head")
                 self.look_for_object(object_name, ignore_already_seen=True)
                 self.constant_spin_srv(15)
                 t1 = time.time()
@@ -1500,7 +1500,7 @@ class Task_module:
 
     ############ MANIPULATION SERVICES ###############
 
-    def go_to_state(self, pose: str, velocity=0.05) -> bool:
+    def go_to_pose(self, pose: str, velocity=0.05) -> bool:
         """
         Input: pose options ->("bowl","box","cylinder","medium_object", "small_object_left_hand","small_object_right_hand","tray","head_up","head_down","head_default")
         Output: True if the service was called correctly, False if not
@@ -1509,7 +1509,7 @@ class Task_module:
         """
         if self.manipulation:
             try:
-                approved = self.go_to_state_proxy(pose, velocity)
+                approved = self.go_to_pose_proxy(pose, velocity)
                 if approved == "OK":
                     return True
                 else:
@@ -1558,7 +1558,7 @@ class Task_module:
             print("manipulation as false")
             return False
 
-    def execute_trayectory(self, trayectory: str) -> bool:
+    def play_action(self, action: str) -> bool:
         """
         Input: action options ->("place_both_arms","place_left_arm","place_right_arm")
         Output: True if the service was called correctly, False if not
@@ -1592,7 +1592,7 @@ class Task_module:
                 self.play_action("request_help_both_arms")
                 self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=True)
                 rospy.sleep(9)
-                self.go_to_state("almost_open_both_hands")
+                self.go_to_pose("almost_open_both_hands")
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -1621,13 +1621,6 @@ class Task_module:
         else:
             print("manipulation as false")
             return False
-        
-    # def approach_the_object(self, object_name: str):
-    #     if self.manipulation:
-    #         try:
-    #             self.talk("I will try to grab the "+object_name,"English",wait=True)
-    #             rospy.sleep(7)
-    #             self.go_to_state("arms_forward")
                 
 
     ################ PYTOOLKIT ################
