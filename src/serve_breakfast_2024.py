@@ -30,6 +30,12 @@ class SERVE_BREAKFAST(object):
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
         
+        # -------------------------------------------------------------------------------------------------------------------------------------------
+        #                                                           PARÁMETROS AJUSTABLES
+        # -------------------------------------------------------------------------------------------------------------------------------------------
+        
+        
+        
         self.item = 0 # Contador para saber que ingrediente se esta manipulando
         self.items = ["milk_carton", "bowl", "cereal_box", "spoon"] # Orden de los ingredientes (izquierda a derecha)
         self.distance_between_items = 0.2 # Distancia aproximada entre los objetos
@@ -53,10 +59,21 @@ class SERVE_BREAKFAST(object):
         self.away_from_table = 0.2
         self.drop_milk_point = -0.3
         self.drop_milk_point = 0.3
+        
+        # -------------------------------------------------------------------------------------------------------------------------------------------
+        #                                                          FIN DE PARÁMETROS AJUSTABLES
+        # -------------------------------------------------------------------------------------------------------------------------------------------
+        
+        
+        
+        # -------------------------------------------------------------------------------------------------------------------------------------------
+        #                                                            ESTADOS / TRANSICIONES
+        # -------------------------------------------------------------------------------------------------------------------------------------------
+        
 
     def on_enter_INIT(self):
-        self.tm.go_to_pose("standard",self.fast_movement)
-        self.tm.go_to_pose("default_head",self.fast_movement)
+        self.tm.go_to_pose("standard", self.fast_movement)
+        self.tm.go_to_pose("default_head", self.fast_movement)
         self.tm.set_security_distance(False)
         self.tm.talk("I will serve the breakfast", "English", wait=True)
         self.start()
@@ -69,48 +86,48 @@ class SERVE_BREAKFAST(object):
 
     def on_enter_GRAB_OBJECT(self):
         
-        self.tm.go_to_relative_point(self.cupboard_approach_distance,0,0);
+        self.tm.go_to_relative_point(self.cupboard_approach_distance, 0, 0);
         time.sleep(1)
-        self.tm.go_to_relative_point(0.0,self.right_corner_cupboard_table,0);
+        self.tm.go_to_relative_point(0.0, self.right_corner_cupboard_table, 0.0);
         self.right_corner_cupboard_table -= self.distance_between_items
         
         if self.actual_item == "milk_carton":
             self.tm.focus_with_object(self.actual_item)
-            self.tm.go_to_pose("open_arms_milk",self.normal_movement)
+            self.tm.go_to_pose("open_arms_milk", self.normal_movement)
             time.sleep(5)
             self.tm.go_to_relative_point(self.relative_milk_distance,0.0)
-            self.tm.go_to_pose("close_arms_milk",self.slow_movement)
+            self.tm.go_to_pose("close_arms_milk", self.slow_movement)
             time.sleep(3)
             self.tm.go_to_pose("raise_arms_milk", self.slow_movement)
             time.sleep(1)
-            self.tm.go_to_relative_point(-(self.relative_milk_distance),0.0,0.0)
+            self.tm.go_to_relative_point(-(self.relative_milk_distance), 0.0, 0.0)
             
         elif self.actual_item == "bowl":
             self.tm.focus_with_object(self.actual_item)
-            self.tm.go_to_pose("open_arms_bowl",self.normal_movement)
+            self.tm.go_to_pose("open_arms_bowl", self.normal_movement)
             time.sleep(5)
-            self.tm.go_to_relative_point(self.relative_bowl_distance,0.0)
-            self.tm.go_to_pose("close_arms_bowl",self.slow_movement)
+            self.tm.go_to_relative_point(self.relative_bowl_distance, 0.0)
+            self.tm.go_to_pose("close_arms_bowl", self.slow_movement)
             time.sleep(3)
             self.tm.go_to_pose("raise_arms_bowl", self.slow_movement)
             time.sleep(1)
-            self.tm.go_to_relative_point(-(self.relative_bowl_distance),0.0,0.0)
+            self.tm.go_to_relative_point(-(self.relative_bowl_distance),0.0, 0.0)
             
         elif self.actual_item== "cereal_box":
             self.tm.focus_with_object(self.actual_item)
-            self.tm.go_to_pose("open_arms_cereal_box",self.normal_movement)
+            self.tm.go_to_pose("open_arms_cereal_box", self.normal_movement)
             time.sleep(5)
-            self.tm.go_to_relative_point(self.relative_cereal_distance,0.0)
-            self.tm.go_to_pose("close_arms_cereal_box",self.slow_movement)
+            self.tm.go_to_relative_point(self.relative_cereal_distance, 0.0)
+            self.tm.go_to_pose("close_arms_cereal_box", self.slow_movement)
             time.sleep(3)
             self.tm.go_to_pose("raise_arms_cereal_box", self.slow_movement)
             time.sleep(2)
-            self.tm.go_to_relative_point(-(self.relative_cereal_distance),0.0,0.0)
+            self.tm.go_to_relative_point(-(self.relative_cereal_distance), 0.0, 0.0)
             
         elif self.actual_item== "spoon":
             pass
         
-        self.tm.go_to_relative_point(-(self.cupboard_approach_distance),0,0)
+        self.tm.go_to_relative_point(-(self.cupboard_approach_distance), 0.0, 0.0)
         self.go_drop_place()
 
     def on_enter_GO_DROP_PLACE(self):
@@ -119,40 +136,40 @@ class SERVE_BREAKFAST(object):
         self.drop_object()
 
     def on_enter_DROP_OBJECT(self):
-        self.tm.go_to_relative_point(self.serve_table_center,0.0,0.0)
+        self.tm.go_to_relative_point(self.serve_table_center,0.0, 0.0)
         time.sleep(1)
-        self.tm.go_to_relative_point(0.0,self.away_from_table,0.0)
+        self.tm.go_to_relative_point(0.0, self.away_from_table, 0.0)
         time.sleep(1)
-        self.tm.go_to_relative_point(0.0,0.0,-1.57)
+        self.tm.go_to_relative_point(0.0, 0.0, -1.57)
         if self.actual_item == "milk_carton":
             self.tm.go_to_relative_point(0.0, self.drop_milk_point, 0.0)
             time.sleep(1)
             self.tm.go_to_relative_point(-(self.away_from_table), 0.0, 0.0)
-            self.tm.go_to_pose("close_arms_milk",self.slow_movement)
+            self.tm.go_to_pose("close_arms_milk", self.slow_movement)
             time.sleep(3)
-            self.tm.go_to_pose("open_arms_milk",self.normal_movement)
+            self.tm.go_to_pose("open_arms_milk", self.normal_movement)
             time.sleep(3)
             
         elif self.actual_item== "bowl":
             self.tm.go_to_relative_point(-(self.away_from_table), 0.0, 0.0)
-            self.tm.go_to_pose("close_arms_bowl",self.slow_movement)
+            self.tm.go_to_pose("close_arms_bowl", self.slow_movement)
             time.sleep(3)
-            self.tm.go_to_pose("open_arms_bowl",self.normal_movement)
+            self.tm.go_to_pose("open_arms_bowl", self.normal_movement)
             time.sleep(3)
             
         elif self.actual_item == "cereal_box":
             self.tm.go_to_relative_point(0.0, self.drop_ceral_point, 0.0)
             time.sleep(1)
             self.tm.go_to_relative_point(-(self.away_from_table), 0.0, 0.0)
-            self.tm.go_to_pose("close_arms_cereal_box",self.slow_movement)
+            self.tm.go_to_pose("close_arms_cereal_box", self.slow_movement)
             time.sleep(3)
-            self.tm.go_to_pose("open_arms_cereal_box",self.normal_movement)
+            self.tm.go_to_pose("open_arms_cereal_box", self.normal_movement)
             time.sleep(3)
             
         elif self.actual_item == "spoon":
             pass
         
-        self.tm.go_to_relative_point(0.0,self.away_from_table,0.0)
+        self.tm.go_to_relative_point(0.0, self.away_from_table, 0.0)
         time.sleep(1)
         self.tm.go_to_pose("standard", 0.15)
         time.sleep(2)
@@ -184,7 +201,17 @@ class SERVE_BREAKFAST(object):
     def run(self):
         while not rospy.is_shutdown():
             self.zero()
-
+            
+            
+    # -------------------------------------------------------------------------------------------------------------------------------------------
+    #                                                      FIN DE ESTADOS / TRANSICIONES
+    # -------------------------------------------------------------------------------------------------------------------------------------------
+    
+        
+    # -------------------------------------------------------------------------------------------------------------------------------------------
+    #                                                         FUNCIÓN PRINCIPAL
+    # -------------------------------------------------------------------------------------------------------------------------------------------
+    
 if __name__ == "__main__":
     sm = SERVE_BREAKFAST()
     sm.run()
