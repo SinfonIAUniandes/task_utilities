@@ -30,8 +30,8 @@ class SERVE_BREAKFAST(object):
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
         
-        self.j = 0 # Contador para saber que ingrediente se esta manipulando
-        self.ingredients = ["milk_carton", "bowl", "cereal_box", "spoon"] # Orden de los ingredientes (izquierda a derecha)
+        self.item = 0 # Contador para saber que ingrediente se esta manipulando
+        self.items = ["milk_carton", "bowl", "cereal_box", "spoon"] # Orden de los ingredientes (izquierda a derecha)
         self.distance_between_items = 0.2 # Distancia aproximada entre los objetos
         
         # Movements Speed
@@ -62,7 +62,7 @@ class SERVE_BREAKFAST(object):
         self.start()
 
     def on_enter_GO_2_CUPBOARD(self):
-        self.actual_item = self.ingredients[self.j]
+        self.actual_item = self.items[self.item]
         self.tm.talk(f"I am going to go pick up the {self.actual_item} for breakfast")
         self.tm.go_to_place("kitchen")
         self.grab_ingredient()
@@ -158,15 +158,15 @@ class SERVE_BREAKFAST(object):
         time.sleep(2)
         
         
-        if self.actual_item == self.ingredients[-1]:
+        if self.actual_item == self.items[-1]:
             self.tm.talk("I am ready to prepare breakfast", "English", wait=True)
             self.make_breakfast()
         else:
-            self.j += 1
+            self.item += 1
             self.again()
     
     def on_enter_MAKE_BREAKFAST(self):
-        self.j = 0
+        self.item = 0
         # TODO Crear las animaciones para servir el cereal y la leche.
             
         self.end()
