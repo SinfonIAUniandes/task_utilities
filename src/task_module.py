@@ -1621,6 +1621,31 @@ class Task_module:
         else:
             print("manipulation as false")
             return False
+        
+        
+    def focus_with_object(self, object_name: str) -> bool:
+        if self.navigation and self.perception:
+            self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
+            object_label_data = self.labels.get(object_name, None)
+            if object_label_data is not None:
+                centered_point = ((object_label_data[3])/2) + object_label_data[1]
+                while centered_point != 0:
+                    centered_point = ((object_label_data[3])/2) + object_label_data[1]
+                    if centered_point > 0:
+                        self.go_to_relative_point(0.01,0.0,0.0)
+                    else:
+                        self.go_to_relative_point(-0.01,0.0,0.0)
+                return True
+            else: 
+                print(f"Could not find an object with the tag {object_name}")
+                return False
+                
+        else:
+            print("navigation and perception as false")
+            return False
+            
+            
+            
                 
 
     ################ PYTOOLKIT ################
