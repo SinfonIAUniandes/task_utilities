@@ -54,10 +54,10 @@ class GPSR(object):
         self.location = "door_living_room"
 
     def on_enter_INIT(self):
-        #self.tm.talk("I am going to do the  "+self.task_name+" task","English")
+        self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.initialize_pepper()
-        # self.tm.go_to_defined_angle_srv(0)
+        self.tm.go_to_defined_angle_srv(0)
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.start_recognition("front_camera")
         self.tm.pose_srv("front_camera", True)
@@ -68,7 +68,7 @@ class GPSR(object):
         self.tm.look_for_object("")
         #self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. Talk to me now: ","English")
         self.tm.talk("Question","English")
-        task = self.tm.speech2text_srv()
+        task = self.tm.speech2text_srv(10)
         print(f"Task: {task}")
         self.tm.talk("Processing your request")
         generate_utils.load_code_gen_config() 
@@ -93,9 +93,9 @@ class GPSR(object):
 
     def on_enter_GO2GPSR(self):
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
-        #self.tm.talk("I am going to the GPSR location","English")
+        self.tm.talk("I am going to the GPSR location","English")
         #self.tm.go_to_place(self.location)
-        #self.tm.go_to_defined_angle_srv(0)
+        self.tm.go_to_defined_angle_srv(0)
         self.go_to_gpsr()
 
     def on_enter_WAIT4GUEST(self):

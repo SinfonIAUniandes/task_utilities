@@ -14,8 +14,6 @@ class LongStringGenerator:
         Perception functions:
         self.tm.find_object(object_name)->bool: Returns True if the object was found, False if not, the only possible objects with their exact syntax are: {self.objects}.
         self.tm.count_objects(object_name)->int: Returns the number of objects found, the only possible objects with their exact syntax are: {self.objects}
-        self.tm.recognize_face()->str: Returns the name of the person that the robot is looking at
-        self.tm.save_face(name)->bool: Saves the face of the person that the robot is looking at with the given name
         self.tm.search_for_specific_person(class_type,specific_characteristic)->bool: The robot spins in place until it finds a person with a specific characteristic. The options for class_type are: "pointing", "name", "raised_hand". The options for specific_characteristic depend on class_type. If class_type is "name", options are human names like "Paris","Robin","Jaine". If class_type is "pointing" or "raised_hand" options are "right", "left", "center"
 
         Speech functions:

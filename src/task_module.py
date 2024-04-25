@@ -627,13 +627,14 @@ class Task_module:
                 specific_person_found = False
                 start_time = time.time()
                 self.head_thread = True
-                head_thread = Thread(target=self.head_srv_thread, args=(["head_up"]))
+                head_thread = Thread(target=self.head_srv_thread, args=(["up"]))
                 head_thread.start()
                 while not specific_person_found and (time.time()-start_time) < timeout:
-                    found = self.wait_for_object(24)
+                    self.wait_for_object(24)
                     self.robot_stop_srv()
                     if class_type=="name":
-                        if self.recognize_face() == specific_characteristic:
+                        name = self.q_a_speech("name")
+                        if name == specific_characteristic:
                             specific_person_found = True 
                     elif class_type=="pointing":
                         if self.pointing == specific_characteristic:
@@ -644,7 +645,7 @@ class Task_module:
                     rospy.sleep(1)
                     self.constant_spin_srv(15)
                 self.robot_stop_srv()
-                return found
+                return specific_person_found
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return False
