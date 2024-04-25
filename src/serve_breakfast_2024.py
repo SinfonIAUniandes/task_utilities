@@ -58,7 +58,7 @@ class SERVE_BREAKFAST(object):
         self.serve_table_center = 0.45
         self.away_from_table = 0.2
         self.drop_milk_point = -0.3
-        self.drop_milk_point = 0.3
+        self.drop_cereal_point = 0.3
         
         # -------------------------------------------------------------------------------------------------------------------------------------------
         #                                                          FIN DE PARÁMETROS AJUSTABLES
@@ -158,7 +158,7 @@ class SERVE_BREAKFAST(object):
             time.sleep(3)
             
         elif self.actual_item == "cereal_box":
-            self.tm.go_to_relative_point(0.0, self.drop_ceral_point, 0.0)
+            self.tm.go_to_relative_point(0.0, self.drop_cereal_point, 0.0)
             time.sleep(1)
             self.tm.go_to_relative_point(-(self.away_from_table), 0.0, 0.0)
             self.tm.go_to_pose("close_arms_cereal_box", self.slow_movement)
