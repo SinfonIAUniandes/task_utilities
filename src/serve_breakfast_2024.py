@@ -12,7 +12,7 @@ class SERVE_BREAKFAST(object):
     def __init__(self) -> None:
         
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
-        self.tm = tm(navigation=True, manipulation=True, speech=True, perception = False, pytoolkit=True)
+        self.tm = tm(navigation=True, manipulation=True, speech=True, perception = True, pytoolkit=True)
         self.tm.initialize_node('SERVE_BREAKFAST')
  
         self.STATES = ['INIT', 'GO_2_CUPBOARD','GRAB_OBJECT', 'GO_DROP_PLACE', 'DROP_OBJECT', 'MAKE_BREAKFAST', 'END']
@@ -43,13 +43,13 @@ class SERVE_BREAKFAST(object):
         # Movements Speed
         self.fast_movement = 0.15
         self.normal_movement = 0.1
-        self.slow_movement = 0.5
+        self.slow_movement = 0.05
         
         # Relative Distances to Cupboard
         # TODO Ajustar distancias para recoger
         self.cupboard_approach_distance = 0.45 
-        self.right_corner_cupboard_table = 0.4
-        self.relative_milk_distance = 0.35
+        self.right_corner_cupboard_table = -0.4
+        self.relative_milk_distance = 0.42
         self.relative_bowl_distance = 0.35
         self.relative_cereal_distance = 0.35
         
@@ -88,13 +88,14 @@ class SERVE_BREAKFAST(object):
         self.tm.go_to_relative_point(self.cupboard_approach_distance, 0.0, 0.0)
         time.sleep(1)
         self.tm.go_to_relative_point(0.0, self.right_corner_cupboard_table, 0.0)
-        self.right_corner_cupboard_table -= self.distance_between_items
+        self.tm.go_to_pose("almost_down_head", self.normal_movement)
         
         if self.actual_item == "milk_carton":
-            self.tm.focus_with_object(self.actual_item)
-            self.tm.go_to_pose("open_arms_milk", self.normal_movement)
+            self.tm.align_with_object("bottle")
+            self.tm.go_to_pose("open_both_hands", self.normal_movement)
+            self.tm.go_to_pose("both_arms_milk", self.normal_movement)
             time.sleep(5)
-            self.tm.go_to_relative_point(self.relative_milk_distance,0.0)
+            self.tm.go_to_relative_point(self.relative_milk_distance,0.0, 0.0)
             self.tm.go_to_pose("close_arms_milk", self.slow_movement)
             time.sleep(3)
             self.tm.go_to_pose("raise_arms_milk", self.slow_movement)
@@ -102,8 +103,8 @@ class SERVE_BREAKFAST(object):
             self.tm.go_to_relative_point(-(self.relative_milk_distance), 0.0, 0.0)
             
         elif self.actual_item == "bowl":
-            self.tm.focus_with_object(self.actual_item)
-            self.tm.go_to_pose("open_arms_bowl", self.normal_movement)
+            self.tm.align_with_object(self.actual_item)
+            self.tm.go_to_pose("both_arms_bowl", self.normal_movement)
             time.sleep(5)
             self.tm.go_to_relative_point(self.relative_bowl_distance, 0.0)
             self.tm.go_to_pose("close_arms_bowl", self.slow_movement)
@@ -113,8 +114,8 @@ class SERVE_BREAKFAST(object):
             self.tm.go_to_relative_point(-(self.relative_bowl_distance),0.0, 0.0)
             
         elif self.actual_item== "cereal_box":
-            self.tm.focus_with_object(self.actual_item)
-            self.tm.go_to_pose("open_arms_cereal_box", self.normal_movement)
+            self.tm.align_with_object(self.actual_item)
+            self.tm.go_to_pose("both_arms_cereal", self.normal_movement)
             time.sleep(5)
             self.tm.go_to_relative_point(self.relative_cereal_distance, 0.0)
             self.tm.go_to_pose("close_arms_cereal_box", self.slow_movement)
@@ -126,6 +127,7 @@ class SERVE_BREAKFAST(object):
         elif self.actual_item== "spoon":
             pass
         
+        self.tm.go_to_relative_point(0.0, -(self.right_corner_cupboard_table), 0.0)
         self.tm.go_to_relative_point(-(self.cupboard_approach_distance), 0.0, 0.0)
         self.go_drop_place()
 
@@ -135,43 +137,20 @@ class SERVE_BREAKFAST(object):
         self.drop_object()
 
     def on_enter_DROP_OBJECT(self):
-        self.tm.go_to_relative_point(self.serve_table_center,0.0, 0.0)
-        time.sleep(1)
-        self.tm.go_to_relative_point(0.0, self.away_from_table, 0.0)
-        time.sleep(1)
-        self.tm.go_to_relative_point(0.0, 0.0, -1.57)
+        
         if self.actual_item == "milk_carton":
-            self.tm.go_to_relative_point(0.0, self.drop_milk_point, 0.0)
+            self.tm.go_to_relative_point(self.cupboard_approach_distance, 0.0, 0.0)
             time.sleep(1)
-            self.tm.go_to_relative_point(-(self.away_from_table), 0.0, 0.0)
+            self.tm.go_to_relative_point(0.0, self.drop_milk_point, 0.0)
+            self.tm.go_to_relative_point(self.relative_milk_distance,0.0, 0.0)
             self.tm.go_to_pose("close_arms_milk", self.slow_movement)
             time.sleep(3)
-            self.tm.go_to_pose("open_arms_milk", self.normal_movement)
-            time.sleep(3)
-            
-        elif self.actual_item== "bowl":
-            self.tm.go_to_relative_point(-(self.away_from_table), 0.0, 0.0)
-            self.tm.go_to_pose("close_arms_bowl", self.slow_movement)
-            time.sleep(3)
-            self.tm.go_to_pose("open_arms_bowl", self.normal_movement)
-            time.sleep(3)
-            
-        elif self.actual_item == "cereal_box":
-            self.tm.go_to_relative_point(0.0, self.drop_cereal_point, 0.0)
-            time.sleep(1)
-            self.tm.go_to_relative_point(-(self.away_from_table), 0.0, 0.0)
-            self.tm.go_to_pose("close_arms_cereal_box", self.slow_movement)
-            time.sleep(3)
-            self.tm.go_to_pose("open_arms_cereal_box", self.normal_movement)
-            time.sleep(3)
-            
-        elif self.actual_item == "spoon":
-            pass
-        
-        self.tm.go_to_relative_point(0.0, self.away_from_table, 0.0)
-        time.sleep(1)
-        self.tm.go_to_pose("standard", self.fast_movement)
-        time.sleep(2)
+            self.tm.go_to_pose("both_arms_milk", self.slow_movement)
+            time.sleep(5)
+            self.tm.go_to_relative_point(-(self.relative_milk_distance),0.0, 0.0)
+            self.tm.go_to_relative_point(0.0, -(self.drop_milk_point), 0.0)
+            self.tm.go_to_relative_point(-(self.cupboard_approach_distance),0.0, 0.0)
+
         
         
         if self.actual_item == self.items[-1]:
@@ -179,6 +158,8 @@ class SERVE_BREAKFAST(object):
             self.make_breakfast()
         else:
             self.item += 1
+            self.right_corner_cupboard_table -= self.distance_between_items
+            self.tm.go_to_pose("standard", self.normal_movement)
             self.again()
     
     def on_enter_MAKE_BREAKFAST(self):
@@ -194,6 +175,7 @@ class SERVE_BREAKFAST(object):
     def check_rospy(self):
         while not rospy.is_shutdown():
             rospy.sleep(0.1)
+        self.tm.set_security_distance(True)
         print(self.consoleFormatter.format("Shutting down", "FAIL"))
         os._exit(os.EX_OK)
     
