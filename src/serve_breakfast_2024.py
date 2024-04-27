@@ -38,6 +38,9 @@ class SERVE_BREAKFAST(object):
         
         self.item = 0 # Contador para saber que ingrediente se esta manipulando
         self.items = ["milk_carton", "bowl", "cereal_box", "spoon"] # Orden de los ingredientes (izquierda a derecha)
+        self.info_items = {"milk_carton": ["open_both_hands", "both_arms_milk" self.relative_milk_distance, "close_arms_milk", "raise_arms_milk" , self.relative_milk_distance], 
+                           "bowl":["both_arms_bowl", self.relative_bowl_distance, "close_arms_bowl", "raise_arms_bowl" , self.relative_bowl_distance],
+                           "cereal_box":["both_arms_cereal", self.relative_bowl_distance, "close_arms_cereal_box", "raise_arms_cereal_box" , self.relative_cereal_distance]}
         self.distance_between_items = 0.2 # Distancia aproximada entre los objetos
         
         # Movements Speed
@@ -75,6 +78,7 @@ class SERVE_BREAKFAST(object):
         self.tm.go_to_pose("standard", self.fast_movement)
         self.tm.go_to_pose("default_head", self.fast_movement)
         self.tm.set_security_distance(False)
+        self.tm.initialize_pepper()
         self.tm.talk("I will serve the breakfast", "English", wait=True)
         self.start()
 
@@ -89,6 +93,7 @@ class SERVE_BREAKFAST(object):
         time.sleep(1)
         self.tm.go_to_relative_point(0.0, self.right_corner_cupboard_table, 0.0)
         self.tm.go_to_pose("almost_down_head", self.normal_movement)
+        
         
         if self.actual_item == "milk_carton":
             self.tm.align_with_object("bottle")
@@ -106,7 +111,7 @@ class SERVE_BREAKFAST(object):
             self.tm.align_with_object(self.actual_item)
             self.tm.go_to_pose("both_arms_bowl", self.normal_movement)
             time.sleep(5)
-            self.tm.go_to_relative_point(self.relative_bowl_distance, 0.0)
+            self.tm.go_to_relative_point(self.relative_bowl_distance, 0.0, 0.0)
             self.tm.go_to_pose("close_arms_bowl", self.slow_movement)
             time.sleep(3)
             self.tm.go_to_pose("raise_arms_bowl", self.slow_movement)
@@ -117,7 +122,7 @@ class SERVE_BREAKFAST(object):
             self.tm.align_with_object(self.actual_item)
             self.tm.go_to_pose("both_arms_cereal", self.normal_movement)
             time.sleep(5)
-            self.tm.go_to_relative_point(self.relative_cereal_distance, 0.0)
+            self.tm.go_to_relative_point(self.relative_cereal_distance, 0.0, 0.0)
             self.tm.go_to_pose("close_arms_cereal_box", self.slow_movement)
             time.sleep(3)
             self.tm.go_to_pose("raise_arms_cereal_box", self.slow_movement)
@@ -138,19 +143,18 @@ class SERVE_BREAKFAST(object):
 
     def on_enter_DROP_OBJECT(self):
         
-        if self.actual_item == "milk_carton":
-            self.tm.go_to_relative_point(self.cupboard_approach_distance, 0.0, 0.0)
-            time.sleep(1)
-            self.tm.go_to_relative_point(0.0, self.drop_milk_point, 0.0)
-            self.tm.go_to_relative_point(self.relative_milk_distance,0.0, 0.0)
-            self.tm.go_to_pose("close_arms_milk", self.slow_movement)
-            time.sleep(3)
-            self.tm.go_to_pose("both_arms_milk", self.slow_movement)
-            time.sleep(5)
-            self.tm.go_to_relative_point(-(self.relative_milk_distance),0.0, 0.0)
-            self.tm.go_to_relative_point(0.0, -(self.drop_milk_point), 0.0)
-            self.tm.go_to_relative_point(-(self.cupboard_approach_distance),0.0, 0.0)
-
+        self.tm.go_to_relative_point(0.0, 0.0, 180.0)
+        self.tm.go_to_relative_point(1.2, 0.0, 0.0)
+        time.sleep(2)
+        self.tm.go_to_relative_point(0.0, 0.0, 90.0)
+        time.sleep(2)
+        self.tm.go_to_relative_point(1.8, 0.0, 0.0)
+        time.sleep(2)
+        
+        
+        
+        
+        
         
         
         if self.actual_item == self.items[-1]:
@@ -158,8 +162,14 @@ class SERVE_BREAKFAST(object):
             self.make_breakfast()
         else:
             self.item += 1
-            self.right_corner_cupboard_table -= self.distance_between_items
+            self.right_corner_cupboard_table += self.distance_between_items
             self.tm.go_to_pose("standard", self.normal_movement)
+            self.tm.go_to_relative_point(0.0, 0.0, 180)
+            self.tm.go_to_relative_point(1.2, 0.0, 0.0)
+            time.sleep(2)
+            self.tm.go_to_relative_point(0.0, 0.0, -90.0)
+            time.sleep(2)
+            self.tm.go_to_relative_point(1.8, 0.0, 0.0)
             self.again()
     
     def on_enter_MAKE_BREAKFAST(self):

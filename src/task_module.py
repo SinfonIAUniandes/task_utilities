@@ -1507,11 +1507,12 @@ class Task_module:
 
                 if object_name in self.labels:
                     object_data = self.labels[object_name][0]
-                    centered_point = (320 / 2) - object_data[1]
+                    centered_point = (315 / 2) - object_data[1]
                     while not (-3 <= centered_point <= 3):
+                        print(centered_point)
                         if object_name in self.labels:
                             object_data = self.labels[object_name][0]
-                            centered_point = (320 / 2) - object_data[1]
+                            centered_point = (315 / 2) - object_data[1]
 
                             if centered_point < 0:
                                 self.go_to_relative_point(0.0, 0.02, 0.0)
