@@ -81,14 +81,13 @@ class SERVE_BREAKFAST(object):
     def on_enter_GO_2_CUPBOARD(self):
         self.actual_item = self.items[self.item]
         self.tm.talk(f"I am going to go pick up the {self.actual_item} for breakfast")
-        self.tm.go_to_place("kitchen")
+        #self.tm.go_to_place("kitchen")
         self.grab_ingredient()
 
     def on_enter_GRAB_OBJECT(self):
-        
-        self.tm.go_to_relative_point(self.cupboard_approach_distance, 0, 0);
+        self.tm.go_to_relative_point(self.cupboard_approach_distance, 0.0, 0.0)
         time.sleep(1)
-        self.tm.go_to_relative_point(0.0, self.right_corner_cupboard_table, 0.0);
+        self.tm.go_to_relative_point(0.0, self.right_corner_cupboard_table, 0.0)
         self.right_corner_cupboard_table -= self.distance_between_items
         
         if self.actual_item == "milk_carton":
@@ -132,7 +131,7 @@ class SERVE_BREAKFAST(object):
 
     def on_enter_GO_DROP_PLACE(self):
         self.tm.talk(f"I am going to take the {self.actual_item} to the table, please wait", "English", wait=False)
-        self.tm.go_to_place("dinner_room")
+        #self.tm.go_to_place("dinner_room")
         self.drop_object()
 
     def on_enter_DROP_OBJECT(self):
@@ -171,7 +170,7 @@ class SERVE_BREAKFAST(object):
         
         self.tm.go_to_relative_point(0.0, self.away_from_table, 0.0)
         time.sleep(1)
-        self.tm.go_to_pose("standard", 0.15)
+        self.tm.go_to_pose("standard", self.fast_movement)
         time.sleep(2)
         
         
