@@ -452,17 +452,19 @@ class Task_module:
 
             print(
                 self.consoleFormatter.format(
+                    "Waiting for pytoolkit/show_words...", "WARNING"
+                )
+            )
+            rospy.wait_for_service("/pytoolkit/ALTabletService/show_words_srv")
+            self.show_words_proxy = rospy.ServiceProxy(
+                "/pytoolkit/ALTabletService/show_words_srv", battery_service_srv
+            )
+            print(
+                self.consoleFormatter.format(
                     "Waiting for /pytoolkit/ALTabletService/show_image_srv...",
                     "WARNING",
                 )
             )
-
-            rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
-            self.awareness_proxy = rospy.ServiceProxy(
-                "/pytoolkit/ALBasicAwareness/set_awareness_srv", SetBool
-            )
-
-
             rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
             self.show_image_proxy = rospy.ServiceProxy(
                 "/pytoolkit/ALTabletService/show_image_srv", tablet_service_srv
@@ -500,12 +502,19 @@ class Task_module:
         """
         Initializes the pepper robot with default parameteres
         """
-        if self.perception and self.speech:
+        if self.perception:
             self.turn_camera("front_camera","custom",1,15)
             self.start_recognition("front_camera")
-            self.calibrate_srv(5)
         else:
             print("perception as false")
+        if self.speech:
+            self.calibrate_srv(5)
+        else:
+            print("speech as false")
+        if self.pytoolkit:
+            self.show_words_proxy()
+        else:
+            print("pytoolkit as false")
 
     ################### PERCEPTION SERVICES ###################
 
