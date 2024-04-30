@@ -46,7 +46,6 @@ class MERCADITO(object):
 
        # Crear la máquina de estados
        self.machine = Machine(model=self, states=states, transitions=transitions, initial='CONVERSACION')
-       7 
        rospy_check = threading.Thread(target=self.check_rospy)
        rospy_check.start()
 

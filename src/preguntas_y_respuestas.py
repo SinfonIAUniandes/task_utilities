@@ -2,7 +2,6 @@
 from transitions import Machine
 from task_module import Task_module as tm
 import ConsoleFormatter
-import time
 import threading
 import rospy
 import os
@@ -52,7 +51,6 @@ class MERCADITO(object):
        print(self.consoleFormatter.format("HABLAR", "HEADER"))
        while True:
             self.hey_pepper_function()
-            time.sleep(0.1)
        self.hablar_ready()
 
    def on_enter_FININSH(self):
@@ -66,16 +64,28 @@ class MERCADITO(object):
        os._exit(os.EX_OK)
 
    def hey_pepper_function(self):
-       self.tm.talk("¿Cual es tu pregunta?","Spanish",animated=True)
-       text = input("Escribe la pregunta de redes sociales: ")
-       request = f"""La persona pregunto: {text}."""
-       answer=self.tm.answer_question(request) 
-       self.tm.talk(answer,"Spanish",animated=True)
+       text = input("Escribe la pregunta de redes sociales o skip para decir tu texto: ")
+       if text!="skip":
+        request = f"""La persona pregunto: {text}."""
+        answer=self.tm.answer_question(request)
+        print(answer)
+        decir = input("¿Decir respuesta? 1: Si, 2: No ")
+        if decir=="1":
+            self.tm.talk(answer,"Spanish",animated=True,wait=False)
+        else:
+            texto = input("¿Que deberia decir?: ")
+            self.tm.talk(texto,"Spanish",animated=True,wait=False)
+       else:
+            texto = input("¿Que deberia decir?: ")
+            self.tm.talk(texto,"Spanish",animated=True,wait=False)
+       rospy.sleep(3)
+       self.tm.show_words_proxy()
+           
    
    def check_rospy(self):
        #Termina todos los procesos al cerrar el nodo
        while not rospy.is_shutdown():
-           time.sleep(0.1)
+           rospy.sleep(0.1)
        print(self.consoleFormatter.format("Shutting down", "FAIL"))
        os._exit(os.EX_OK)
 
