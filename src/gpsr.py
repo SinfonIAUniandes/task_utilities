@@ -66,8 +66,7 @@ class GPSR(object):
     def on_enter_GPSR(self):
         print(self.consoleFormatter.format("GPSR", "HEADER"))
         self.tm.look_for_object("")
-        #self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. Talk to me now: ","English")
-        self.tm.talk("Question","English")
+        self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. Talk to me now: ","English")
         task = self.tm.speech2text_srv(10)
         print(f"Task: {task}")
         self.tm.talk("Processing your request")

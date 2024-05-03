@@ -513,6 +513,7 @@ class Task_module:
             print("speech as false")
         if self.pytoolkit:
             self.show_words_proxy()
+            self.setRPosture_srv("stand")
         else:
             print("pytoolkit as false")
 
@@ -621,12 +622,12 @@ class Task_module:
     def search_for_specific_person(self, class_type: str, specific_characteristic: str, timeout = 72) -> bool:
         """
         Input:
-        class_type: The characteristic to search for (name, pointing, raised_hands or TODO colors)
-        specific_characteristic: The specific thing to search for (example: David, Right hand up, Pointing right, blue (shirt,coat,etc))
+        class_type: The characteristic to search for (name, pointing, raised_hands or breaking rules or TODO colors)
+        specific_characteristic: The specific thing to search for (example: David, Right hand up, Pointing right, shoes, drink, forbidden, garbage, blue (shirt,coat,etc))
         timeout: Timeout in seconds || -1 for infinite
         Output: True if person was found
         ----------
-        Looks for a specific person. This person is pointing, raising a hand, has a specific name or TODO is wearing a color
+        Looks for a specific person. This person is pointing, raising a hand, has a specific name, is breaking a particular rule or TODO is wearing a color
         """
         if self.perception and self.manipulation:
             try:
@@ -651,6 +652,12 @@ class Task_module:
                     elif class_type=="raised_hand":
                         if self.hand_up == specific_characteristic:
                             specific_person_found = True
+                    elif class_type=="breaking_rule":
+                        if specific_characteristic == "drink":
+                            gpt_vision_prompt = f"Is there a person without a drink in this picture? Answer only with True or False"
+                            answer = self.img_description(gpt_vision_prompt)["message"]
+                            if "True" in answer:
+                                specific_person_found = True
                     rospy.sleep(1)
                     self.constant_spin_srv(15)
                 self.robot_stop_srv()
@@ -699,7 +706,7 @@ class Task_module:
             print("perception as false")
             return False
 
-    def find_object(self, object_name: str, timeout=25) -> bool:
+    def find_object(self, object_name: str, timeout=25, ignore_already_seen=False) -> bool:
         """
         Input:
         object_name: label of the object to look for options -> classes names depends of the actual model (see set_model service)
@@ -712,7 +719,7 @@ class Task_module:
         if self.perception and self.navigation and self.manipulation:
             try:
                 self.go_to_pose("default_head")
-                self.look_for_object(object_name)
+                self.look_for_object(object_name, ignore_already_seen=ignore_already_seen)
                 self.constant_spin_srv(15)
                 found = self.wait_for_object(timeout)
                 self.robot_stop_srv()
@@ -721,7 +728,7 @@ class Task_module:
                 print("Service call failed: %s" % e)
                 return False
         else:
-            print("perception or navigation as false")
+            print("perception or navigation or manipulation as false")
 
     def count_objects(self, object_name: str) -> int:
         """

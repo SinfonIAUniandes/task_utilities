@@ -7,7 +7,7 @@ import rospy
 import os
 from speech_msgs.srv import speech2text_srv
 from robot_toolkit_msgs.msg import speech_recognition_status_msg, animation_msg, motion_tools_msg
-from robot_toolkit_msgs.srv import tablet_service_srv,  set_open_close_hand_srv, set_open_close_hand_srvRequest, motion_tools_srv, battery_service_srv
+from robot_toolkit_msgs.srv import tablet_service_srv,  set_open_close_hand_srv, set_open_close_hand_srvRequest, motion_tools_srv, battery_service_srv, set_output_volume_srv
 
 class Evento(object):
     def __init__(self):
@@ -25,6 +25,9 @@ class Evento(object):
         self.task_name = "Event"
         self.is_done = False
         self.hey_pepper=False
+        self.already_asereje = False
+        self.already_dance = False 
+        self.haciendo_animacion = False
         states = ['INIT', 'WAIT4GUEST', 'TALK']
         self.tm = tm(perception = True,speech=True, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
@@ -43,7 +46,7 @@ class Evento(object):
         ############################# GLOBAL VARIABLES #############################
 
     def on_enter_INIT(self):
-        self.tm.talk("I am going to do the  "+self.task_name+" task","English")
+        self.tm.talk("Iniciando modo de Demostración","Spanish")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.initialize_pepper()
         subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
@@ -57,6 +60,7 @@ class Evento(object):
         rospy.wait_for_service('pytoolkit/ALTabletService/show_picture_srv')
         self.show_picture_proxy = rospy.ServiceProxy('pytoolkit/ALTabletService/show_picture_srv', battery_service_srv)
         self.stop_tracker_srv = rospy.ServiceProxy("/pytoolkit/ALTracker/stop_tracker_srv", battery_service_srv)
+        self.play_dance_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/play_dance_srv", set_output_volume_srv)
         self.animationPublisher = rospy.Publisher('/animations', animation_msg, queue_size=10)
         self.beggining()
 
@@ -67,7 +71,7 @@ class Evento(object):
         self.tm.talk("Bienvenido, soy Nova, es un gusto conocerte","Spanish")
         rospy.sleep(2)
         self.enable_tracker_service()
-        self.tm.talk("Di hey nova cuando quieras decirme algo, y chao cuando no quieras seguir hablando","Spanish",animated=True)
+        self.tm.talk("Di Novita cuando quieras decirme algo, y chao cuando no quieras seguir hablando","Spanish",animated=True)
         while not self.is_done:
             if self.hey_pepper:
                 self.tm.show_words_proxy()
@@ -122,7 +126,7 @@ class Evento(object):
         try:
             hot_word_language_srv = rospy.ServiceProxy("/pytoolkit/ALSpeechRecognition/set_hot_word_language_srv", tablet_service_srv)
             hot_word_language_srv("Spanish")
-            self.tm.hot_word(["hey nova", "tablet", "chao","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro"], thresholds=[0.4,0.4,0.5,0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.5])
+            self.set_hot_words()
             print("Hot word service connected!")
         except rospy.ServiceException as e:
             print("Service call failed")
@@ -171,15 +175,20 @@ class Evento(object):
             
     def hey_pepper_function(self):
         self.tm.hot_word([])
-        self.tm.talk("Dimelo manzana","Spanish",animated=True)
+        self.tm.talk("Dímelo manzana","Spanish",animated=True)
         text = self.spanish_speech2text_proxy(5).transcription
+        anim_msg = self.gen_anim_msg("Waiting/Think_3")
+        self.animationPublisher.publish(anim_msg)
         if not ("None" in text):
             request = f"""La persona dijo: {text}."""
             answer=self.tm.answer_question(request) 
             self.tm.talk(answer,"Spanish",animated=True)
         else:
             self.tm.talk("Disculpa, no te entendi, puedes hablar cuando mis ojos esten azules. Por favor habla mas lento","Spanish",animated=True)
-        self.tm.hot_word(["hey nova","tablet", "chao","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro"], thresholds=[0.4,0.4,0.5,0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.5])
+        self.set_hot_words()
+
+    def set_hot_words(self):
+        self.tm.hot_word(["chao","novita","baile","asereje","pose","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro","gracias"],thresholds=[0.5, 0.4, 0.35, 0.35, 0.4, 0.4, 0.4, 0.27, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.5])
 
     def gen_anim_msg(self, animation):
         anim_msg = animation_msg()
@@ -188,48 +197,71 @@ class Evento(object):
         return anim_msg
     
     def callback_hot_word(self,data):
-        word = data.status
-        print(word, "listened")
-        if word == "chao":
-            self.is_done = True
-        elif word == "hey nova":
-            self.hey_pepper = True
-        elif word == "guitarra":
-            anim_msg = self.gen_anim_msg("Waiting/AirGuitar_1")
-            self.animationPublisher.publish(anim_msg)
-        elif word == "besos":
-            self.tm.talk("Muah","Spanish")
-            anim_msg = self.gen_anim_msg("Gestures/Kisses_1")
-            self.animationPublisher.publish(anim_msg)
-        elif word == "foto":
-            anim_msg = self.gen_anim_msg("Gestures/ShowSky_8")
-            self.animationPublisher.publish(anim_msg)
-        elif word == "tablet":
-            anim_msg = self.gen_anim_msg("Waiting/TakePicture_1")
-            self.animationPublisher.publish(anim_msg)
-            rospy.sleep(2)
-            self.show_picture_proxy()
-        elif word == "cumpleaños":
-            anim_msg = self.gen_anim_msg("Waiting/HappyBirthday_1")
-            self.animationPublisher.publish(anim_msg)
-        elif word == "corazon":
-            anim_msg = self.gen_anim_msg("Waiting/LoveYou_1")
-            self.animationPublisher.publish(anim_msg)
-        elif word == "llama":
-            anim_msg = self.gen_anim_msg("Waiting/CallSomeone_1")
-            self.animationPublisher.publish(anim_msg)
-        elif word == "helicoptero":
-            anim_msg = self.gen_anim_msg("Waiting/Helicopter_1")
-            self.animationPublisher.publish(anim_msg)
-        elif word == "zombi":
-            anim_msg = self.gen_anim_msg("Waiting/Zombie_1")
-            self.animationPublisher.publish(anim_msg)
-        elif word == "carro":
-            anim_msg = self.gen_anim_msg("Waiting/DriveCar_1")
-            self.animationPublisher.publish(anim_msg)
-        elif word == "musculos":
-            anim_msg = self.gen_anim_msg("Waiting/ShowMuscles_3")
-            self.animationPublisher.publish(anim_msg)
+        if not self.haciendo_animacion:
+            self.haciendo_animacion = True
+            word = data.status
+            print(word, "listened")
+            if word == "chao":
+                self.is_done = True
+                self.already_dance = False
+                self.already_asereje = False
+            elif word == "novita":
+                self.hey_pepper = True
+            elif word == "guitarra":
+                anim_msg = self.gen_anim_msg("Waiting/AirGuitar_1")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "besos":
+                anim_msg = self.gen_anim_msg("Gestures/Kisses_1")
+                self.animationPublisher.publish(anim_msg)
+                self.tm.talk("Muah","Spanish")
+            elif word == "baile":
+                if not self.already_dance:
+                    self.tm.hot_word([])
+                    self.play_dance_srv(1)
+                    self.already_dance = True
+                    rospy.sleep(1)
+                    self.set_hot_words()
+            elif word == "asereje":
+                if not self.already_asereje:
+                    self.tm.hot_word([])
+                    self.play_dance_srv(3)
+                    self.already_asereje = True
+                    rospy.sleep(1)
+                    self.set_hot_words()
+            elif word == "pose":
+                anim_msg = self.gen_anim_msg("Gestures/ShowSky_8")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "foto":
+                anim_msg = self.gen_anim_msg("Waiting/TakePicture_1")
+                self.animationPublisher.publish(anim_msg)
+                rospy.sleep(2)
+                self.show_picture_proxy()
+            elif word == "cumpleaños":
+                anim_msg = self.gen_anim_msg("Waiting/HappyBirthday_1")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "corazon":
+                anim_msg = self.gen_anim_msg("Waiting/LoveYou_1")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "llama":
+                anim_msg = self.gen_anim_msg("Waiting/CallSomeone_1")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "helicoptero":
+                anim_msg = self.gen_anim_msg("Waiting/Helicopter_1")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "zombi":
+                anim_msg = self.gen_anim_msg("Waiting/Zombie_1")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "carro":
+                anim_msg = self.gen_anim_msg("Waiting/DriveCar_1")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "musculos":
+                anim_msg = self.gen_anim_msg("Waiting/ShowMuscles_3")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "gracias":
+                anim_msg = self.gen_anim_msg("Gestures/BowShort_3")
+                self.animationPublisher.publish(anim_msg)
+                self.tm.talk("Con mucho gusto","Spanish")
+            self.haciendo_animacion = False
     
 # Crear una instancia de la maquina de estados
 if __name__ == "__main__":
