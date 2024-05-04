@@ -1508,7 +1508,7 @@ class Task_module:
                 if object_name in self.labels:
                     object_data = self.labels[object_name][0]
                     centered_point = (315 / 2) - object_data[1]
-                    while not (-3 <= centered_point <= 3):
+                    while not (-5 <= centered_point <= 5):
                         print(centered_point)
                         if object_name in self.labels:
                             object_data = self.labels[object_name][0]
@@ -1521,14 +1521,14 @@ class Task_module:
                             time.sleep(0.5)
                         else:
                             print(f"I have lost the {object_name}")
-                            self.go_to_relative_point(0.0, 0.02, 0.0)
-                            time.sleep(0.5)
+                            self.go_to_relative_point(0.0, 0.01, 0.0)
+                            time.sleep(0.2)
                             object_found = False
                     return True
                 else:
                     print(f"I have lost the {object_name}")
-                    self.go_to_relative_point(0.0, 0.02, 0.0)
-                    time.sleep(0.5)
+                    self.go_to_relative_point(0.0, 0.01, 0.0)
+                    time.sleep(0.2)
                     object_found = False
         else:
             print("navigation and perception as false")
