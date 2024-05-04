@@ -55,7 +55,9 @@ class STICKLER_RULES(object):
         #numero de personas encontradas rompiendo las reglas
         self.breakers_found = 0
         #TODO Poner el cuarto que sea forbidden
-        self.list_places = ["bedroom","kitchen","office","living_room","bathroom", "forbidden"]
+        #self.list_places = ["bedroom","kitchen","office","living_room","bathroom", "forbidden"] # Ya hay una lista de lugares y forbidden se puede usar como una variable
+        self.list_places = ["house","living","kitchen","room","dining"]
+        self.forbidden = "room"
         self.checked_places = []
 
     def on_enter_INIT(self):
@@ -63,7 +65,8 @@ class STICKLER_RULES(object):
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.initialize_pepper()
         self.tm.show_topic("/perception_utilities/yolo_publisher")
-        #self.tm.go_to_place("living_room")
+        #self.tm.go_to_place("living_room") # El cuarto principal se llama house
+        #self.tm.go_to_place("house")
         self.beggining()
 
     # ============================== LOOK4 STATES ==============================
@@ -74,7 +77,7 @@ class STICKLER_RULES(object):
         while contador<self.number_guests-self.breakers_found:
             # Constant spin para esquivar a personas que ya vio
             self.tm.constant_spin_srv(15)
-            t1 = time.time()
+            t1 = time.time()    
             while time.time() - t1 < 2:
                 rospy.sleep(0.1)
             self.tm.robot_stop_srv()
@@ -115,14 +118,20 @@ class STICKLER_RULES(object):
             self.tm.talk("You passed the drink check!","English", wait=False)
 
     def check_forbidden(self):
-        if self.last_place == "forbidden":
+        #if self.last_place == "forbidden": # Manejar el forbidden room como variable
+        if self.last_place == self.forbidden:
             self.breakers_found += 1
             self.ASK2LEAVE()
 
     # ============================== ASK4 STATES ===============================
     def ASK4SHOES(self):
         print(self.consoleFormatter.format("ASK4SHOES", "HEADER"))
-        self.tm.talk("You must not wear shoes in this place!. Go to the entrance and take them off!","English")
+        #self.tm.talk("You must not wear shoes in this place!. Go to the entrance and take them off!","English") # El robot tiene que ir a la entrada con el guest
+        # ===========================================
+        self.tm.talk("You must not wear shoes in this place!. Follow me to the entrance and take them off!","English")
+        self.tm.go_to_place("house_door")
+        rospy.sleep(10)
+        self.tm.go_to_place(self.last_place)
 
     def ASK4DRINK(self):
         print(self.consoleFormatter.format("ASK4DRINK", "HEADER"))
@@ -134,20 +143,21 @@ class STICKLER_RULES(object):
             #self.tm.go_to_place("kitchen") # Definir cocina
             self.tm.talk("Please take a drink and keep it in your hand! I will now return to the previous room","English")
             #self.tm.go_to_place(self.last_place)
-            
+
     def ASK2LEAVE(self):
         print(self.consoleFormatter.format("ASK4SHOES", "HEADER"))
         self.tm.talk("This room is forbidden. You must leave this room please","English")
+
     # =============================== GO2 STATES ===============================
     def on_enter_GO2NEXT(self):
-        print("current place:"+self.last_place)
+        print("Current Place: " + self.last_place)
         self.tm.talk("I'm going to check another room!","English")
         print(self.consoleFormatter.format("GO2NEXT", "HEADER"))
         for place in self.list_places:
             if not place in self.checked_places:
-                self.tm.talk("I'm gonna check"+ place,"English")
+                self.tm.talk("I'm gonna check " + place,"English")
                 #self.tm.go_to_place(place)
-                print("next place:"+place)
+                print("Next Place: " + place)
                 self.checked_places.append(place)
                 self.last_place = place
                 self.arrive_next()
