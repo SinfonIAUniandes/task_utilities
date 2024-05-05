@@ -71,7 +71,7 @@ class Evento(object):
         self.tm.talk("Bienvenido, soy Nova, es un gusto conocerte","Spanish")
         rospy.sleep(2)
         self.enable_tracker_service()
-        self.tm.talk("Di Novita cuando quieras decirme algo, y chao cuando no quieras seguir hablando","Spanish",animated=True)
+        self.tm.talk("Di Hey Nova cuando quieras decirme algo, y chao cuando no quieras seguir hablando","Spanish",animated=True)
         while not self.is_done:
             if self.hey_pepper:
                 self.tm.show_words_proxy()
@@ -176,7 +176,7 @@ class Evento(object):
     def hey_pepper_function(self):
         self.tm.hot_word([])
         self.tm.talk("Dímelo manzana","Spanish",animated=True)
-        text = self.spanish_speech2text_proxy(5).transcription
+        text = self.spanish_speech2text_proxy(7).transcription
         anim_msg = self.gen_anim_msg("Waiting/Think_3")
         self.animationPublisher.publish(anim_msg)
         if not ("None" in text):
@@ -188,7 +188,7 @@ class Evento(object):
         self.set_hot_words()
 
     def set_hot_words(self):
-        self.tm.hot_word(["chao","novita","baile","asereje","pose","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro","gracias"],thresholds=[0.5, 0.4, 0.35, 0.35, 0.4, 0.4, 0.4, 0.27, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.5])
+        self.tm.hot_word(["chao","detente","hey nova","baile","asereje","pose","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro","gracias"],thresholds=[0.5, 0.4, 0.4, 0.5, 0.55, 0.4, 0.4, 0.4, 0.5, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.5])
 
     def gen_anim_msg(self, animation):
         anim_msg = animation_msg()
@@ -196,16 +196,25 @@ class Evento(object):
         anim_msg.animation_name = animation
         return anim_msg
     
+    def dance_thread(self, number):
+        #Se ponen los bailes en un thread porque estancan la ejecucion y no permiten checkear otras hotwords, como detente
+        self.haciendo_animacion = True
+        self.play_dance_srv(number)
+        self.haciendo_animacion = False
+    
     def callback_hot_word(self,data):
+        word = data.status
+        print(word, "listened")
+        if word=="detente":
+            self.tm.setRPosture_srv("stand")
+            self.haciendo_animacion = False
         if not self.haciendo_animacion:
             self.haciendo_animacion = True
-            word = data.status
-            print(word, "listened")
             if word == "chao":
                 self.is_done = True
                 self.already_dance = False
                 self.already_asereje = False
-            elif word == "novita":
+            elif word == "hey nova":
                 self.hey_pepper = True
             elif word == "guitarra":
                 anim_msg = self.gen_anim_msg("Waiting/AirGuitar_1")
@@ -213,21 +222,17 @@ class Evento(object):
             elif word == "besos":
                 anim_msg = self.gen_anim_msg("Gestures/Kisses_1")
                 self.animationPublisher.publish(anim_msg)
-                self.tm.talk("Muah","Spanish")
+                self.tm.talk("Muah!","Spanish")
             elif word == "baile":
                 if not self.already_dance:
-                    self.tm.hot_word([])
-                    self.play_dance_srv(1)
+                    dance_thread = threading.Thread(target=dance_thread,args=[1])
+                    dance_thread.start()
                     self.already_dance = True
-                    rospy.sleep(1)
-                    self.set_hot_words()
             elif word == "asereje":
                 if not self.already_asereje:
-                    self.tm.hot_word([])
-                    self.play_dance_srv(3)
+                    dance_thread = threading.Thread(target=dance_thread,args=[3])
+                    dance_thread.start()
                     self.already_asereje = True
-                    rospy.sleep(1)
-                    self.set_hot_words()
             elif word == "pose":
                 anim_msg = self.gen_anim_msg("Gestures/ShowSky_8")
                 self.animationPublisher.publish(anim_msg)

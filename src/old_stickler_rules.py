@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from transitions import Machine
 from task_module import Task_module as tm
-from std_msgs.msg import Bool
 import ConsoleFormatter
 import time
 import random
@@ -11,15 +10,9 @@ import rospy
 import math
 import os
 import numpy as np
-from std_srvs.srv import SetBool
 
-from navigation_msgs.srv import constant_spin_srv, get_absolute_position_srv, get_absolute_position_srvRequest
-from navigation_msgs.msg import simple_feedback_msg
-from perception_msgs.msg import get_labels_msg
-from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv
-from robot_toolkit_msgs.msg import animation_msg
-from geometry_msgs.msg import PoseWithCovarianceStamped
-from tf.transformations import euler_from_quaternion
+from navigation_msgs.srv import get_absolute_position_srv
+from robot_toolkit_msgs.srv import move_head_srv
 
 class STICKLER_RULES(object):
     def __init__(self):
@@ -49,9 +42,15 @@ class STICKLER_RULES(object):
         rospy.wait_for_service("/pytoolkit/ALMotion/move_head_srv")
         self.move_head_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/move_head_srv",move_head_srv)
 
+        print(self.consoleFormatter.format("Waiting for navigation_utilities/get_absolute_position_srv...", "WARNING"))
+        rospy.wait_for_service("navigation_utilities/get_absolute_position_srv")
+        self.get_absolute_position_srv = rospy.ServiceProxy("navigation_utilities/get_absolute_position_srv",get_absolute_position_srv)
+
         self.last_place = "living_room"
-        #TODO poner numero de guests que hay
+        #TODO poner numero de guests totales que hay
         self.number_guests = 5
+        #TODO poner numero de personas rompiendo las reglas totales
+        self.total_rule_breakers = 4
         #numero de personas encontradas rompiendo las reglas
         self.breakers_found = 0
         #TODO Poner el cuarto que sea forbidden
@@ -61,7 +60,7 @@ class STICKLER_RULES(object):
         self.checked_places = []
 
     def on_enter_INIT(self):
-        self.tm.talk("I am going to do the "+self.task_name+" task","English")
+        self.tm.talk("I am going to do the "+self.task_name+" task","English", wait=False)
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.initialize_pepper()
         self.tm.show_topic("/perception_utilities/yolo_publisher")
@@ -73,22 +72,26 @@ class STICKLER_RULES(object):
     def on_enter_LOOK4PERSON(self):
         print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
         self.tm.talk("I am going to check if the guests are breaking the rules!","English", wait=False)
-        contador = 0
-        while contador<self.number_guests-self.breakers_found:
-            # Constant spin para esquivar a personas que ya vio
-            self.tm.constant_spin_srv(15)
-            t1 = time.time()    
-            while time.time() - t1 < 2:
-                rospy.sleep(0.1)
-            self.tm.robot_stop_srv()
-            person_found = self.tm.find_object("person", ignore_already_seen=True)
-            if person_found:
-                contador+=1
-                self.check_shoes()
-                self.check_drink()
-                self.check_forbidden()
-            else:
-                self.rules_checked()
+        tiempo_inicial = time.time()
+        grados_seg = 15
+        # A 15 grados/seg toma 24 segundos dar 1 vuelta
+        tiempo_una_vuelta = 25
+        angulos_personas = []
+        self.tm.go_to_pose("default_head")
+        tiempo_transcurrido = 0
+        while (tiempo_transcurrido < tiempo_una_vuelta) or self.breakers_found<self.total_rule_breakers:
+            self.tm.look_for_object("person")
+            self.tm.constant_spin_srv(grados_seg)
+            self.tm.wait_for_object(tiempo_una_vuelta-tiempo_transcurrido)
+            angulo_persona = get_absolute_position_srv().theta
+            for angulo in angulos_personas:
+                #60 grados es un poco mas del campo de vision del robot, si el angulo de la persona actual es similar a algun otro por 60 grados puede ser la misma persona 
+                if abs(angulo_persona-angulo)>=60:
+                    angulos_personas.append(angulo_persona)
+                    self.tm.robot_stop_srv()
+                    if self.check_shoes() or self.check_drink() or self.check_forbidden():
+                        self.breakers_found += 1
+            tiempo_transcurrido = time.time()-tiempo_inicial
         self.rules_checked()
 
     def check_shoes(self):
@@ -101,10 +104,11 @@ class STICKLER_RULES(object):
         print("GPT ANSWER:"+answer)
         self.move_head_srv("default")
         if "True" in answer:
-            self.breakers_found += 1
             self.ASK4SHOES()
+            return True
         else:
             self.tm.talk("You passed the shoes check!","English", wait=False)
+        return False
 
     def check_drink(self):
         print(self.consoleFormatter.format("LOOK4DRINK", "HEADER"))
@@ -112,50 +116,40 @@ class STICKLER_RULES(object):
         gpt_vision_prompt = f"Is there a person without a drink in their hand in this picture? Answer only with True or False"
         answer = self.tm.img_description(gpt_vision_prompt)["message"]
         if "True" in answer:
-            self.breakers_found += 1
             self.ASK4DRINK()
+            return True
         else:
             self.tm.talk("You passed the drink check!","English", wait=False)
+        return False
 
     def check_forbidden(self):
         #if self.last_place == "forbidden": # Manejar el forbidden room como variable
         if self.last_place == self.forbidden:
-            self.breakers_found += 1
             self.ASK2LEAVE()
+            return True
+        return False
 
     # ============================== ASK4 STATES ===============================
     def ASK4SHOES(self):
         print(self.consoleFormatter.format("ASK4SHOES", "HEADER"))
-        #self.tm.talk("You must not wear shoes in this place!. Go to the entrance and take them off!","English") # El robot tiene que ir a la entrada con el guest
-        # ===========================================
-        self.tm.talk("You must not wear shoes in this place!. Follow me to the entrance and take them off!","English")
-        self.tm.go_to_place("house_door")
-        rospy.sleep(10)
-        self.tm.go_to_place(self.last_place)
+        self.tm.talk("You must not wear shoes in this place!. Go to the entrance and take them off!","English", wait=False)
 
     def ASK4DRINK(self):
         print(self.consoleFormatter.format("ASK4DRINK", "HEADER"))
-        self.tm.talk("You must have a Drink in your hand","English")
-        if self.last_place == "kitchen":
-            self.tm.talk("Take a drink please!","English")
-        else:
-            self.tm.talk("Please follow me to the kitchen","English")
-            #self.tm.go_to_place("kitchen") # Definir cocina
-            self.tm.talk("Please take a drink and keep it in your hand! I will now return to the previous room","English")
-            #self.tm.go_to_place(self.last_place)
+        self.tm.talk("You must have a Drink in your hand. Go to the kitchen and grab a drink, you must keep it in your hand!","English", wait=False)
 
     def ASK2LEAVE(self):
         print(self.consoleFormatter.format("ASK4SHOES", "HEADER"))
-        self.tm.talk("This room is forbidden. You must leave this room please","English")
+        self.tm.talk("This room is forbidden. You must leave this room please","English", wait=False)
 
     # =============================== GO2 STATES ===============================
     def on_enter_GO2NEXT(self):
         print("Current Place: " + self.last_place)
-        self.tm.talk("I'm going to check another room!","English")
+        self.tm.talk("I'm going to check another room!","English", wait=False)
         print(self.consoleFormatter.format("GO2NEXT", "HEADER"))
         for place in self.list_places:
             if not place in self.checked_places:
-                self.tm.talk("I'm gonna check " + place,"English")
+                self.tm.talk("I'm gonna check " + place,"English", wait=False)
                 #self.tm.go_to_place(place)
                 print("Next Place: " + place)
                 self.checked_places.append(place)
