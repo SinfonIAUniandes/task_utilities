@@ -83,19 +83,25 @@ class STICKLER_RULES(object):
         while (tiempo_transcurrido < tiempo_una_vuelta) or self.breakers_found<self.total_rule_breakers:
             self.tm.look_for_object("person")
             self.tm.constant_spin_srv(grados_seg)
-            tiempo_transcurrido -= tiempo_checkeo
             self.tm.wait_for_object(tiempo_una_vuelta-tiempo_transcurrido)
-            angulo_persona = get_absolute_position_srv().theta
+            #Encontro una persona o se acabo el tiempo
+            angulo_persona = get_absolute_position_srv()
+            angulo_nuevo = True
             for angulo in angulos_personas:
                 #60 grados es un poco mas del campo de vision del robot, si el angulo de la persona actual es similar a algun otro por 60 grados puede ser la misma persona 
-                if abs(angulo_persona-angulo)>=60:
-                    angulos_personas.append(angulo_persona)
-                    self.tm.robot_stop_srv()
-                    t1 = time.time()
-                    if self.check_shoes() or self.check_drink() or self.check_forbidden():
-                        self.breakers_found += 1
-                    tiempo_checkeo = time.time() - t1
+                if abs(angulo_persona-angulo)<60:
+                    angulo_nuevo = False
+            if angulo_nuevo:
+                self.tm.robot_stop_srv()
+                angulos_personas.append(angulo_persona)
+                t1 = time.time()
+                if self.check_shoes() or self.check_drink() or self.check_forbidden():
+                    self.breakers_found += 1
+                tiempo_checkeo = time.time() - t1
             tiempo_transcurrido = time.time()-tiempo_inicial
+            # Del tiempo transcurrido se quita el tiempo muerto en que el robot no se mueve
+            tiempo_transcurrido -= tiempo_checkeo
+            tiempo_checkeo = 0
         self.rules_checked()
 
     def check_shoes(self):
