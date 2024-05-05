@@ -72,16 +72,18 @@ class STICKLER_RULES(object):
     def on_enter_LOOK4PERSON(self):
         print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
         self.tm.talk("I am going to check if the guests are breaking the rules!","English", wait=False)
-        tiempo_inicial = time.time()
         grados_seg = 15
         # A 15 grados/seg toma 24 segundos dar 1 vuelta
         tiempo_una_vuelta = 25
         angulos_personas = []
         self.tm.go_to_pose("default_head")
         tiempo_transcurrido = 0
+        tiempo_checkeo = 0
+        tiempo_inicial = time.time()
         while (tiempo_transcurrido < tiempo_una_vuelta) or self.breakers_found<self.total_rule_breakers:
             self.tm.look_for_object("person")
             self.tm.constant_spin_srv(grados_seg)
+            tiempo_transcurrido -= tiempo_checkeo
             self.tm.wait_for_object(tiempo_una_vuelta-tiempo_transcurrido)
             angulo_persona = get_absolute_position_srv().theta
             for angulo in angulos_personas:
@@ -89,8 +91,10 @@ class STICKLER_RULES(object):
                 if abs(angulo_persona-angulo)>=60:
                     angulos_personas.append(angulo_persona)
                     self.tm.robot_stop_srv()
+                    t1 = time.time()
                     if self.check_shoes() or self.check_drink() or self.check_forbidden():
                         self.breakers_found += 1
+                    tiempo_checkeo = time.time() - t1
             tiempo_transcurrido = time.time()-tiempo_inicial
         self.rules_checked()
 
