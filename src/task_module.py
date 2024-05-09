@@ -508,7 +508,8 @@ class Task_module:
         else:
             print("perception as false")
         if self.speech:
-            self.calibrate_srv(5)
+            #self.calibrate_srv(5)
+            pass
         else:
             print("speech as false")
         if self.pytoolkit:

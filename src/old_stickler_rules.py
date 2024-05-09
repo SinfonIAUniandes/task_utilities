@@ -46,7 +46,7 @@ class STICKLER_RULES(object):
         rospy.wait_for_service("navigation_utilities/get_absolute_position_srv")
         self.get_absolute_position_proxy = rospy.ServiceProxy("navigation_utilities/get_absolute_position_srv",get_absolute_position_srv)
         # Parametro de la task de si se quiere que el robot confirme que los invitados corrigieron la regla
-        self.confirm_comppliance = True
+        self.confirm_comppliance = False
         # Donde se encuentran ubicados los otros invitados, es para forbidden room
         self.party_place = "living"
         self.last_place = "living"
@@ -84,19 +84,19 @@ class STICKLER_RULES(object):
         self.tm.setRPosture_srv("stand")
         grados_seg = 15
         # A 15 grados/seg toma 24 segundos dar 1 vuelta
-        tiempo_una_vuelta = 30
+        tiempo_una_vuelta = 26
         angulos_personas = []
         self.move_head_srv("default")
         breakers_current_room = 0
         tiempo_transcurrido = 0
-        tiempo_checkeo = 0
         tiempo_inicial = time.time()
         # While para dar una vuelta entera y encontrar a TODAS las personas en una habitacion
         while (tiempo_transcurrido < tiempo_una_vuelta): # and self.breakers_found<self.total_rule_breakers: (Chunk opcional si se quiere detener la task cuando se haya encontrado a todos los rule breakers)
+            print(tiempo_transcurrido)
             self.tm.look_for_object("person")
             self.tm.constant_spin_srv(grados_seg)
             person_found = self.tm.wait_for_object(tiempo_una_vuelta-tiempo_transcurrido)
-            t1 = time.time()
+            tiempo_transcurrido = time.time()-tiempo_inicial - 2*breakers_current_room
             if person_found:
                 #Encontro una persona o se acabo el tiempo
                 angulo_persona = self.get_absolute_position_proxy().theta
@@ -115,11 +115,6 @@ class STICKLER_RULES(object):
             else:
                 print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
                 self.tm.robot_stop_srv()
-            tiempo_checkeo = time.time() - t1
-            tiempo_transcurrido = time.time()-tiempo_inicial
-            # Del tiempo transcurrido se quita el tiempo muerto en que el robot no se mueve , +5 segundos para ayudar a que de la vuelta entera
-            tiempo_transcurrido -= tiempo_checkeo + 10*breakers_current_room
-            tiempo_checkeo = 0
         self.tm.talk("I'm done checkin this room'!","English", wait=False)
         self.tm.robot_stop_srv()
         print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
@@ -189,7 +184,7 @@ class STICKLER_RULES(object):
             self.tm.setRPosture_srv("stand")
             self.move_head_srv("default")
         else:
-            self.tm.talk("You must not wear shoes in this place!. Go to the entrance and take them off!","English", wait=False)
+            self.tm.talk("You must not wear shoes in this place!. Please, go to the entrance and take them off!","English", wait=False)
 
     def ASK4DRINK(self, original_angle):
         print(self.consoleFormatter.format("ASK4DRINK", "HEADER"))
@@ -215,7 +210,7 @@ class STICKLER_RULES(object):
             self.tm.setRPosture_srv("stand")
             self.move_head_srv("default")
         else:
-            self.tm.talk("You must have a Drink in your hand. Go to the kitchen and grab a drink, you must keep it in your hand!","English", wait=False)
+            self.tm.talk("You must have a Drink in your hand. Please, go to the kitchen and grab a drink, you must keep it in your hand!","English", wait=False)
 
     def ASK2LEAVE(self, original_angle):
         print(self.consoleFormatter.format("ASK4SHOES", "HEADER"))
@@ -229,7 +224,7 @@ class STICKLER_RULES(object):
             self.tm.setRPosture_srv("stand")
             self.move_head_srv("default")
         else:
-            self.tm.talk("This room is forbidden. You must leave this room please","English", wait=False)
+            self.tm.talk("This room is forbidden. Please, leave this room","English", wait=False)
 
     # =============================== GO2 STATES ===============================
     def on_enter_GO2NEXT(self):
