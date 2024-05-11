@@ -46,7 +46,7 @@ class Task_module:
 
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
         ################### GLOBAL VARIABLES ###################
-        self.follow_you_active = True
+        self.follow_you_active = False
         self.head_thread = False
         self.linear_vel = 0
         self.closest_person = [0,0,0,0,0]
@@ -508,7 +508,7 @@ class Task_module:
         else:
             print("perception as false")
         if self.speech:
-            #self.calibrate_srv(5)
+            self.calibrate_srv(5)
             pass
         else:
             print("speech as false")

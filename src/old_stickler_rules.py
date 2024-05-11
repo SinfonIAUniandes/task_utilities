@@ -84,19 +84,22 @@ class STICKLER_RULES(object):
         self.tm.setRPosture_srv("stand")
         grados_seg = 15
         # A 15 grados/seg toma 24 segundos dar 1 vuelta
-        tiempo_una_vuelta = 26
+        tiempo_una_vuelta = 24
         angulos_personas = []
         self.move_head_srv("default")
         breakers_current_room = 0
         tiempo_transcurrido = 0
-        tiempo_inicial = time.time()
         # While para dar una vuelta entera y encontrar a TODAS las personas en una habitacion
         while (tiempo_transcurrido < tiempo_una_vuelta): # and self.breakers_found<self.total_rule_breakers: (Chunk opcional si se quiere detener la task cuando se haya encontrado a todos los rule breakers)
             print(tiempo_transcurrido)
+            tiempo_inicio_rotacion = time.time()
             self.tm.look_for_object("person")
             self.tm.constant_spin_srv(grados_seg)
             person_found = self.tm.wait_for_object(tiempo_una_vuelta-tiempo_transcurrido)
-            tiempo_transcurrido = time.time()-tiempo_inicial - 2*breakers_current_room
+            tiempo_rotando = time.time()-tiempo_inicio_rotacion
+            print("tiempo rotando: "+str(tiempo_rotando))
+            tiempo_transcurrido += tiempo_rotando
+            print("tiempo transcurrido: "+str(tiempo_transcurrido))
             if person_found:
                 #Encontro una persona o se acabo el tiempo
                 angulo_persona = self.get_absolute_position_proxy().theta

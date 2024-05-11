@@ -51,13 +51,12 @@ class GPSR(object):
             "perception_utilities/pose_publisher", String, self.posePublisherCallback
         )
         ############################# GLOBAL VARIABLES #############################
-        self.location = "door_living_room"
+        self.location = "init"
 
     def on_enter_INIT(self):
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.initialize_pepper()
-        self.tm.go_to_defined_angle_srv(0)
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.start_recognition("front_camera")
         self.tm.pose_srv("front_camera", True)
@@ -78,8 +77,6 @@ class GPSR(object):
                 print(code)
                 if not "I am sorry but I cannot complete this task" in code:
                     print("es posible la task")
-                    patron = r"self\.tm\.go_to_place\([^)]*\)"
-                    code = re.sub(patron, "", code)
                     exec(code)
                     contador = 5
                 contador += 1
@@ -91,10 +88,11 @@ class GPSR(object):
         self.GPSR_done()
 
     def on_enter_GO2GPSR(self):
+        while self.tm.follow_you_active: 
+            rospy.sleep(0.1)
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
         self.tm.talk("I am going to the GPSR location","English")
-        #self.tm.go_to_place(self.location)
-        self.tm.go_to_defined_angle_srv(0)
+        self.tm.go_to_place(self.location)
         self.go_to_gpsr()
 
     def on_enter_WAIT4GUEST(self):
