@@ -253,6 +253,7 @@ class ZeissCustomersReception(object):
                 print(self.consoleFormatter.format("Nova: I recognized a QR code, I will greet the person", "HEADER"))
                 self.tm.talk("Bienvenido al evento "+ qr_code + "Espero que lo disfrutes mucho. Fue un placer atenderte!", "Spanish")
                 # TODO: Logic to save the person's assistance in the database
+                # Idea: save the person's name and id in a file and report it to the company
             
             
         # Transition: Moving to the same state to keep looking for QR codes
@@ -282,7 +283,7 @@ class ZeissCustomersReception(object):
         # Initialization message
         print(self.consoleFormatter.format("Finishing the task - ENTERING 'JOB_DONE' STATE", "HEADER"))
         print(self.consoleFormatter.format("Nova: I am done for today!", "HEADER"))
-        check_rospy()
+        self.check_rospy()
 
 
 # Main function
