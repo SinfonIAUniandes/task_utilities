@@ -29,3 +29,5 @@ while True:
     texto_qr = tm.qr_read(10)
     tm.talk("Bienvenido al evento "+texto_qr,"Spanish")
     print("Bienvenido al evento "+texto_qr)
+    
+    
