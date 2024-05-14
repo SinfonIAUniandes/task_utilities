@@ -15,6 +15,7 @@ from code_generation import ls_generate as gen
 from code_generation import generate_utils 
 from code_generation.database.models import Model
 from std_msgs.msg import String
+from robot_toolkit_msgs.msg import speech_recognition_status_msg
 
 class GPSR(object):
     def __init__(self):
@@ -57,9 +58,11 @@ class GPSR(object):
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.initialize_pepper()
+        subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
         self.tm.turn_camera("front_camera","custom",1,15) 
         self.tm.start_recognition("front_camera")
         self.tm.pose_srv("front_camera", True)
+        self.tm.hot_word(words=["stop"],thresholds=[0.5])
         self.beggining()
 
     def on_enter_GPSR(self):
@@ -132,6 +135,12 @@ class GPSR(object):
         else:
             self.tm.pointing = "none"
             self.tm.hand_up = "none"
+
+    def callback_hot_word(self,data):
+        word = data.status
+        print(word)
+        if word == "stop":
+            self.tm.follow_you(False)
     
 # Crear una instancia de la maquina de estados
 if __name__ == "__main__":

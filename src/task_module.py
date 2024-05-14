@@ -600,7 +600,35 @@ class Task_module:
         else:
             print("perception as false")
             return False
-            
+
+    def find_item_with_characteristic(self, class_type,characteristic) -> str:
+        """
+        Input:
+        class_type: The characteristic to search for ("color", "size", "weight", "position", "description")
+        characteristic: The specific thing to search for (example: red,blue,black with white dots, smallest, largest, thinnest, big one, lightest, heaviest,left, right,fragile)
+        timeout: Timeout in seconds || -1 for infinite
+        Output: String with the item with the characteristic name or "none" if it wasn't found
+        ----------
+        Aks chatgpt vision which item in front of the robot has the characteristic
+        """
+        if self.perception:
+            try:
+                if class_type == "color":
+                    gpt_vision_prompt = f"Which item in the picture has these colors: {characteristic}. Answer only with the item name or none"
+                elif class_type == "size" or class_type == "weight":
+                    gpt_vision_prompt = f"Which item in the picture is the {characteristic}. Answer only with the item name or none"
+                elif class_type == "position":
+                    gpt_vision_prompt = f"Which item in the picture is positioned {characteristic}most. Answer only with the item name or none"
+                elif class_type == "description":
+                    gpt_vision_prompt = f"Which item in the picture is {characteristic}. Answer only with the item name or none"
+                return self.img_description(gpt_vision_prompt)["message"]
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return "none"
+        else:
+            print("perception as false")
+            return "error"
+
     def search_for_specific_person(self, class_type: str, specific_characteristic: str, timeout = 72) -> bool:
         """
         Input:
@@ -1592,25 +1620,47 @@ class Task_module:
             print("manipulation as false")
             return False
 
-    def leave_object(self, object_name: str) -> bool:
+    def ask_for_object(self, object_name: str) -> bool:
         """
         Input: object_name
         Output: True if the service was called correctly, False if not
         ----------
-        Leave the <object_name>
+        Asks for someone to give the robot the <object_name>.
         """
-        if self.manipulation:
+        if self.manipulation and self.speech:
             try:
-                self.talk("Please pick up the "+object_name,"English",wait=True)
+                self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=False)
+                self.go_to_pose(object_name)
+                self.set_move_arms_enabled(False)
+                # Sleep for the robot not to leave before taking the item
                 rospy.sleep(7)
-                self.play_action("place_both_arms") 
-                self.setMoveArms_srv.call(True, True)           
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return False
         else:
-            print("manipulation as false")
+            print("manipulation and speech as false")
+            return False
+
+    def give_object(self, object_name: str) -> bool:
+        """
+        Input: object_name
+        Output: True if the service was called correctly, False if not
+        ----------
+        Asks for someone to take the <object_name> from the robot.
+        """
+        if self.manipulation and self.speech:
+            try:
+                self.talk("Please pick up the "+object_name,"English",wait=True)
+                rospy.sleep(7)
+                self.set_move_arms_enabled(True)
+                self.setRPosture_srv("stand")      
+                return True
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("manipulation and speech as false")
             return False
                 
 
