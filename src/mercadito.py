@@ -59,6 +59,7 @@ class MERCADITO(object):
 
     def on_enter_INIT(self):
         print(self.consoleFormatter.format("INIT", "HEADER"))
+        print(self.consoleFormatter.format("Calibrating Pepper: "+self.task_name, "WARNING"))
         self.tm.initialize_pepper()
         if self.language =="Spanish":
         
