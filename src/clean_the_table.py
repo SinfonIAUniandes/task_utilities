@@ -220,6 +220,6 @@ class CLEAN_THE_TABLE(object):
         os._exit(os.EX_OK)
 
 if __name__ == "__main__":
-    sm = SERVE_BREAKFAST()
+    sm = CLEAN_THE_TABLE()
     sm.run()
     rospy.spin()
