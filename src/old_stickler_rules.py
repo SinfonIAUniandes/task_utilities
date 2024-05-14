@@ -128,7 +128,7 @@ class STICKLER_RULES(object):
         self.tm.talk("I am going to see if you have shoes on!","English", wait=False)
         self.move_head_srv("down")
         rospy.sleep(1)
-        gpt_vision_prompt = f"Is there a person with shoes in this picture? Answer only with True or False"
+        gpt_vision_prompt = f"Is the closest person in the picture wearing shoes? Answer only with True or False"
         answer = self.tm.img_description(gpt_vision_prompt)["message"]
         print("GPT ANSWER:"+answer)
         self.move_head_srv("default")
@@ -142,7 +142,7 @@ class STICKLER_RULES(object):
     def check_drink(self, original_angle):
         print(self.consoleFormatter.format("LOOK4DRINK", "HEADER"))
         self.tm.talk("I am going to see if you have a drink!","English", wait=False)
-        gpt_vision_prompt = f"Is there a person without a drink in their hand in this picture? Answer only with True or False"
+        gpt_vision_prompt = f"Is the closest person in the picture holding a drink in their hand? Answer only with True or False"
         answer = self.tm.img_description(gpt_vision_prompt)["message"]
         print("GPT ANSWER:"+answer)
         if "True" in answer:
@@ -174,7 +174,7 @@ class STICKLER_RULES(object):
             self.tm.talk("I am going to see if you have shoes on!","English", wait=False)
             self.move_head_srv("down")
             rospy.sleep(1)
-            gpt_vision_prompt = f"Is there a person with shoes in this picture? Answer only with True or False"
+            gpt_vision_prompt = f"Is the closest person in the picture wearing shoes? Answer only with True or False"
             answer = self.tm.img_description(gpt_vision_prompt)["message"]
             print("GPT ANSWER:"+answer)
             self.move_head_srv("default")
@@ -201,7 +201,7 @@ class STICKLER_RULES(object):
             self.tm.talk("Now, please take a drink and show it to me","English", wait=True)
             rospy.sleep(5)
             self.tm.talk("I am going to see if you have a drink!","English", wait=False)
-            gpt_vision_prompt = f"Is there a person without a drink in their hand in this picture? Answer only with True or False"
+            gpt_vision_prompt = f"Is the closest person in the picture holding a drink in their hand? Answer only with True or False"
             answer = self.tm.img_description(gpt_vision_prompt)["message"]
             print("GPT ANSWER:"+answer)
             if "True" in answer:
