@@ -69,7 +69,6 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
                     api_base="https://sinfonia.openai.azure.com/" ,
                     engine="GPSR-Test",
                     temperature= temperature,
-                    max_tokens=100,
                     messages = messages
                 )
     else:
@@ -81,7 +80,6 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
                     api_base="https://sinfonia.openai.azure.com/" ,
                     engine="GPSR-Test",
                     temperature= temperature,
-                    max_tokens=100,
                     messages = messages
                 )
     if model_type != Model.LLAMA2:

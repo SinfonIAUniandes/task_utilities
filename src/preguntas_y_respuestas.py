@@ -1,35 +1,19 @@
 #!/usr/bin/env python3
 from transitions import Machine
 from task_module import Task_module as tm
-from std_msgs.msg import Bool, String
 import ConsoleFormatter
-import time
-import random
 import threading
-import sys
 import rospy
-import math
 import os
-import numpy as np
-from std_srvs.srv import SetBool
-from code_generation import ls_generate as gen
-from code_generation import generate_utils 
-from code_generation.database.models import Model
 
-from robot_toolkit_msgs.msg import touch_msg,speech_recognition_status_msg
-
-from navigation_msgs.srv import constant_spin_srv
-from navigation_msgs.msg import simple_feedback_msg
-from robot_toolkit_msgs.msg import animation_msg
-from geometry_msgs.msg import PoseWithCovarianceStamped
-from tf.transformations import euler_from_quaternion
+from robot_toolkit_msgs.srv import set_open_close_hand_srv, set_open_close_hand_srvRequest
 
 class MERCADITO(object):
    def __init__(self):
 
        self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
        # Definir los estados posibles del semáforo
-       self.task_name = "CONVERSACION"
+       self.task_name = "PREGUNTAS_Y_RESPUESTAS"
        self.is_done = False
        self.hey_pepper=False
        self.isTouched = False
@@ -46,6 +30,7 @@ class MERCADITO(object):
 
        # Crear la máquina de estados
        self.machine = Machine(model=self, states=states, transitions=transitions, initial='CONVERSACION')
+       
        rospy_check = threading.Thread(target=self.check_rospy)
        rospy_check.start()
 
@@ -54,22 +39,18 @@ class MERCADITO(object):
    def on_enter_INIT(self):
        print(self.consoleFormatter.format("INIT", "HEADER"))
        self.tm.initialize_pepper()
-       self.tm.talk("I am going to do the conversation task","English")
+       self.toggle_breathing_proxy = rospy.ServiceProxy("/pytoolkit/ALMotion/toggle_breathing_srv", set_open_close_hand_srv)
+       request = set_open_close_hand_srvRequest()
+       request.hand = "All"
+       request.state = "True"
+       self.toggle_breathing_proxy(request)
        print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-       subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
        self.beggining()
 
    def on_enter_HABLAR(self):
        print(self.consoleFormatter.format("HABLAR", "HEADER"))
-       self.tm.talk("Hello my name is Nova, say hey nova to talk with me. Please talk slow, clear and loud.","English")
-       self.tm.hot_word(["hey nova", "stop"], thresholds=[0.4, 0.5])
-       while not self.is_done:
-            if self.hey_pepper:
-                self.hey_pepper_function()
-                self.hey_pepper=False
-            time.sleep(0.1)
-       self.tm.talk("have a great day!")
-       self.tm.talk("I have finished the "+self.task_name+" task","English")
+       while True:
+            self.hey_pepper_function()
        self.hablar_ready()
 
    def on_enter_FININSH(self):
@@ -83,24 +64,28 @@ class MERCADITO(object):
        os._exit(os.EX_OK)
 
    def hey_pepper_function(self):
-       self.tm.talk("What is your question?","English")
-       text = self.tm.speech2text_srv() 
-       request = f"""The person asked: {text}."""
-       answer=self.tm.answer_question(request) 
-       self.tm.talk(answer,"English")
-
-   def callback_hot_word(self,data):
-       word = data.status
-       print(word, " listened")
-       if word == "stop":
-            self.is_done = True
-       elif word == "hey nova":
-            self.hey_pepper = True
+       text = input("Escribe la pregunta de redes sociales o skip para decir tu texto: ")
+       if text!="skip":
+        request = f"""La persona pregunto: {text}."""
+        answer=self.tm.answer_question(request)
+        print(answer)
+        decir = input("¿Decir respuesta? 1: Si, 2: No ")
+        if decir=="1":
+            self.tm.talk(answer,"Spanish",animated=True,wait=False)
+        else:
+            texto = input("¿Que deberia decir?: ")
+            self.tm.talk(texto,"Spanish",animated=True,wait=False)
+       else:
+            texto = input("¿Que deberia decir?: ")
+            self.tm.talk(texto,"Spanish",animated=True,wait=False)
+       rospy.sleep(3)
+       self.tm.show_words_proxy()
+           
    
    def check_rospy(self):
        #Termina todos los procesos al cerrar el nodo
        while not rospy.is_shutdown():
-           time.sleep(0.1)
+           rospy.sleep(0.1)
        print(self.consoleFormatter.format("Shutting down", "FAIL"))
        os._exit(os.EX_OK)
 

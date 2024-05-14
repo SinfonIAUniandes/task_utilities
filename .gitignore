@@ -4,3 +4,5 @@ test.py
 *Examples
 signup.py
 config.pkl
+.vscode/*
+.src/__pycache__/*
