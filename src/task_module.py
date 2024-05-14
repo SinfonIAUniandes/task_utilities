@@ -376,25 +376,6 @@ class Task_module:
             self.go_to_pose_proxy = rospy.ServiceProxy(
                 "manipulation_utilities/go_to_pose", go_to_pose
             )
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for manipulation_utilitites/play_action", "WARNING"
-                )
-            )
-            rospy.wait_for_service("manipulation_utilities/play_action")
-            self.play_action_proxy = rospy.ServiceProxy(
-                "manipulation_utilities/play_action", play_action
-            )
-
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for manipulation_utilitites/grasp_object", "WARNING"
-                )
-            )
-            rospy.wait_for_service("manipulation_utilities/grasp_object")
-            self.grasp_object_proxy = rospy.ServiceProxy(
-                "manipulation_utilities/grasp_object", grasp_object
-            )
             
             print(
                 self.consoleFormatter.format(
@@ -1520,49 +1501,6 @@ class Task_module:
                     return True
                 else:
                     return False
-            except rospy.ServiceException as e:
-                print("Service call failed: %s" % e)
-                return False
-        else:
-            print("manipulation as false")
-            return False
-
-    def play_action(self, action: str) -> bool:
-        """
-        Input: action options ->("place_both_arms","place_left_arm","place_right_arm")
-        Output: True if the service was called correctly, False if not
-        ----------
-        Executes actions with the arms
-        """
-        if self.manipulation:
-            try:
-                approved = self.play_action_proxy(action)
-                if approved == "OK":
-                    return True
-                else:
-                    return False
-            except rospy.ServiceException as e:
-                print("Service call failed: %s" % e)
-                return False
-        else:
-            print("manipulation as false")
-            return False
-
-    def grasp_object(self, object_name: str) -> bool:
-        """
-        Input: object_name
-        Output: True if the service was called correctly, False if not
-        ----------
-        Grasp the <object_name>
-        """
-        if self.manipulation:
-            try:
-                self.setMoveArms_srv.call(False, False)
-                self.play_action("request_help_both_arms")
-                self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=True)
-                rospy.sleep(9)
-                self.go_to_pose("almost_open_both_hands")
-                return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return False

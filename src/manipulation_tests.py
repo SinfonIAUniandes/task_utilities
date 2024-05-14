@@ -37,7 +37,6 @@ class MANIPULATION_TEST(object):
         transitions = [
             {'trigger': 'start', 'source': 'MANIPULATION_TEST', 'dest': 'INIT'},
             {'trigger': 'test_go2pose', 'source': 'INIT', 'dest': 'GO2POSE'},
-            {'trigger': 'test_grasp_object', 'source': 'GO2POSE', 'dest': 'GRASPOBJ'},
             {'trigger': 'test_play_action', 'source': 'GRASPOBJ', 'dest': 'PLAYACTION'},
             {'trigger': 'test_move_head', 'source': 'PLAYACTION', 'dest': 'MOVEHEAD'},
             {'trigger': 'finish', 'source': 'MOVEHEAD', 'dest': 'FINISH'}
