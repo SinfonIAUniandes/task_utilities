@@ -1,12 +1,13 @@
+#!/usr/bin/env python3
+
 """
     This module contains the events for the Zeiss May 2024 task.
     First version made by: Alonso Hernandez @fai-aher
 """
 
 # General Imports
-import rospy
 import os
-import sys
+import rospy
 import threading
 import time
 import random
@@ -40,12 +41,19 @@ from perception_msgs.msg import get_labels_msg
 class ZeissCustomersReception(object):
     
     #Initialization state
-    def __init__(self):
+    def __init__(self) -> None:
         
-        self.console_formatter = ConsoleFormatter.ConsoleFormatter()
+        self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
         
         #Name of the task
-        self.task_name = "Zeiss Customers Reception"
+        self.task_name = "ZeissCustomersReception"
+        
+        # Task module initialization
+        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=True, pytoolkit=True)
+        
+        # Task module node initialization
+        time.sleep(1)
+        self.tm.initialize_node(self.task_name)
         
         # States definition
         self.states = [
@@ -61,15 +69,8 @@ class ZeissCustomersReception(object):
             'JOB_DONE'
         ]
         
-        # Task module initialization
-        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=True, pytoolkit=True)
-        
-        # Task module node initialization
-        time.sleep(2)
-        self.tm.initialize_node(self.task_name)
-        
         # Reading the ZEISS facts csv
-        self.facts_df = pd.read_csv('facts.csv')
+        self.facts_df = pd.read_csv('/home/sinfonia/sinfonia_ws/src/task_utilities/src/events/2024/ZEISS_event/facts.csv')
         
         """
         1. STATES MACHINE
@@ -78,9 +79,12 @@ class ZeissCustomersReception(object):
         # States Machine transitions definition
         
         self.transitions = [
+            
+            # Transition 0: Going to and executing the first state
+            {'trigger': 'start_task', 'source': 'ZeissCustomersReception', 'dest': 'INIT'},
          
             # Transition 1: Start the task: Nova starts receiving customers
-            {'trigger': 'start_task', 'source': 'INIT', 'dest': 'RECEIVING_CUSTOMERS'},
+            {'trigger': 'begin_reception', 'source': 'INIT', 'dest': 'RECEIVING_CUSTOMERS'},
             
             # Transition 2: Start saying random facts
             {'trigger': 'start_saying_facts', 'source': 'RECEIVING_CUSTOMERS', 'dest': 'SAYING_FACTS'},
@@ -96,7 +100,7 @@ class ZeissCustomersReception(object):
         ] 
         
         # States Machine initialization
-        self.machine = Machine(model=self, states=self.states, transitions=self.transitions, initial='INIT')
+        self.machine = Machine(model=self, states=self.states, transitions=self.transitions, initial='ZeissCustomersReception')
         
         # Thread for checking rospy
         rospy_check = threading.Thread(target=self.check_rospy)
@@ -106,14 +110,14 @@ class ZeissCustomersReception(object):
         
         
         # 1. Awareness service
-        print(self.consoleFormatter.format("Waiting for pytoolkit/awareness...", "WARNING"))
-        rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
-        self.awareness_srv = rospy.ServiceProxy("/pytoolkit/ALBasicAwareness/set_awareness_srv",SetBool)
+        #print(self.consoleFormatter.format("Waiting for pytoolkit/awareness...", "WARNING"))
+        #rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
+        #self.awareness_srv = rospy.ServiceProxy("/pytoolkit/ALBasicAwareness/set_awareness_srv",SetBool)
         
         # 2. Move head service
-        print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/move_head...", "WARNING"))
-        rospy.wait_for_service("/pytoolkit/ALMotion/move_head_srv")
-        self.move_head_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/move_head_srv",move_head_srv)
+        #print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/move_head...", "WARNING"))
+        #rospy.wait_for_service("/pytoolkit/ALMotion/move_head_srv")
+        #self.move_head_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/move_head_srv",move_head_srv)
         
         # 3. Tablet service: Show image
         print(self.consoleFormatter.format("Waiting for /pytoolkit/ALTabletService/show_image_srv...", "WARNING"))
@@ -121,22 +125,22 @@ class ZeissCustomersReception(object):
         self.show_image_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_image_srv",tablet_service_srv)
         
         # 4. Tablet service: Show topic
-        print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
-        rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
-        self.show_topic_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_topic_srv",tablet_service_srv)
+        #print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
+        #rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
+        #self.show_topic_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_topic_srv",tablet_service_srv)
         
         # 5. Autonomous life service
-        print(self.consoleFormatter.format("Waiting for pytoolkit/autononumusLife...", "WARNING"))
-        rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
-        self.autonomous_life_srv = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
+        #print(self.consoleFormatter.format("Waiting for pytoolkit/autononumusLife...", "WARNING"))
+        #rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
+        #self.autonomous_life_srv = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
         
-       # 6. ROS subscribers (perception)
-        print(self.consoleFormatter.format("Waiting for /perception_utilities/get_labels_publisher", "WARNING"))
-        self.get_labels_publisher = rospy.Subscriber("/perception_utilities/get_labels_publisher", get_labels_msg, self.callback_get_labels)
+        # 6. ROS subscribers (perception)
+        #print(self.consoleFormatter.format("Waiting for /perception_utilities/get_labels_publisher", "WARNING"))
+        #self.get_labels_publisher = rospy.Subscriber("/perception_utilities/get_labels_publisher", get_labels_msg, self.callback_get_labels)
 
         # 7. ROS Publishers
-        print(self.consoleFormatter.format("Waiting for /animations", "WARNING"))
-        self.animations_publisher = rospy.Publisher("/animations", animation_msg, queue_size = 1)
+        #print(self.consoleFormatter.format("Waiting for /animations", "WARNING"))
+        #self.animations_publisher = rospy.Publisher("/animations", animation_msg, queue_size = 1)
         
         
         """
@@ -147,7 +151,7 @@ class ZeissCustomersReception(object):
         self.labels = {}
         
         # 2. Global variables
-        self.registration_qr_img= "https://en.wikipedia.org/wiki/QR_code#/media/File:QR_code_for_mobile_English_Wikipedia.svg"
+        self.registration_qr_img= "https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg"
         
         
         
@@ -158,22 +162,16 @@ class ZeissCustomersReception(object):
         random_fact = self.facts_df.sample()
         return (random_fact['fact_content'].values[0], random_fact['fact_id'].values[0])
     
-    
-    
-    """
-    5. ROSPY FUNCTIONS
-    """
-    def check_rospy(self):
-        
-        # Ending all processes if rospy is not running
-        while not rospy.is_shutdown():
-            time.sleep(0.1)
-        print(self.consoleFormatter.format("Shutting down", "FAIL"))
-        os._exit(os.EX_OK)
-
-    def run(self):
-        while not rospy.is_shutdown():
-            self.start()
+    def callback_get_labels(self,data):
+        labels = data.labels
+        x_coordinates = data.x_coordinates
+        y_coordinates = data.y_coordinates
+        widths = data.widths
+        heights = data.heights
+        ids = data.ids
+        for i in range(len(labels)):
+            if int(self.img_dimensions[0]*0.2)<x_coordinates[i]<int(self.img_dimensions[0]*0.8) and widths[i]>130:
+                self.labels[labels[i]] = {"x":x_coordinates[i],"y":y_coordinates[i],"w":widths[i],"h":heights[i],"id":ids[i]}
     
     
     
@@ -183,7 +181,7 @@ class ZeissCustomersReception(object):
     
     #1. on enter INIT
     def on_enter_INIT(self):
-        
+    
         # Initialization message
         print(self.consoleFormatter.format("Initializing the task - ENTERING 'INIT' STATE", "HEADER"))
         
@@ -192,11 +190,8 @@ class ZeissCustomersReception(object):
         print(self.consoleFormatter.format("Nova: I am ready to do my task!", "HEADER"))
         
         # Starting the front camera to read QR codes
-        tm.turn_camera("front_camera","custom", 1,15)  
-        rospy.sleep(1)
-        tm.start_recognition("front_camera")
-        rospy.sleep(1)
-        
+        self.tm.initialize_pepper()
+            
         print(self.consoleFormatter.format("Nova: Front camera enabled!", "HEADER"))
         
         # Showing the registration QR code in the tablet
@@ -205,10 +200,10 @@ class ZeissCustomersReception(object):
         
         # Look for a person to begin greeting
         print(self.consoleFormatter.format("Nova: I will look for a person to greet him and start the reception of customers!", "HEADER"))
-        tm.look_for_object("person")
+        self.tm.look_for_object("person")
         
         # Greeting the person
-        tm.talk("""Hola! mi nombre es Nova, soy la robot de recepcion en este evento.
+        self.tm.talk("""Hola! mi nombre es Nova, soy la robot de recepcion en este evento.
                 
                 Espero estén teniendo un bonito día.
                 Seré la encargada de leer los códigos QR de las personas que ya se registraron con anterioridad.
@@ -218,7 +213,7 @@ class ZeissCustomersReception(object):
                 ""","Spanish")
         
         # Transition: Moving to the next state
-        self.start_task()
+        self.begin_reception()
         
     
     # 2. on enter RECEIVING_CUSTOMERS
@@ -229,7 +224,7 @@ class ZeissCustomersReception(object):
         print(self.consoleFormatter.format("Nova: I'm waiting for someone to show me the QR", "HEADER"))
         
         # If no person shows a QR code, Nova goes to the state of saying a random fact
-        person_detected = tm.wait_for_object(10)
+        person_detected = self.tm.wait_for_object(8)
         
         if person_detected == False:
             print(self.consoleFormatter.format("Nova: I have seen no person in 10 seconds, I will start saying facts about ZEISS!", "HEADER"))
@@ -240,7 +235,7 @@ class ZeissCustomersReception(object):
             # Reading the QR code
             print(self.consoleFormatter.format("Nova: Someone is in front of me, let's see if the person has a QR code", "HEADER"))
             rospy.sleep(1)
-            qr_code = tm.qr_read(10)
+            qr_code = self.tm.qr_read(10)
             
             # If the person does not show a QR code, Nova tells the person to show it or to register
             if qr_code == "":
@@ -284,6 +279,22 @@ class ZeissCustomersReception(object):
         print(self.consoleFormatter.format("Finishing the task - ENTERING 'JOB_DONE' STATE", "HEADER"))
         print(self.consoleFormatter.format("Nova: I am done for today!", "HEADER"))
         self.check_rospy()
+        
+        
+    """
+    5. ROSPY FUNCTIONS
+    """
+    def check_rospy(self):
+        
+        # Ending all processes if rospy is not running
+        while not rospy.is_shutdown():
+            time.sleep(0.1)
+        print(self.consoleFormatter.format("Shutting down", "FAIL"))
+        os._exit(os.EX_OK)
+
+    def run(self):
+        while not rospy.is_shutdown():
+            self.start_task()
 
 
 # Main function
