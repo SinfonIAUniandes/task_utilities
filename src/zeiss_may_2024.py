@@ -29,9 +29,9 @@ from std_msgs.msg import Bool
 from std_srvs.srv import SetBool
 
 # Robot Toolkit Services
-from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv
+from robot_toolkit_msgs.srv import tablet_service_srv,  set_open_close_hand_srv, set_open_close_hand_srvRequest, motion_tools_srv, battery_service_srv, set_output_volume_srv
 
-from robot_toolkit_msgs.msg import animation_msg
+from robot_toolkit_msgs.msg import animation_msg, motion_tools_msg
 
 # Robot Perception Messages
 from perception_msgs.msg import get_labels_msg
@@ -120,9 +120,10 @@ class ZeissCustomersReception(object):
         #self.move_head_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/move_head_srv",move_head_srv)
         
         # 3. Tablet service: Show image
-        print(self.consoleFormatter.format("Waiting for /pytoolkit/ALTabletService/show_image_srv...", "WARNING"))
         rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
-        self.show_image_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_image_srv",tablet_service_srv)
+        self.show_image_proxy = rospy.ServiceProxy(
+            "/pytoolkit/ALTabletService/show_image_srv", tablet_service_srv
+        )
         
         # 4. Tablet service: Show topic
         #print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
@@ -151,7 +152,7 @@ class ZeissCustomersReception(object):
         self.labels = {}
         
         # 2. Global variables
-        self.registration_qr_img= "https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg"
+        self.registration_qr_img= "https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"
         
         
         
@@ -174,6 +175,48 @@ class ZeissCustomersReception(object):
                 self.labels[labels[i]] = {"x":x_coordinates[i],"y":y_coordinates[i],"w":widths[i],"h":heights[i],"id":ids[i]}
     
     
+    def enable_breathing_service(self):
+        """
+        Enables the breathing animations of the robot.
+        """
+        request = set_open_close_hand_srvRequest()
+        request.hand = "All"
+        request.state = "True"
+        print("Waiting for breathing service")
+        rospy.wait_for_service("/pytoolkit/ALMotion/toggle_breathing_srv")
+        try:
+            toggle_breathing_proxy = rospy.ServiceProxy("/pytoolkit/ALMotion/toggle_breathing_srv", set_open_close_hand_srv)
+            toggle_breathing_proxy(request)
+            print("Breathing service connected!")
+        except rospy.ServiceException as e:
+            print("Service call failed")
+        request = set_open_close_hand_srvRequest()
+        request.hand = "Head"
+        request.state = "False"
+        print("Waiting for breathing service")
+        rospy.wait_for_service("/pytoolkit/ALMotion/toggle_breathing_srv")
+        try:
+            toggle_breathing_proxy = rospy.ServiceProxy("/pytoolkit/ALMotion/toggle_breathing_srv", set_open_close_hand_srv)
+            toggle_breathing_proxy(request)
+            print("Breathing service connected!")
+        except rospy.ServiceException as e:
+            print("Service call failed")
+    
+    def motion_tools_service(self):
+        """
+        Enables the motion Tools service from the toolkit of the robot.
+        """
+        request = motion_tools_msg()
+        request.command = "enable_all"
+        print("Waiting for motion tools service")
+        rospy.wait_for_service('/robot_toolkit/motion_tools_srv')
+        try:
+            motion = rospy.ServiceProxy('/robot_toolkit/motion_tools_srv', motion_tools_srv)
+            motion(request)
+            print("Motion tools service connected!")
+        except rospy.ServiceException as e:
+            print("Service call failed")
+    
     
     """
     4. TASK STATES LOGICAL IMPLEMENTATION
@@ -189,20 +232,41 @@ class ZeissCustomersReception(object):
         self.tm.talk("I will begin my task as the ZEISS company event receptionist", "English")
         print(self.consoleFormatter.format("Nova: I am ready to do my task!", "HEADER"))
         
+        # Greeting while the initialization completes
+        self.tm.talk("""
+                Por favor dame un momento mientras termino de iniciar mis herramientas necesarias para esta tarea.
+                
+                .bip bip bip.
+                
+                En este momento se están inicializando mis funcionalidades para ver e identificar personas.
+                
+                También se están inicializando las herramientas que me permiten moverme de manera más natural.
+                
+                Por último, estoy inicializando un servicio para poder simular que respiro y mejorar la naturalidad de mis interacciones.
+                
+                Gracias por esperar.     
+                     
+                ""","Spanish", wait=False)
+        
         # Starting the front camera to read QR codes
         self.tm.initialize_pepper()
+        self.motion_tools_service()
+        self.enable_breathing_service()
+        
+        
+        self.tm.talk("""
+                     
+                     
+                     
+                     """, "Spanish", wait=True)
             
         print(self.consoleFormatter.format("Nova: Front camera enabled!", "HEADER"))
         
         # Showing the registration QR code in the tablet
-        self.show_image_srv(self.registration_qr_img)
+        self.show_image_proxy(self.registration_qr_img)
         print(self.consoleFormatter.format("Nova: I am now showing the registration QR in my tablet!", "HEADER"))
         
-        # Look for a person to begin greeting
-        print(self.consoleFormatter.format("Nova: I will look for a person to greet him and start the reception of customers!", "HEADER"))
-        self.tm.look_for_object("person")
-        
-        # Greeting the person
+        # Greeting while the initialization completes
         self.tm.talk("""Hola! mi nombre es Nova, soy la robot de recepcion en este evento.
                 
                 Espero estén teniendo un bonito día.
@@ -210,7 +274,11 @@ class ZeissCustomersReception(object):
                 Aquellos que aún no se han registrado, pueden hacerlo al escanear el código QR sobre mi tablet.
 
                 Por favor, acérquese a mi para que pueda leer su código QR con mis ojos de robot.
-                ""","Spanish")
+                ""","Spanish", wait=False)
+        
+        # Look for a person to begin greeting
+        print(self.consoleFormatter.format("Nova: I will look for a person to greet him and start the reception of customers!", "HEADER"))
+        self.tm.look_for_object("person")
         
         # Transition: Moving to the next state
         self.begin_reception()
