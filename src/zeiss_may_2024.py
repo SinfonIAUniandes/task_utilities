@@ -33,9 +33,6 @@ from robot_toolkit_msgs.srv import tablet_service_srv,  set_open_close_hand_srv,
 
 from robot_toolkit_msgs.msg import animation_msg, motion_tools_msg
 
-# Robot Perception Messages
-from perception_msgs.msg import get_labels_msg
-
 
 # Class definition and implementation
 class ZeissCustomersReception(object):
@@ -160,8 +157,9 @@ class ZeissCustomersReception(object):
     3. CUSTOM FUNCTIONS
     """
     def get_random_fact(self):
-        random_fact = self.facts_df.sample()
-        return (random_fact['fact_content'].values[0], random_fact['fact_id'].values[0])
+        random_index = random.randint(0, len(self.facts_df) - 1)
+        random_fact = self.facts_df.iloc[[random_index]]
+        return random_fact['fact_content'].values[0], random_fact['fact_id'].values[0]
     
     def callback_get_labels(self,data):
         labels = data.labels
@@ -223,7 +221,7 @@ class ZeissCustomersReception(object):
     """
     
     #1. on enter INIT
-    def on_enter_INIT(self):
+    def on_enter_INIT(self):    
     
         # Initialization message
         print(self.consoleFormatter.format("Initializing the task - ENTERING 'INIT' STATE", "HEADER"))
@@ -236,13 +234,15 @@ class ZeissCustomersReception(object):
         self.tm.talk("""
                 Por favor dame un momento mientras termino de iniciar mis herramientas necesarias para esta tarea.
                 
-                .bip bip bip.
+                bip bip bip
                 
-                En este momento se están inicializando mis funcionalidades para ver e identificar personas.
+                Ahora mismo se están inicializando mis funcionalidades para ver e identificar personas.
                 
                 También se están inicializando las herramientas que me permiten moverme de manera más natural.
                 
                 Por último, estoy inicializando un servicio para poder simular que respiro y mejorar la naturalidad de mis interacciones.
+                
+                bip bip bip
                 
                 Gracias por esperar.     
                      
@@ -256,7 +256,7 @@ class ZeissCustomersReception(object):
         
         self.tm.talk("""
                      
-                     
+        Ya está, estoy lista para la tarea!
                      
                      """, "Spanish", wait=True)
             
@@ -275,6 +275,8 @@ class ZeissCustomersReception(object):
 
                 Por favor, acérquese a mi para que pueda leer su código QR con mis ojos de robot.
                 ""","Spanish", wait=False)
+        
+        rospy.sleep(2)
         
         # Look for a person to begin greeting
         print(self.consoleFormatter.format("Nova: I will look for a person to greet him and start the reception of customers!", "HEADER"))
@@ -303,7 +305,11 @@ class ZeissCustomersReception(object):
             # Reading the QR code
             print(self.consoleFormatter.format("Nova: Someone is in front of me, let's see if the person has a QR code", "HEADER"))
             rospy.sleep(1)
-            qr_code = self.tm.qr_read(10)
+            self.tm.talk("""
+            Hola! te doy la bienvenida al evento de tsais. Por favor muéstrame el código QR de ingreso que te debió llegar a tu correo
+            cuando te registraste.
+            ""","Spanish", wait=False)
+            qr_code = self.tm.qr_read(8)
             
             # If the person does not show a QR code, Nova tells the person to show it or to register
             if qr_code == "":
@@ -330,12 +336,12 @@ class ZeissCustomersReception(object):
         print(self.consoleFormatter.format("Initializing the task - ENTERING 'RECEIVING_CUSTOMERS' STATE", "HEADER"))
         
         # Choosing the random fact
-        random_fact = self.get_random_fact()[0]
-        random_fact_id = self.get_random_fact()[1]
-        print(self.consoleFormatter.format(f"Nova: I chose to say the fact with ID = {random_fact_id}", "HEADER"))
+        fact_content, fact_id = self.get_random_fact()
+        
+        print(self.consoleFormatter.format(f"Nova: I chose to say the fact with ID = {fact_id}", "HEADER"))
         
         # Saying the random fact
-        self.tm.talk(random_fact, "Spanish")
+        self.tm.talk(fact_content, "Spanish")
         
         # Going back to scan QR codes
         self.stop_saying_facts()
