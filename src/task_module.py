@@ -862,11 +862,11 @@ class Task_module:
         return self.clothes_color
         
         
-    def img_description(self, prompt: str) -> dict:
+    def img_description(self, prompt: str, camera_name="front_camera") -> dict:
         attributes = {}
         if self.perception:
             try:
-                response = self.img_description_proxy(prompt)
+                response = self.img_description_proxy(camera_name, prompt)
                 attributes = {
                     "status": response.approved,
                     "message": response.message
