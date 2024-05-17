@@ -15,9 +15,8 @@ class CLEAN_THE_TABLE(object):
         self.tm = tm(navigation=True, manipulation=True, speech=True, perception = True, pytoolkit=True)
         self.tm.initialize_node('CLEAN_THE_TABLE')
  
-        #TODO Definir estados
         self.STATES = ['INIT', 'GO_TO_TABLE', 'GRAB_OBJECT', 'GO_DISHWASHER', 'DROP_OBJECT', 'CLEAN', 'END'] 
-        #TODO Definir transiciones entre los estados
+
         self.TRANSITIONS = [{'trigger': 'zero', 'source': 'CLEAN_THE_TABLE', 'dest': 'INIT'},
                             {'trigger': 'start', 'source': 'INIT', 'dest': 'GO_TO_TABLE'},
                             {'trigger': 'grab_ingredient', 'source': 'GO_TO_TABLE', 'dest': 'GRAB_OBJECT'},
