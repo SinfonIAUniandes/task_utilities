@@ -103,40 +103,6 @@ class ZeissCustomersReception(object):
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
         
-        # ROS callbacks initialization
-        
-        
-        # 1. Awareness service
-        #print(self.consoleFormatter.format("Waiting for pytoolkit/awareness...", "WARNING"))
-        #rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
-        #self.awareness_srv = rospy.ServiceProxy("/pytoolkit/ALBasicAwareness/set_awareness_srv",SetBool)
-        
-        # 2. Move head service
-        #print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/move_head...", "WARNING"))
-        #rospy.wait_for_service("/pytoolkit/ALMotion/move_head_srv")
-        #self.move_head_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/move_head_srv",move_head_srv)
-        
-        # 3. Tablet service: Show image
-        rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
-        
-        # 4. Tablet service: Show topic
-        #print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
-        #rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
-        #self.show_topic_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_topic_srv",tablet_service_srv)
-        
-        # 5. Autonomous life service
-        #print(self.consoleFormatter.format("Waiting for pytoolkit/autononumusLife...", "WARNING"))
-        #rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
-        #self.autonomous_life_srv = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
-        
-        # 6. ROS subscribers (perception)
-        #print(self.consoleFormatter.format("Waiting for /perception_utilities/get_labels_publisher", "WARNING"))
-        #self.get_labels_publisher = rospy.Subscriber("/perception_utilities/get_labels_publisher", get_labels_msg, self.callback_get_labels)
-
-        # 7. ROS Publishers
-        #print(self.consoleFormatter.format("Waiting for /animations", "WARNING"))
-        #self.animations_publisher = rospy.Publisher("/animations", animation_msg, queue_size = 1)
-        
         
         """
         2. VARIABLES
@@ -242,15 +208,22 @@ class ZeissCustomersReception(object):
         
         self.tm.talk("""
                      
-        Ya está, estoy lista para la tarea!
+        Ya estoy lista para la tarea!
                      
                      """, "Spanish", wait=True)
             
         print(self.consoleFormatter.format("Nova: Front camera enabled!", "HEADER"))
         
         # Showing the registration QR code in the tablet
-        self.tm.show_image(self.registration_qr_img)
-        print(self.consoleFormatter.format("Nova: I am now showing the registration QR in my tablet!", "HEADER"))
+        image_showing = self.tm.show_image(self.registration_qr_img)
+        
+        
+        if (image_showing):
+            print(self.consoleFormatter.format("Nova: I am now showing the registration QR in my tablet!", "HEADER"))
+            
+        else:
+            print(self.consoleFormatter.format("Nova: I could not show the registration QR in my tablet!", "HEADER"))
+        
         
         # Greeting while the initialization completes
         self.tm.talk("""Hola! mi nombre es Nova, soy la robot de recepcion en este evento.
@@ -292,8 +265,7 @@ class ZeissCustomersReception(object):
             print(self.consoleFormatter.format("Nova: Someone is in front of me, let's see if the person has a QR code", "HEADER"))
             rospy.sleep(1)
             self.tm.talk("""
-            Hola! te doy la bienvenida al evento de tsais. Por favor muéstrame el código QR de ingreso que te debió llegar a tu correo
-            cuando te registraste.
+            Hola! te doy la bienvenida al evento de tsais. Por favor muéstrame el código QR de ingreso que te debió llegar al correo.
             ""","Spanish", wait=False)
             qr_code = self.tm.qr_read(8)
             
