@@ -234,16 +234,6 @@ class ZeissCustomersReception(object):
         self.tm.talk("""
                 Por favor dame un momento mientras termino de iniciar mis herramientas necesarias para esta tarea.
                 
-                bip bip bip
-                
-                Ahora mismo se están inicializando mis funcionalidades para ver e identificar personas.
-                
-                También se están inicializando las herramientas que me permiten moverme de manera más natural.
-                
-                Por último, estoy inicializando un servicio para poder simular que respiro y mejorar la naturalidad de mis interacciones.
-                
-                bip bip bip
-                
                 Gracias por esperar.     
                      
                 ""","Spanish", wait=False)
