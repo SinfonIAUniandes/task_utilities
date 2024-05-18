@@ -61,6 +61,10 @@ class STICKLER_RULES(object):
         self.list_places = ["house","living","kitchen","room","dining"]
         self.forbidden = "room"
         self.checked_places = []
+        
+        #Varibales globales para los chequeos con threading. Se inician asumiendo que la persona esta rompiendo la regla
+        self.has_shoes =  True
+        self.has_drink =  False
 
     def on_enter_INIT(self):
         self.tm.talk("I am going to do the "+self.task_name+" task","English", wait=False)
@@ -112,7 +116,11 @@ class STICKLER_RULES(object):
                     print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
                     self.tm.robot_stop_srv()
                     angulos_personas.append(angulo_persona)
-                    if self.check_forbidden(angulo_persona) or  self.check_drink(angulo_persona) or self.check_shoes(angulo_persona):
+                    shoes_check_thread = threading.Thread(target=self.check_shoes, args=[angulo_persona])
+                    shoes_check_thread.start()
+                    drink_check_thread = threading.Thread(target=self.check_drink, args=[angulo_persona])
+                    drink_check_thread.start()
+                    if self.check_forbidden(angulo_persona) or (not self.has_drink) or self.has_shoes:
                         self.breakers_found += 1
                         breakers_current_room +=1
             else:
@@ -126,28 +134,24 @@ class STICKLER_RULES(object):
     def check_shoes(self, original_angle):
         print(self.consoleFormatter.format("LOOK4SHOES", "HEADER"))
         self.tm.talk("I am going to see if you have shoes on!","English", wait=False)
-        self.move_head_srv("down")
-        rospy.sleep(1)
         gpt_vision_prompt = f"Is the closest person in the picture wearing shoes? Answer only with True or False"
-        answer = self.tm.img_description(gpt_vision_prompt)["message"]
+        answer = self.tm.img_description(prompt=gpt_vision_prompt,camera_name="bottom_camera")["message"]
         print("GPT ANSWER:"+answer)
-        self.move_head_srv("default")
         if "True" in answer:
             self.ASK4SHOES(original_angle)
-            return True
+            self.has_shoes = True
         else:
             self.tm.talk("You passed the shoes check!","English", wait=False)
-        return False
 
     def check_drink(self, original_angle):
         print(self.consoleFormatter.format("LOOK4DRINK", "HEADER"))
         self.tm.talk("I am going to see if you have a drink!","English", wait=False)
-        gpt_vision_prompt = f"Is the closest person in the picture holding a drink in their hand? Answer only with True or False"
+        gpt_vision_prompt = f"Is the closest person in the picture not holding a drink in their hand? Answer only with True or False"
         answer = self.tm.img_description(gpt_vision_prompt)["message"]
         print("GPT ANSWER:"+answer)
         if "True" in answer:
             self.ASK4DRINK(original_angle)
-            return True
+            self.has_drink = False
         else:
             self.tm.talk("You passed the drink check!","English", wait=False)
         return False
@@ -172,12 +176,9 @@ class STICKLER_RULES(object):
             self.tm.talk("Now, take them off please.","English", wait=True)
             rospy.sleep(10)
             self.tm.talk("I am going to see if you have shoes on!","English", wait=False)
-            self.move_head_srv("down")
-            rospy.sleep(1)
             gpt_vision_prompt = f"Is the closest person in the picture wearing shoes? Answer only with True or False"
-            answer = self.tm.img_description(gpt_vision_prompt)["message"]
+            answer = self.tm.img_description(gpt_vision_prompt,camera_name="bottom_camera")["message"]
             print("GPT ANSWER:"+answer)
-            self.move_head_srv("default")
             if "True" in answer:
                 self.tm.talk("I see you did not comply, but i must continue checking the other guests","English", wait=False)
             else:
@@ -201,7 +202,7 @@ class STICKLER_RULES(object):
             self.tm.talk("Now, please take a drink and show it to me","English", wait=True)
             rospy.sleep(5)
             self.tm.talk("I am going to see if you have a drink!","English", wait=False)
-            gpt_vision_prompt = f"Is the closest person in the picture holding a drink in their hand? Answer only with True or False"
+            gpt_vision_prompt = f"Is the closest person in the picture not holding a drink in their hand? Answer only with True or False"
             answer = self.tm.img_description(gpt_vision_prompt)["message"]
             print("GPT ANSWER:"+answer)
             if "True" in answer:

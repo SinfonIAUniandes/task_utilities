@@ -188,7 +188,7 @@ class Evento(object):
         self.set_hot_words()
 
     def set_hot_words(self):
-        self.tm.hot_word(["chao","detente","hey nova","baile","asereje","pose","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro","gracias"],thresholds=[0.5, 0.4, 0.4, 0.5, 0.55, 0.4, 0.4, 0.4, 0.5, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.5])
+        self.tm.hot_word(["chao","detente","hey nova","baile","asereje","pose","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro","gracias"],thresholds=[0.5, 0.4, 0.39, 0.5, 0.55, 0.39, 0.4, 0.39, 0.5, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.5])
 
     def gen_anim_msg(self, animation):
         anim_msg = animation_msg()
@@ -196,7 +196,7 @@ class Evento(object):
         anim_msg.animation_name = animation
         return anim_msg
     
-    def dance_thread(self, number):
+    def dance_threadf(self, number):
         #Se ponen los bailes en un thread porque estancan la ejecucion y no permiten checkear otras hotwords, como detente
         self.haciendo_animacion = True
         self.play_dance_srv(number)
@@ -225,12 +225,12 @@ class Evento(object):
                 self.tm.talk("Muah!","Spanish")
             elif word == "baile":
                 if not self.already_dance:
-                    dance_thread = threading.Thread(target=dance_thread,args=[1])
+                    dance_thread = threading.Thread(target=self.dance_threadf,args=[1])
                     dance_thread.start()
                     self.already_dance = True
             elif word == "asereje":
                 if not self.already_asereje:
-                    dance_thread = threading.Thread(target=dance_thread,args=[3])
+                    dance_thread = threading.Thread(target=self.dance_threadf,args=[3])
                     dance_thread.start()
                     self.already_asereje = True
             elif word == "pose":
