@@ -74,14 +74,16 @@ class STICKLER_RULES(object):
         self.tm.initialize_pepper()
         self.tm.turn_camera("bottom_camera","custom",1,15)
         self.tm.show_topic("/perception_utilities/yolo_publisher")
-        #self.tm.go_to_place("living") # El cuarto principal se llama house
+        self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.tm.callback_get_labels_subscriber)
+        person_thread = threading.Thread(target=self.tm.get_closer_person)
+        person_thread.start()
         # Ir directo al forbidden room
-        #self.tm.talk("I'm gonna go check the forbidden room: " + self.forbidden ,"English", wait=False)
-        #print("Current Place: " + self.last_place)
-        #print("Next Place: " + self.forbidden)
-        #self.checked_places.append(self.forbidden)
-        #self.last_place = self.forbidden
-        #self.tm.go_to_place(self.forbidden)
+        self.tm.talk("I'm gonna go check the forbidden room: " + self.forbidden ,"English", wait=False)
+        print("Current Place: " + self.last_place)
+        print("Next Place: " + self.forbidden)
+        self.checked_places.append(self.forbidden)
+        self.last_place = self.forbidden
+        self.tm.go_to_place(self.forbidden)
         self.beggining()
 
     # ============================== LOOK4 STATES ==============================
@@ -119,7 +121,9 @@ class STICKLER_RULES(object):
                         angulo_nuevo = False
                 if angulo_nuevo:
                     print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
-                    rospy.sleep(1)
+                    found_person = self.tm.closest_person
+                    while found_person[1]<=300:
+                        rospy.sleep(0.1)
                     self.tm.robot_stop_srv()
                     angulos_personas.append(angulo_persona)
                     is_in_forbidden = self.check_forbidden(angulo_persona)
