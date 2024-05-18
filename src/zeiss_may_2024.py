@@ -118,9 +118,6 @@ class ZeissCustomersReception(object):
         
         # 3. Tablet service: Show image
         rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
-        self.show_image_proxy = rospy.ServiceProxy(
-            "/pytoolkit/ALTabletService/show_image_srv", tablet_service_srv
-        )
         
         # 4. Tablet service: Show topic
         #print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
@@ -252,7 +249,7 @@ class ZeissCustomersReception(object):
         print(self.consoleFormatter.format("Nova: Front camera enabled!", "HEADER"))
         
         # Showing the registration QR code in the tablet
-        self.show_image_proxy(self.registration_qr_img)
+        self.tm.show_image(self.registration_qr_img)
         print(self.consoleFormatter.format("Nova: I am now showing the registration QR in my tablet!", "HEADER"))
         
         # Greeting while the initialization completes

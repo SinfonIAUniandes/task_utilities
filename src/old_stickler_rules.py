@@ -26,7 +26,7 @@ class STICKLER_RULES(object):
         # Definir las transiciones permitidas entre los estados
         transitions = [
             {'trigger': 'start', 'source': 'STICKLER_RULES', 'dest': 'INIT'},
-            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'LOOK4PERSON'},
+            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'GO2NEXT'},
             {'trigger': 'rules_checked', 'source': 'LOOK4PERSON', 'dest': 'GO2NEXT'},
             {'trigger': 'arrive_next', 'source': 'GO2NEXT', 'dest': 'LOOK4PERSON'},
         ]
@@ -58,27 +58,29 @@ class STICKLER_RULES(object):
         self.breakers_found = 0
         #TODO Poner el cuarto que sea forbidden
         #self.list_places = ["bedroom","kitchen","office","living_room","bathroom", "forbidden"] # Ya hay una lista de lugares y forbidden se puede usar como una variable
-        self.list_places = ["house","living","kitchen","room","dining"]
+        self.list_places = ["room","dining","house","living","kitchen"]
         self.forbidden = "room"
         self.checked_places = []
         
-        #Varibales globales para los chequeos con threading. Se inician asumiendo que la persona esta rompiendo la regla
-        self.has_shoes =  True
-        self.has_drink =  False
+        #Varibales globales para los chequeos con threading.
+        # 2 Es que no se han hecho los drinks, 1 es que si tiene, 0 es que no tiene
+        self.has_shoes =  2
+        self.has_drink =  2
 
     def on_enter_INIT(self):
         self.tm.talk("I am going to do the "+self.task_name+" task","English", wait=False)
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.initialize_pepper()
+        self.tm.turn_camera("bottom_camera","custom",1,15)
         self.tm.show_topic("/perception_utilities/yolo_publisher")
-        self.tm.go_to_place("living") # El cuarto principal se llama house
+        #self.tm.go_to_place("living") # El cuarto principal se llama house
         # Ir directo al forbidden room
-        self.tm.talk("I'm gonna go check the forbidden room: " + self.forbidden ,"English", wait=False)
-        print("Current Place: " + self.last_place)
-        print("Next Place: " + self.forbidden)
-        self.checked_places.append(self.forbidden)
-        self.last_place = self.forbidden
-        self.tm.go_to_place(self.forbidden)
+        #self.tm.talk("I'm gonna go check the forbidden room: " + self.forbidden ,"English", wait=False)
+        #print("Current Place: " + self.last_place)
+        #print("Next Place: " + self.forbidden)
+        #self.checked_places.append(self.forbidden)
+        #self.last_place = self.forbidden
+        #self.tm.go_to_place(self.forbidden)
         self.beggining()
 
     # ============================== LOOK4 STATES ==============================
@@ -86,9 +88,11 @@ class STICKLER_RULES(object):
         print(self.consoleFormatter.format("LOOK4PERSON", "WARNING"))
         self.tm.talk("I am going to check if the guests are breaking the rules!","English", wait=False)
         self.tm.setRPosture_srv("stand")
-        grados_seg = 15
-        # A 15 grados/seg toma 24 segundos dar 1 vuelta
-        tiempo_una_vuelta = 24
+        #Estando en la puerta 
+        self.tm.spin_srv(-60)
+        grados_seg = 8
+        # A 15 grados/seg toma 24 segundos dar 1 vuelta. Asumiendo que se esta en la puerta, toma 8 segundos chequear si el rango de vision es 60 grados y no se quiere ver gente fuera de la arena
+        tiempo_una_vuelta = 12
         angulos_personas = []
         self.move_head_srv("default")
         breakers_current_room = 0
@@ -115,14 +119,22 @@ class STICKLER_RULES(object):
                 if angulo_nuevo:
                     print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
                     self.tm.robot_stop_srv()
+                    self.tm.robot_stop_srv()
+                    self.tm.robot_stop_srv()
                     angulos_personas.append(angulo_persona)
-                    shoes_check_thread = threading.Thread(target=self.check_shoes, args=[angulo_persona])
-                    shoes_check_thread.start()
-                    drink_check_thread = threading.Thread(target=self.check_drink, args=[angulo_persona])
-                    drink_check_thread.start()
-                    if self.check_forbidden(angulo_persona) or (not self.has_drink) or self.has_shoes:
+                    is_in_forbidden = self.check_forbidden(angulo_persona)
+                    if not is_in_forbidden:
+                        shoes_check_thread = threading.Thread(target=self.check_shoes, args=[angulo_persona])
+                        shoes_check_thread.start()
+                        drink_check_thread = threading.Thread(target=self.check_drink, args=[angulo_persona])
+                        drink_check_thread.start()
+                        while self.has_drink==2 and self.has_shoes==2:
+                            rospy.sleep(0.1)
+                    if is_in_forbidden or self.has_drink==0 or self.has_shoes==1:
                         self.breakers_found += 1
                         breakers_current_room +=1
+                    self.has_drink = 2
+                    self.has_shoes = 2
             else:
                 print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
                 self.tm.robot_stop_srv()
@@ -135,25 +147,27 @@ class STICKLER_RULES(object):
         print(self.consoleFormatter.format("LOOK4SHOES", "HEADER"))
         self.tm.talk("I am going to see if you have shoes on!","English", wait=False)
         gpt_vision_prompt = f"Is the closest person in the picture wearing shoes? Answer only with True or False"
-        answer = self.tm.img_description(prompt=gpt_vision_prompt,camera_name="bottom_camera")["message"]
+        answer = self.tm.img_description(prompt=gpt_vision_prompt,camera_name="both")["message"]
         print("GPT ANSWER:"+answer)
         if "True" in answer:
             self.ASK4SHOES(original_angle)
-            self.has_shoes = True
+            self.has_shoes = 1
         else:
             self.tm.talk("You passed the shoes check!","English", wait=False)
+            self.has_shoes = 0
 
     def check_drink(self, original_angle):
         print(self.consoleFormatter.format("LOOK4DRINK", "HEADER"))
         self.tm.talk("I am going to see if you have a drink!","English", wait=False)
-        gpt_vision_prompt = f"Is the closest person in the picture not holding a drink in their hand? Answer only with True or False"
-        answer = self.tm.img_description(gpt_vision_prompt)["message"]
+        gpt_vision_prompt = f"Is the closest person in the picture holding a drink in their hand? Answer only with True or False"
+        answer = self.tm.img_description(gpt_vision_prompt,camera_name="both")["message"]
         print("GPT ANSWER:"+answer)
         if "True" in answer:
-            self.ASK4DRINK(original_angle)
-            self.has_drink = False
-        else:
             self.tm.talk("You passed the drink check!","English", wait=False)
+            self.has_drink = 1
+        else:
+            self.ASK4DRINK(original_angle)
+            self.has_drink = 0
         return False
 
     def check_forbidden(self, original_angle):
@@ -177,7 +191,7 @@ class STICKLER_RULES(object):
             rospy.sleep(10)
             self.tm.talk("I am going to see if you have shoes on!","English", wait=False)
             gpt_vision_prompt = f"Is the closest person in the picture wearing shoes? Answer only with True or False"
-            answer = self.tm.img_description(gpt_vision_prompt,camera_name="bottom_camera")["message"]
+            answer = self.tm.img_description(prompt=gpt_vision_prompt,camera_name="both")["message"]
             print("GPT ANSWER:"+answer)
             if "True" in answer:
                 self.tm.talk("I see you did not comply, but i must continue checking the other guests","English", wait=False)
@@ -202,8 +216,8 @@ class STICKLER_RULES(object):
             self.tm.talk("Now, please take a drink and show it to me","English", wait=True)
             rospy.sleep(5)
             self.tm.talk("I am going to see if you have a drink!","English", wait=False)
-            gpt_vision_prompt = f"Is the closest person in the picture not holding a drink in their hand? Answer only with True or False"
-            answer = self.tm.img_description(gpt_vision_prompt)["message"]
+            gpt_vision_prompt = f"Is the closest person in the picture holding a drink in their hand? Answer only with True or False"
+            answer = self.tm.img_description(gpt_vision_prompt,camera_name="both")["message"]
             print("GPT ANSWER:"+answer)
             if "True" in answer:
                 self.tm.talk("I see you did not comply, but i must continue checking the other guests","English", wait=False)
