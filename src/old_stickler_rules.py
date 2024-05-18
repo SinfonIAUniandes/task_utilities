@@ -12,6 +12,7 @@ import os
 import numpy as np
 
 from navigation_msgs.srv import get_absolute_position_srv
+from perception_msgs.msg import get_labels_msg
 from robot_toolkit_msgs.srv import move_head_srv
 
 class STICKLER_RULES(object):
@@ -26,7 +27,7 @@ class STICKLER_RULES(object):
         # Definir las transiciones permitidas entre los estados
         transitions = [
             {'trigger': 'start', 'source': 'STICKLER_RULES', 'dest': 'INIT'},
-            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'GO2NEXT'},
+            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'LOOK4PERSON'},
             {'trigger': 'rules_checked', 'source': 'LOOK4PERSON', 'dest': 'GO2NEXT'},
             {'trigger': 'arrive_next', 'source': 'GO2NEXT', 'dest': 'LOOK4PERSON'},
         ]
@@ -35,7 +36,7 @@ class STICKLER_RULES(object):
 
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
-
+        
         # ROS Services (PyToolkit)
 
         print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/move_head...", "WARNING"))
@@ -58,7 +59,7 @@ class STICKLER_RULES(object):
         self.breakers_found = 0
         #TODO Poner el cuarto que sea forbidden
         #self.list_places = ["bedroom","kitchen","office","living_room","bathroom", "forbidden"] # Ya hay una lista de lugares y forbidden se puede usar como una variable
-        self.list_places = ["room","dining","house","living","kitchen"]
+        self.list_places = ["dining","house","living","kitchen","room"]
         self.forbidden = "room"
         self.checked_places = []
         
@@ -118,21 +119,27 @@ class STICKLER_RULES(object):
                         angulo_nuevo = False
                 if angulo_nuevo:
                     print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
-                    self.tm.robot_stop_srv()
-                    self.tm.robot_stop_srv()
+                    rospy.sleep(1)
                     self.tm.robot_stop_srv()
                     angulos_personas.append(angulo_persona)
                     is_in_forbidden = self.check_forbidden(angulo_persona)
                     if not is_in_forbidden:
-                        shoes_check_thread = threading.Thread(target=self.check_shoes, args=[angulo_persona])
+                        shoes_check_thread = threading.Thread(target=self.check_shoes)
                         shoes_check_thread.start()
-                        drink_check_thread = threading.Thread(target=self.check_drink, args=[angulo_persona])
+                        drink_check_thread = threading.Thread(target=self.check_drink)
                         drink_check_thread.start()
                         while self.has_drink==2 and self.has_shoes==2:
                             rospy.sleep(0.1)
+                    self.tm.robot_stop_srv()
+                    if self.has_drink==0:
+                        self.ASK4DRINK(angulo_persona)
+                    if self.has_shoes==1:
+                        self.ASK4SHOES(angulo_persona)
                     if is_in_forbidden or self.has_drink==0 or self.has_shoes==1:
                         self.breakers_found += 1
                         breakers_current_room +=1
+                    else:
+                        self.tm.talk("Congratulations! You're not breaking any rule","English", wait=False)
                     self.has_drink = 2
                     self.has_shoes = 2
             else:
@@ -143,35 +150,32 @@ class STICKLER_RULES(object):
         print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
         self.rules_checked()
 
-    def check_shoes(self, original_angle):
+    def check_shoes(self):
         print(self.consoleFormatter.format("LOOK4SHOES", "HEADER"))
-        self.tm.talk("I am going to see if you have shoes on!","English", wait=False)
-        gpt_vision_prompt = f"Is the closest person in the picture wearing shoes? Answer only with True or False"
+        self.tm.robot_stop_srv()
+        gpt_vision_prompt = f"Is the closest person in the picture barefooted or in socks? Answer only with True or False"
         answer = self.tm.img_description(prompt=gpt_vision_prompt,camera_name="both")["message"]
         print("GPT ANSWER:"+answer)
         if "True" in answer:
-            self.ASK4SHOES(original_angle)
-            self.has_shoes = 1
-        else:
-            self.tm.talk("You passed the shoes check!","English", wait=False)
             self.has_shoes = 0
+        else:
+            self.has_shoes = 1
 
-    def check_drink(self, original_angle):
+    def check_drink(self):
         print(self.consoleFormatter.format("LOOK4DRINK", "HEADER"))
-        self.tm.talk("I am going to see if you have a drink!","English", wait=False)
-        gpt_vision_prompt = f"Is the closest person in the picture holding a drink in their hand? Answer only with True or False"
+        self.tm.robot_stop_srv()
+        gpt_vision_prompt = f"Is the closest person in the picture holding a bottle,a juice box, a cup, a can, or any kind of drink in their hand? Answer only with True or False"
         answer = self.tm.img_description(gpt_vision_prompt,camera_name="both")["message"]
         print("GPT ANSWER:"+answer)
         if "True" in answer:
-            self.tm.talk("You passed the drink check!","English", wait=False)
             self.has_drink = 1
         else:
-            self.ASK4DRINK(original_angle)
             self.has_drink = 0
         return False
 
     def check_forbidden(self, original_angle):
         #if self.last_place == "forbidden": # Manejar el forbidden room como variable
+        self.tm.robot_stop_srv()
         if self.last_place == self.forbidden:
             self.ASK2LEAVE(original_angle)
             return True
@@ -190,7 +194,7 @@ class STICKLER_RULES(object):
             self.tm.talk("Now, take them off please.","English", wait=True)
             rospy.sleep(10)
             self.tm.talk("I am going to see if you have shoes on!","English", wait=False)
-            gpt_vision_prompt = f"Is the closest person in the picture wearing shoes? Answer only with True or False"
+            gpt_vision_prompt = f"Is the closest person in the picture barefooted or in socks? Answer only with True or False"
             answer = self.tm.img_description(prompt=gpt_vision_prompt,camera_name="both")["message"]
             print("GPT ANSWER:"+answer)
             if "True" in answer:
@@ -216,7 +220,7 @@ class STICKLER_RULES(object):
             self.tm.talk("Now, please take a drink and show it to me","English", wait=True)
             rospy.sleep(5)
             self.tm.talk("I am going to see if you have a drink!","English", wait=False)
-            gpt_vision_prompt = f"Is the closest person in the picture holding a drink in their hand? Answer only with True or False"
+            gpt_vision_prompt = f"Is the closest person in the picture holding a bottle,a juice box, a cup, a can, or any kind of drink in their hand? Answer only with True or False"
             answer = self.tm.img_description(gpt_vision_prompt,camera_name="both")["message"]
             print("GPT ANSWER:"+answer)
             if "True" in answer:

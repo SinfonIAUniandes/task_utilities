@@ -10,7 +10,7 @@ from std_msgs.msg import Int32, String
 tm = tm.Task_module(perception = True,speech=True,manipulation=False, navigation=False)
 #Esperar 2 segunods
 time.sleep(2)
-tm.initialize_node()
+tm.initialize_node("sisandes")
 rospy.sleep(1)
 tm.turn_camera("front_camera","custom",1,15)   
 rospy.sleep(1)

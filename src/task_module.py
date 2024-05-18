@@ -13,7 +13,7 @@ from threading import Thread
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv
+from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv, tablet_service_srvRequest
 from robot_toolkit_msgs.msg import touch_msg
 
 from manipulation_msgs.srv import *
@@ -1704,16 +1704,11 @@ class Task_module:
         ----------
         Displays the image on the screen of the robot
         """
-        images = {
-            "sinfonia": "https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png",
-            "cereal_pose": "https://cdn.discordapp.com/attachments/754111872399048707/1126798434070970408/WhatsApp_Image_2023-07-07_at_10.52.20_AM.jpg",
-        }
         if self.pytoolkit:
             try:
-                url = image_path
-                if image_path in images:
-                    url = images[image_path]
-                approved = self.show_image_proxy(url)
+                request = tablet_service_srvRequest()
+                request.url = image_path
+                approved = self.show_image_proxy(request)
                 if approved == "OK":
                     return True
                 else:
