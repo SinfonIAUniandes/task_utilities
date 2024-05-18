@@ -149,8 +149,7 @@ class ZeissCustomersReception(object):
         self.labels = {}
         
         # 2. Global variables
-        self.registration_qr_img= "https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"
-        
+        self.registration_qr_img= "https://raw.githubusercontent.com/fai-aher/Airline-Coberture-WebApp/main/qr_zeiss.png"
         
         
     """
