@@ -189,14 +189,11 @@ class ZeissCustomersReception(object):
         print(self.consoleFormatter.format("Initializing the task - ENTERING 'INIT' STATE", "HEADER"))
         
         # Saying what Nova is going to do
-        self.tm.talk("I will begin my task as the ZEISS company event receptionist", "English")
         print(self.consoleFormatter.format("Nova: I am ready to do my task!", "HEADER"))
         
         # Greeting while the initialization completes
         self.tm.talk("""
-                Por favor dame un momento mientras termino de iniciar mis herramientas necesarias para esta tarea.
-                
-                Gracias por esperar.     
+                Por favor dame un momento mientras termino de iniciar mis herramientas para esta tarea.
                      
                 ""","Spanish", wait=False)
         
@@ -226,13 +223,10 @@ class ZeissCustomersReception(object):
         
         
         # Greeting while the initialization completes
-        self.tm.talk("""Hola! mi nombre es Nova, soy la robot de recepcion en este evento.
+        self.tm.talk("""Hola! mi nombre es Nova, soy la robot de recepción en este evento.
                 
-                Espero estén teniendo un bonito día.
-                Seré la encargada de leer los códigos QR de las personas que ya se registraron con anterioridad.
-                Aquellos que aún no se han registrado, pueden hacerlo al escanear el código QR sobre mi tablet.
-
-                Por favor, acérquese a mi para que pueda leer su código QR con mis ojos de robot.
+                Seré la encargada de leer los códigos QR para el ingreso al evento.
+                Si no te has inscrito, escanea el QR de mi tablet.
                 ""","Spanish", wait=False)
         
         rospy.sleep(2)
@@ -265,7 +259,7 @@ class ZeissCustomersReception(object):
             print(self.consoleFormatter.format("Nova: Someone is in front of me, let's see if the person has a QR code", "HEADER"))
             rospy.sleep(1)
             self.tm.talk("""
-            Hola! te doy la bienvenida al evento de tsais. Por favor muéstrame el código QR de ingreso que te debió llegar al correo.
+            Hola! te doy la bienvenida al evento de tsais. Por favor muestra el código QR de ingreso frente a mis ojos.
             ""","Spanish", wait=False)
             qr_code = self.tm.qr_read(8)
             
@@ -273,7 +267,7 @@ class ZeissCustomersReception(object):
             if qr_code == "":
                 print(self.consoleFormatter.format("Nova: I could not read any QR code, I will tell the person to register", "HEADER"))
                 self.tm.talk("""Si ya te registraste para el evento y tienes un código QR, por favor muéstralo frente a mis ojos.
-                                Si aún no te has registrado, puedes hacerlo escaneando el código QR que se muestra en mi tablet.
+                                Si aún no te has registrado, puedes hacerlo escaneando el código QR en mi tablet.
                              """, "Spanish")
             else:
                 # Greeting the person
