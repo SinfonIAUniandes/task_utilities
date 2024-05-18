@@ -44,11 +44,11 @@ class SERVE_BREAKFAST(object):
         
         # Relative Distances to Cupboard
         # TODO Ajustar distancias para recoger
-        self.cupboard_approach_distance = 0.45 
-        self.right_corner_cupboard_table = -0.4
-        self.relative_milk_distance = 0.35
-        self.relative_bowl_distance = 0.35
-        self.relative_cereal_distance = 0.35
+        self.cupboard_approach_distance = 0.4
+        self.right_corner_cupboard_table = -0.55
+        self.relative_milk_distance = 0.2
+        self.relative_bowl_distance = 0.2
+        self.relative_cereal_distance = 0.2
         
         # Relative Distances to Serve Table
         # TODO Ajustar distancias para soltar
@@ -64,19 +64,24 @@ class SERVE_BREAKFAST(object):
         self.distance_between_items = 0.2 # Distancia promedio entre los objetos en la cupboard
         
         # Grab instructions by object
-        self.info_grab_items = {"milk_cardboard": ["open_both_hands", "both_arms_milk" ,self.relative_milk_distance, "close_arms_milk", "raise_arms_milk" , "finish"],
-                           "bowl":["mid_arms_bowl","both_arms_bowl", self.relative_bowl_distance, "close_arms_bowl", "raise_arms_bowl" , self.relative_bowl_distance, "finish"],
-                           "cereal_box":["open_both_hands","both_arms_cereal", self.relative_bowl_distance, "close_arms_cereal", "raise_arms_cereal" , self.relative_cereal_distance, "finish"]}
-        
+        self.info_grab_items = {
+            "milk_cardboard": ["open_both_hands", "both_arms_milk", self.relative_milk_distance, "close_arms_milk", "raise_arms_milk", "finish"],
+            "bowl": ["mid_arms_bowl", "both_arms_bowl", self.relative_bowl_distance, "close_arms_bowl", "raise_arms_bowl", self.relative_bowl_distance, "finish"],
+            "cereal_box": ["open_both_hands", "both_arms_cereal", self.relative_bowl_distance, "close_arms_cereal", "raise_arms_cereal", self.relative_cereal_distance, "finish"]
+        }
         # Drop instruction by object
-        self.info_drop_items = {"milk_cardboard": ["close_arms_milk", "both_arms_milk", "finish"],
-                           "bowl":["close_arms_bowl", "both_arms_bowl", "finish"],
-                           "cereal_box":["close_arms_cereal", "both_arms_cereal", "finish"]}
+        self.info_drop_items = {
+            "milk_cardboard": ["close_arms_milk", "both_arms_milk", "finish"],
+            "bowl":["close_arms_bowl", "both_arms_bowl", "finish"],
+            "cereal_box":["close_arms_cereal", "both_arms_cereal", "finish"]
+            }
         
         # Serve breakfast instructions
         # TODO Crear animaciones para servir el cereal
-        self.info__drop_items = {"milk_cardboard": [],
-                           "cereal_box":[]}
+        self.info__drop_items = {
+            "milk_cardboard": [],
+            "cereal_box":[]
+            }
         
         # -------------------------------------------------------------------------------------------------------------------------------------------
         #                                                            ESTADOS / TRANSICIONES
@@ -86,88 +91,95 @@ class SERVE_BREAKFAST(object):
         self.tm.set_current_place("init")
         self.tm.go_to_pose("standard", self.fast_movement)
         self.tm.go_to_pose("default_head", self.fast_movement)
-        self.tm.set_security_distance(False)
         self.tm.initialize_pepper()
         self.tm.go_to_pose("up_head", 0.1)
         self.tm.talk("Good morning! Today I would like to help you with the preparation of a delicious breakfast", "English", wait=False)
         self.start()
+        
+        
 
     def on_enter_GO_2_CUPBOARD(self):
         self.actual_item = self.items[self.item]
-        self.tm.talk("I will navigate to the kitchen door and look for the ingredients. I will look for the milk cardboard, the cereal box and the bowl.", "English", wait=True)
+        self.tm.talk("I will navigate to the kitchen door and look for the ingredients. I will look for the milk cardboard, the cereal box and the bowl.", "English", wait=False)
         self.tm.talk(f"on my way to the kitchen!", "English", wait=False)
         self.tm.go_to_place("kitchen")
         self.tm.talk(f"I am going to pick up the {self.actual_item}", "English", wait=False)
         self.grab_ingredient()
+        
+        
 
     def on_enter_GRAB_OBJECT(self):
         self.tm.go_to_relative_point(self.cupboard_approach_distance, 0.0, 0.0)
         time.sleep(1)
         self.tm.go_to_relative_point(0.0, self.right_corner_cupboard_table, 0.0)
         self.tm.go_to_pose("almost_down_head", self.normal_movement)
-        
         actions = self.info_grab_items[self.actual_item]
-        self.tm.talk(f"I will move a litle bit to position myself in front of the {self.actual_item}", "English", wait=False)
-        self.tm.align_with_object("bottle")
+        self.tm.talk(f"Please put the {self.actual_item} in front of me, so I can grab it", "English", wait=False)
+        
         # TODO Cambiar "bottle" cuando perception tenga listo el modelo para los distintos objetos
         # self.tm.align_with_object(self.actual_item)
-        counter = 0
-            
-        for i in actions:
-            if isinstance(i, str):          
-                if i != "finish":
+        for action in actions:
+            print(action)
+            if isinstance(action, str):
+                if action != "finish":
                     if self.actual_item == "bowl":
-                        self.tm.talk("Please, could you put the spoon in the bowl so I can take it to the next table?", "English", wait=True)
-                        time.sleep(7)
+                        self.tm.talk("Please, could you put the spoon in the bowl so I can take it to the next table?", "English", wait=False)
+                        time.sleep(5)
                         self.tm.talk("Thank you!", "English", wait=False)
                         
-                    self.tm.go_to_pose(actions[counter], self.slow_movement)
-                    time.sleep(1)
-                else:
-                    self.tm.go_to_place("house")
-                    time.sleep(1)
+                    self.tm.go_to_pose(action, self.slow_movement)
+                    print(f"se ejcuto {action}")
             else:
-                self.tm.go_to_relative_point(actions[counter], 0.0, 0.0)
-                time.sleep(1)        
-            counter += 1
-        self.tm.talk(f"Now I will going to the dinning room to leave the{self.actual_item}", "English", wait=False)
+                self.tm.go_to_relative_point(action, 0.0, 0.0)
+            time.sleep(3)
+                
+        self.tm.talk(f"Now I will go to the dining room to leave the {self.actual_item}", "English", wait=False)
         self.tm.go_to_relative_point(-(self.cupboard_approach_distance), 0.0, 0.0)
         self.go_drop_place()
+        
+        
+        
 
     def on_enter_GO_DROP_PLACE(self):
         self.tm.talk(f"On my way to the dinning room", "English", wait=False)
-        self.tm.go_to_place("dining")
+        self.tm.go_to_place("dining_table")
+        self.tm.go_to_relative_point(0.5,0.0,0.0)
         self.tm.go_to_relative_point(0.0,0.0,90)
         time.sleep(1)
-        self.threads_poses = threading.Thread(target=self.carry_object_thread, args=("raise_arms_milk", 0.05))
-        self.threads_poses.start()
+        # self.threads_poses = threading.Thread(target=self.carry_object_thread, args=("raise_arms_milk", 0.05))
+        # self.threads_poses.start()
         self.drop_object()
+        
+        
+        
 
     def on_enter_DROP_OBJECT(self):
-        if self.threads_poses is not None:
-            self.thread_stop_event.set()
-            self.threads_poses.join()
-            self.threads_poses = None
-            self.thread_stop_event = None
+        # if self.threads_poses is not None:
+        #     self.thread_stop_event.set()
+        #     self.threads_poses.join()
+        #     self.threads_poses = None
+        #     self.thread_stop_event = None
             
         self.tm.talk(f"Now, I will leave the {self.actual_item} above the table and then go for the {self.items[self.item+1]}", "English", wait=False)
         actions = self.info_drop_items[self.actual_item]
-        counter = 0
         drop_point = getattr(self, f'drop_{self.actual_item}_point')
         self.tm.go_to_relative_point(0.0, drop_point, 0.0)
         self.tm.go_to_relative_point(self.get_closer, 0.0, 0.0)
-        for i in actions:
-            if isinstance(i, str):          
-                if i != "finish":
-                    self.tm.go_to_pose(actions[counter], self.slow_movement)
-                    time.sleep(1)
-                else:
-                    self.tm.go_to_place("house")
-                    time.sleep(1)    
+        for action in actions:
+            print(action)
+            if isinstance(action, str):
+                if action != "finish":
+                    if self.actual_item == "bowl":
+                        self.tm.talk("Please, could you take the spoon?", "English", wait=True)
+                        time.sleep(5)
+                        self.tm.talk("Thank you!", "English", wait=False)
+                        
+                    self.tm.go_to_pose(action, self.slow_movement)
+                    time.sleep(3)
+                    print(f"se ejcuto {action}")
             else:
-                self.tm.go_to_relative_point(actions[counter], 0.0, 0.0)
-                time.sleep(1)
-            counter += 1
+                self.tm.go_to_relative_point(action, 0.0, 0.0)
+                time.sleep(1)   
         
         self.tm.go_to_pose("standard")
         
@@ -176,6 +188,8 @@ class SERVE_BREAKFAST(object):
         else:
             self.item+=1
             self.again()
+            
+            
         
     
     def on_enter_MAKE_BREAKFAST(self):
@@ -183,17 +197,25 @@ class SERVE_BREAKFAST(object):
         # TODO Crear las animaciones para servir el cereal y la leche.
             
         self.end()
+        
+        
+        
 
     def on_enter_END(self):
         self.tm.talk("I finished serving breakfast, enjoy it")
         return
+    
+    
+    
 
     def check_rospy(self):
         while not rospy.is_shutdown():
             rospy.sleep(0.1)
-        self.tm.set_security_distance(True)
         print(self.consoleFormatter.format("Shutting down", "FAIL"))
         os._exit(os.EX_OK)
+        
+        
+        
     
     def run(self):
         while not rospy.is_shutdown():
