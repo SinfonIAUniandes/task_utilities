@@ -47,6 +47,7 @@ class Task_module:
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
         ################### GLOBAL VARIABLES ###################
         self.follow_you_active = False
+        self.center_active = False
         self.head_thread = False
         self.linear_vel = 0
         self.closest_person = [0,0,0,0,0]
@@ -967,6 +968,22 @@ class Task_module:
                 if label == "person":
                     self.closest_person = max(labels_actuales[label], key=lambda x: x[3])
                     self.iterations = 0
+    
+    def get_closest_object(self, object_name:str) -> None:
+        """
+        Input: (str) object_name
+        Output: None
+        ----------
+        Updates the information of the object that is closest to the robot.
+        Runs in a thread.
+        """
+        # follow_you_active is used to halt thread execution
+        while self.center_active:
+            labels_actuales = self.labels
+            for label in labels_actuales:
+                if label == object_name:
+                    self.closest_object = max(labels_actuales[label], key=lambda x: x[3])
+                    self.iterations = 0
 
     ################### SPEECH SERVICES ###################
 
@@ -1535,6 +1552,60 @@ class Task_module:
             print("navigation as false")
             return False
         
+    def center_object(self, object_name: str, movement_mode: str):
+        """
+        Input:
+        object_name: (str) The name of the object which the robot wants to be at the center of the screen
+        movement_mode: (str) Movement mode to center the object. Angular for the robot to rotate or translational for the robot to move left or right.
+        Output: None
+        ----------
+        Helps the followed person stay within a good distance of the robot
+        """
+        self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
+        if self.pytoolkit:
+            try:
+                object_thread = Thread(target=self.get_closest_object,args=([object_name]))
+                object_thread.start()
+                self.center_active = True
+                center_x = 180 # 360 degrees / 2
+                while self.center_active: 
+                    # If the object was found
+                    if object_name in self.labels:
+                        # If that object is the closest instance of that object type
+                        followed_object = self.closest_object
+                        target_x = followed_object[1]
+                        error_x = target_x - center_x
+                        if movement_mode ==  "translational":
+                            # 0.005 worked well
+                            linear_vel = 0.005 * error_x
+                            # If the change in speed is big enough
+                            if (abs(linear_vel) > 0.1):
+                                # Start moving to center the object in frame
+                                self.start_moving(linear_vel, 0, 0)
+                                rospy.sleep(0.2)
+                                self.stop_moving()
+                            else:
+                                # Stop centering since the rotation is not big enough
+                                self.center_active = False
+                        elif movement_mode == "angular":
+                            # 0.005 worked well
+                            angular_vel = 0.005 * error_x
+                            # If the rotation is big enough
+                            if (abs(angular_vel) > 0.1):
+                                # Start rotating to center the object in frame
+                                self.start_moving(0, 0, angular_vel)
+                                rospy.sleep(0.2)
+                                self.stop_moving()
+                            else:
+                                # Stop centering since the rotation is not big enough
+                                self.center_active = False
+                print(f"Started centering object: {object_name}")
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+        else:
+            print("pytoolkit as false")
+
+
     def align_with_object(self, object_name: str) -> bool:
         if self.navigation and self.perception:
             self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
