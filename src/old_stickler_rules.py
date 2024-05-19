@@ -102,15 +102,12 @@ class STICKLER_RULES(object):
         tiempo_transcurrido = 0
         # While para dar una vuelta entera y encontrar a TODAS las personas en una habitacion
         while (tiempo_transcurrido < tiempo_una_vuelta): # and self.breakers_found<self.total_rule_breakers: (Chunk opcional si se quiere detener la task cuando se haya encontrado a todos los rule breakers)
-            print(tiempo_transcurrido)
             tiempo_inicio_rotacion = time.time()
             self.tm.look_for_object("person")
             self.tm.constant_spin_srv(grados_seg)
             person_found = self.tm.wait_for_object(tiempo_una_vuelta-tiempo_transcurrido)
             tiempo_rotando = time.time()-tiempo_inicio_rotacion
-            print("tiempo rotando: "+str(tiempo_rotando))
             tiempo_transcurrido += tiempo_rotando
-            print("tiempo transcurrido: "+str(tiempo_transcurrido))
             if person_found:
                 #Encontro una persona o se acabo el tiempo
                 angulo_persona = self.get_absolute_position_proxy().theta
@@ -121,9 +118,12 @@ class STICKLER_RULES(object):
                         angulo_nuevo = False
                 if angulo_nuevo:
                     print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
-                    found_person = self.tm.closest_person
+                    found_person = self.tm.closest_person.copy()
+                    print(found_person)
                     while found_person[1]<=300:
+                        print(found_person)
                         rospy.sleep(0.1)
+                        found_person = self.tm.closest_person.copy()
                     self.tm.robot_stop_srv()
                     angulos_personas.append(angulo_persona)
                     is_in_forbidden = self.check_forbidden(angulo_persona)
