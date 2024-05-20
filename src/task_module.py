@@ -1342,6 +1342,7 @@ class Task_module:
             if "person" in self.labels:
                 # If that person is the closest person
                 followed_person = self.closest_person
+                print(followed_person)
                 person_width = followed_person[3]
                 # Person seen
                 self.iterations=0

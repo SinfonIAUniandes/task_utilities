@@ -13,7 +13,7 @@ import numpy as np
 
 from navigation_msgs.srv import get_absolute_position_srv
 from perception_msgs.msg import get_labels_msg
-from robot_toolkit_msgs.srv import move_head_srv
+from robot_toolkit_msgs.srv import move_head_srv, set_security_distance_srv
 
 class STICKLER_RULES(object):
     def __init__(self):
@@ -43,9 +43,21 @@ class STICKLER_RULES(object):
         rospy.wait_for_service("/pytoolkit/ALMotion/move_head_srv")
         self.move_head_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/move_head_srv",move_head_srv)
 
+
+
+
+        print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_orthogonal_security_distance_srv...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv")
+        self.set_orthogonal_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv",set_security_distance_srv)
+
+        print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_tangential_security_distance_srv...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALMotion/set_tangential_security_distance_srv")
+        self.set_tangential_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_tangential_security_distance_srv",set_security_distance_srv)
+
         print(self.consoleFormatter.format("Waiting for navigation_utilities/get_absolute_position_srv...", "WARNING"))
         rospy.wait_for_service("navigation_utilities/get_absolute_position_srv")
         self.get_absolute_position_proxy = rospy.ServiceProxy("navigation_utilities/get_absolute_position_srv",get_absolute_position_srv)
+        self.tm.follow_you_active = True
         # Parametro de la task de si se quiere que el robot confirme que los invitados corrigieron la regla
         self.confirm_comppliance = False
         # Donde se encuentran ubicados los otros invitados, es para forbidden room
@@ -74,16 +86,18 @@ class STICKLER_RULES(object):
         self.tm.initialize_pepper()
         self.tm.turn_camera("bottom_camera","custom",1,15)
         self.tm.show_topic("/perception_utilities/yolo_publisher")
+        self.set_orthogonal_security_srv(0.3)
+        self.set_tangential_security_srv(0.05)
         self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.tm.callback_get_labels_subscriber)
         person_thread = threading.Thread(target=self.tm.get_closer_person)
         person_thread.start()
         # Ir directo al forbidden room
-        self.tm.talk("I'm gonna go check the forbidden room: " + self.forbidden ,"English", wait=False)
-        print("Current Place: " + self.last_place)
-        print("Next Place: " + self.forbidden)
-        self.checked_places.append(self.forbidden)
-        self.last_place = self.forbidden
-        self.tm.go_to_place(self.forbidden)
+        #self.tm.talk("I'm gonna go check the forbidden room: " + self.forbidden ,"English", wait=False)
+        #print("Current Place: " + self.last_place)
+        #print("Next Place: " + self.forbidden)
+        #self.checked_places.append(self.forbidden)
+        #self.last_place = self.forbidden
+        #self.tm.go_to_place(self.forbidden)
         self.beggining()
 
     # ============================== LOOK4 STATES ==============================
@@ -118,7 +132,7 @@ class STICKLER_RULES(object):
                         angulo_nuevo = False
                 if angulo_nuevo:
                     print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
-                    found_person = self.tm.closest_person.copy()
+                    found_person = self.tm.closest_person
                     print(found_person)
                     while found_person[1]<=300:
                         print(found_person)
