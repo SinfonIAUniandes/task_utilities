@@ -7,6 +7,7 @@
 
 # General Imports
 import os
+import sys
 import rospy
 import threading
 import time
@@ -69,6 +70,9 @@ class ZeissCustomersReception(object):
         # Reading the ZEISS facts csv
         self.facts_df = pd.read_csv('/home/sinfonia/sinfonia_ws/src/task_utilities/src/events/2024/ZEISS_event/facts.csv')
         
+        # Setting a custom recursion limit
+        sys.setrecursionlimit(3000)
+        
         """
         1. STATES MACHINE
         """
@@ -102,6 +106,11 @@ class ZeissCustomersReception(object):
         # Thread for checking rospy
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
+        
+
+        print(self.consoleFormatter.format("Waiting for /pytoolkit/ALTabletService/show_image_srv...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
+        self.show_image_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_image_srv",tablet_service_srv)
         
         
         """
@@ -177,6 +186,34 @@ class ZeissCustomersReception(object):
         except rospy.ServiceException as e:
             print("Service call failed")
     
+            
+    def enable_tracker_service(self):
+        """
+        Enables face tracking from the toolkit of the robot.
+        """
+        print("Waiting for tracking service")
+        rospy.wait_for_service('/pytoolkit/ALTracker/start_tracker_srv')
+        try:
+            start_tracker_srv = rospy.ServiceProxy("/pytoolkit/ALTracker/start_tracker_srv", battery_service_srv)
+            start_tracker_srv()
+            print("tracking service connected!")
+        except rospy.ServiceException as e:
+            print("Service call failed")
+            
+            
+    def disable_tracker_service(self):
+        """
+        Disables face tracking from the toolkit of the robot.
+        """
+        print("Waiting for disable tracking service")
+        rospy.wait_for_service('/pytoolkit/ALTracker/stop_tracker_srv')
+        try:
+            stop_tracker_srv = rospy.ServiceProxy("/pytoolkit/ALTracker/stop_tracker_srv", battery_service_srv)
+            stop_tracker_srv()
+            print("disable-tracking service connected!")
+        except rospy.ServiceException as e:
+            print("Service call failed")
+    
     
     """
     4. TASK STATES LOGICAL IMPLEMENTATION
@@ -202,7 +239,6 @@ class ZeissCustomersReception(object):
         self.motion_tools_service()
         self.enable_breathing_service()
         
-        
         self.tm.talk("""
                      
         Ya estoy lista para la tarea!
@@ -212,14 +248,9 @@ class ZeissCustomersReception(object):
         print(self.consoleFormatter.format("Nova: Front camera enabled!", "HEADER"))
         
         # Showing the registration QR code in the tablet
-        image_showing = self.tm.show_image(self.registration_qr_img)
-        
-        
-        if (image_showing):
-            print(self.consoleFormatter.format("Nova: I am now showing the registration QR in my tablet!", "HEADER"))
-            
-        else:
-            print(self.consoleFormatter.format("Nova: I could not show the registration QR in my tablet!", "HEADER"))
+        self.tm.show_image("https://raw.githubusercontent.com/fai-aher/Airline-Coberture-WebApp/main/qr_zeiss.png")
+    
+        self.tm.show_image("https://raw.githubusercontent.com/fai-aher/Airline-Coberture-WebApp/main/qr_zeiss.png")
         
         
         # Greeting while the initialization completes
@@ -241,6 +272,10 @@ class ZeissCustomersReception(object):
     
     # 2. on enter RECEIVING_CUSTOMERS
     def on_enter_RECEIVING_CUSTOMERS(self):
+        
+        # Head tracking service activated
+        self.enable_tracker_service()
+        
         # Initialization message
         print(self.consoleFormatter.format("Initializing the task - ENTERING 'RECEIVING_CUSTOMERS' STATE", "HEADER"))
         
@@ -257,18 +292,20 @@ class ZeissCustomersReception(object):
         else:
             # Reading the QR code
             print(self.consoleFormatter.format("Nova: Someone is in front of me, let's see if the person has a QR code", "HEADER"))
-            rospy.sleep(1)
+            rospy.sleep(1.5)
+            self.disable_tracker_service()
+            print(self.consoleFormatter.format("Nova: I will stop my head tracker service to let the person show me the QR code", "HEADER"))
             self.tm.talk("""
             Hola! te doy la bienvenida al evento de tsais. Por favor muestra el código QR de ingreso frente a mis ojos.
             ""","Spanish", wait=False)
-            qr_code = self.tm.qr_read(8)
+            qr_code = self.tm.qr_read(12)
             
             # If the person does not show a QR code, Nova tells the person to show it or to register
             if qr_code == "":
                 print(self.consoleFormatter.format("Nova: I could not read any QR code, I will tell the person to register", "HEADER"))
                 self.tm.talk("""Si ya te registraste para el evento y tienes un código QR, por favor muéstralo frente a mis ojos.
                                 Si aún no te has registrado, puedes hacerlo escaneando el código QR en mi tablet.
-                             """, "Spanish")
+                             """, "Spanish", wait=False)
             else:
                 # Greeting the person
                 print(self.consoleFormatter.format("Nova: I recognized a QR code, I will greet the person", "HEADER"))
