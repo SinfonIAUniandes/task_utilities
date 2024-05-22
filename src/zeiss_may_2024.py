@@ -32,7 +32,7 @@ from std_srvs.srv import SetBool
 # Robot Toolkit Services
 from robot_toolkit_msgs.srv import tablet_service_srv,  set_open_close_hand_srv, set_open_close_hand_srvRequest, motion_tools_srv, battery_service_srv, set_output_volume_srv
 
-from robot_toolkit_msgs.msg import animation_msg, motion_tools_msg
+from robot_toolkit_msgs.msg import animation_msg, motion_tools_msg, leds_parameters_msg
 
 
 # Class definition and implementation
@@ -214,6 +214,30 @@ class ZeissCustomersReception(object):
         except rospy.ServiceException as e:
             print("Service call failed")
     
+    def setLedsColor(self, r,g,b):
+        """
+        Function for setting the colors of the eyes of the robot.
+        Args:
+        r,g,b numbers
+            r for red
+            g for green
+            b for blue
+        """
+        ledsPublisher = rospy.Publisher('/leds', leds_parameters_msg, queue_size=10)
+        ledsMessage = leds_parameters_msg()
+        ledsMessage.name = "FaceLeds"
+        ledsMessage.red = r
+        ledsMessage.green = g
+        ledsMessage.blue = b
+        ledsMessage.time = 0
+        ledsPublisher.publish(ledsMessage)  #Inicio(aguamarina), Pepper esta ALSpeechRecognitionStatusPublisherlista para escuchar
+        
+    def gen_anim_msg(self, animation):
+        anim_msg = animation_msg()
+        anim_msg.family = "animations"
+        anim_msg.animation_name = animation
+        return anim_msg
+    
     
     """
     4. TASK STATES LOGICAL IMPLEMENTATION
@@ -224,6 +248,7 @@ class ZeissCustomersReception(object):
     
         # Initialization message
         print(self.consoleFormatter.format("Initializing the task - ENTERING 'INIT' STATE", "HEADER"))
+        self.animationPublisher = rospy.Publisher('/animations', animation_msg, queue_size=10)
         
         # Saying what Nova is going to do
         print(self.consoleFormatter.format("Nova: I am ready to do my task!", "HEADER"))
@@ -232,18 +257,22 @@ class ZeissCustomersReception(object):
         self.tm.talk("""
                 Por favor dame un momento mientras termino de iniciar mis herramientas para esta tarea.
                      
-                ""","Spanish", wait=False)
+                ""","Spanish", animated=True, wait=False)
         
-        # Starting the front camera to read QR codes
+        # Starting the functions and publishers
         self.tm.initialize_pepper()
         self.motion_tools_service()
         self.enable_breathing_service()
-        
+        self.setLedsColor(255,255,255)
+        self.tm.publish_filtered_image(filter_name="qr",camera_name="front_camera")
+        #Set led color to white
+        self.setLedsColor(224,224,224)
+
         self.tm.talk("""
                      
         Ya estoy lista para la tarea!
                      
-                     """, "Spanish", wait=True)
+                     """, "Spanish", wait=True, animated=True)
             
         print(self.consoleFormatter.format("Nova: Front camera enabled!", "HEADER"))
         
@@ -258,7 +287,7 @@ class ZeissCustomersReception(object):
                 
                 Seré la encargada de leer los códigos QR para el ingreso al evento.
                 Si no te has inscrito, escanea el QR de mi tablet.
-                ""","Spanish", wait=False)
+                ""","Spanish", wait=False, animated=True)
         
         rospy.sleep(2)
         
@@ -294,22 +323,33 @@ class ZeissCustomersReception(object):
             print(self.consoleFormatter.format("Nova: Someone is in front of me, let's see if the person has a QR code", "HEADER"))
             rospy.sleep(1.5)
             self.disable_tracker_service()
+            
             print(self.consoleFormatter.format("Nova: I will stop my head tracker service to let the person show me the QR code", "HEADER"))
+            self.setLedsColor(102,102,255)
+            self.tm.show_topic("/perception_utilities/filtered_image")
             self.tm.talk("""
             Hola! te doy la bienvenida al evento de tsais. Por favor muestra el código QR de ingreso frente a mis ojos.
-            ""","Spanish", wait=False)
+            ""","Spanish", wait=False, animated=True)
             qr_code = self.tm.qr_read(12)
+            self.tm.show_image("https://raw.githubusercontent.com/fai-aher/Airline-Coberture-WebApp/main/qr_zeiss.png")
+            #Set led color to white
+            self.setLedsColor(224,224,224)
             
             # If the person does not show a QR code, Nova tells the person to show it or to register
             if qr_code == "":
                 print(self.consoleFormatter.format("Nova: I could not read any QR code, I will tell the person to register", "HEADER"))
                 self.tm.talk("""Si ya te registraste para el evento y tienes un código QR, por favor muéstralo frente a mis ojos.
                                 Si aún no te has registrado, puedes hacerlo escaneando el código QR en mi tablet.
-                             """, "Spanish", wait=False)
+                             """, "Spanish", wait=False, animated=True)
             else:
+                # Play greeting animation
+                anim_msg = self.gen_anim_msg("Gestures/BowShort_3")
+                self.animationPublisher.publish(anim_msg)
+                
                 # Greeting the person
                 print(self.consoleFormatter.format("Nova: I recognized a QR code, I will greet the person", "HEADER"))
-                self.tm.talk("Bienvenido al evento "+ qr_code + "Espero que lo disfrutes mucho. Fue un placer atenderte!", "Spanish")
+                self.tm.talk("Bienvenido al evento "+ qr_code + "Espero que lo disfrutes mucho. Fue un placer atenderte!", "Spanish", wait=False)
+                
                 # TODO: Logic to save the person's assistance in the database
                 # Idea: save the person's name and id in a file and report it to the company
             
@@ -330,7 +370,7 @@ class ZeissCustomersReception(object):
         print(self.consoleFormatter.format(f"Nova: I chose to say the fact with ID = {fact_id}", "HEADER"))
         
         # Saying the random fact
-        self.tm.talk(fact_content, "Spanish")
+        self.tm.talk(fact_content, "Spanish", wait=False, animated=True)        
         
         # Going back to scan QR codes
         self.stop_saying_facts()

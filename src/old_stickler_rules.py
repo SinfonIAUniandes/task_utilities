@@ -94,12 +94,12 @@ class STICKLER_RULES(object):
         person_thread = threading.Thread(target=self.tm.get_closer_person)
         person_thread.start()
         # Ir directo al forbidden room
-        #self.tm.talk("I'm gonna go check the forbidden room: " + self.forbidden ,"English", wait=False)
-        #print("Current Place: " + self.last_place)
-        #print("Next Place: " + self.forbidden)
-        #self.checked_places.append(self.forbidden)
-        #self.last_place = self.forbidden
-        #self.tm.go_to_place(self.forbidden)
+        self.tm.talk("I'm gonna go check the forbidden room: " + self.forbidden ,"English", wait=False)
+        print("Current Place: " + self.last_place)
+        print("Next Place: " + self.forbidden)
+        self.checked_places.append(self.forbidden)
+        self.last_place = self.forbidden
+        self.tm.go_to_place(self.forbidden)
         self.beggining()
 
     # ============================== LOOK4 STATES ==============================
@@ -138,16 +138,11 @@ class STICKLER_RULES(object):
                     person_x = found_person[1]
                     person_width = found_person[3]
                     centered_point = (315 / 2) - (person_x + person_width/2)
-                    print(found_person)
-                    print(centered_point)
-                    while ( -15 >= centered_point or centered_point>= 15):
-                        print("entro")
-                        print(found_person)
+                    while ( -15 >= centered_point or centered_point>= 15) and "person" in self.tm.labels:
                         found_person = self.tm.closest_person
                         person_x = found_person[1]
                         person_width = found_person[3]
                         centered_point = (315 / 2) - (person_x + person_width/2)
-                        print(centered_point)
                     self.tm.robot_stop_srv()
                     angulos_personas.append(angulo_persona)
                     is_in_forbidden = self.check_forbidden(angulo_persona)
