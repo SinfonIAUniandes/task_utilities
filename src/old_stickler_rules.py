@@ -23,7 +23,9 @@ class STICKLER_RULES(object):
         self.task_name = "stickler_for_the_rules"
         states = ['INIT', 'LOOK4PERSON', 'LOOK4GARBAGE', 'ASK4SHOES', 'ASK4DRINK', 'GO2NEXT']
         self.tm = tm(perception = True,speech=True, navigation=True, pytoolkit=True, manipulation=True)
+        print("Inicializando")
         self.tm.initialize_node(self.task_name)
+        print("Inicializado")
         # Definir las transiciones permitidas entre los estados
         transitions = [
             {'trigger': 'start', 'source': 'STICKLER_RULES', 'dest': 'INIT'},
@@ -133,11 +135,19 @@ class STICKLER_RULES(object):
                 if angulo_nuevo:
                     print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
                     found_person = self.tm.closest_person
+                    person_x = found_person[1]
+                    person_width = found_person[3]
+                    centered_point = (315 / 2) - (person_x + person_width/2)
                     print(found_person)
-                    while found_person[1]<=300:
+                    print(centered_point)
+                    while ( -15 >= centered_point or centered_point>= 15):
+                        print("entro")
                         print(found_person)
-                        rospy.sleep(0.1)
-                        found_person = self.tm.closest_person.copy()
+                        found_person = self.tm.closest_person
+                        person_x = found_person[1]
+                        person_width = found_person[3]
+                        centered_point = (315 / 2) - (person_x + person_width/2)
+                        print(centered_point)
                     self.tm.robot_stop_srv()
                     angulos_personas.append(angulo_persona)
                     is_in_forbidden = self.check_forbidden(angulo_persona)
@@ -192,7 +202,6 @@ class STICKLER_RULES(object):
         return False
 
     def check_forbidden(self, original_angle):
-        #if self.last_place == "forbidden": # Manejar el forbidden room como variable
         self.tm.robot_stop_srv()
         if self.last_place == self.forbidden:
             self.ASK2LEAVE(original_angle)
