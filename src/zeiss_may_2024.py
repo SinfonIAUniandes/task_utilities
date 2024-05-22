@@ -363,6 +363,7 @@ class ZeissCustomersReception(object):
         
         # Initialization message
         print(self.consoleFormatter.format("Initializing the task - ENTERING 'RECEIVING_CUSTOMERS' STATE", "HEADER"))
+        self.setLedsColor(224,224,224)
         
         # Choosing the random fact
         fact_content, fact_id = self.get_random_fact()
