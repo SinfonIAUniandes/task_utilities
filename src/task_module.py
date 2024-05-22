@@ -480,7 +480,7 @@ class Task_module:
         """
         Initialized the node with the name of the task
         """
-        rospy.init_node("task_" + task_name + "_node")
+        rospy.init_node("task_node")
 
     def initialize_pepper(self):
         """
