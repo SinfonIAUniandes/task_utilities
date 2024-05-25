@@ -1061,7 +1061,7 @@ class Task_module:
             return False
 
     def speech2text_srv(
-        self, seconds=0
+        self, seconds=0, lang="eng"
     ) -> bool:
         """
         Input:
@@ -1074,7 +1074,7 @@ class Task_module:
         """
         if self.speech:
             try:
-                text = self.speech2text_srv_proxy(seconds)
+                text = self.speech2text_srv_proxy(seconds, lang)
                 return text.transcription
             except rospy.ServiceException as e  :
                 print("Service call failed: %s" % e)

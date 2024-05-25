@@ -130,14 +130,14 @@ class STICKLER_RULES(object):
                 angulo_nuevo = True
                 for angulo in angulos_personas:
                     #60 grados es un poco mas del campo de vision del robot, si el angulo de la persona actual es similar a algun otro por 60 grados puede ser la misma persona 
-                    if abs(angulo_persona-angulo)<60:
+                    if abs(angulo_persona-angulo)<30:
                         angulo_nuevo = False
-                if angulo_nuevo:
+                found_person = self.tm.closest_person
+                person_x = found_person[1]
+                person_width = found_person[3]
+                centered_point = (315 / 2) - (person_x + person_width/2)
+                if angulo_nuevo and centered_point<=15 and "person" in self.tm.labels:
                     print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
-                    found_person = self.tm.closest_person
-                    person_x = found_person[1]
-                    person_width = found_person[3]
-                    centered_point = (315 / 2) - (person_x + person_width/2)
                     while ( -15 >= centered_point or centered_point>= 15) and "person" in self.tm.labels:
                         found_person = self.tm.closest_person
                         person_x = found_person[1]

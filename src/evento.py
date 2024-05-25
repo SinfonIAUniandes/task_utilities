@@ -53,9 +53,6 @@ class Evento(object):
         self.motion_tools_service()
         self.enable_breathing_service()
         self.enable_hot_word_service()
-        print(self.consoleFormatter.format("Waiting for speech_utilities/SPANISHspeech2text...", "WARNING"))
-        rospy.wait_for_service('speech_utilities/speech2text_spanish')
-        self.spanish_speech2text_proxy = rospy.ServiceProxy('speech_utilities/speech2text_spanish', speech2text_srv)
         print(self.consoleFormatter.format("Waiting for pytoolkit/ALTabletService/show_picture_srv...", "WARNING"))
         rospy.wait_for_service('pytoolkit/ALTabletService/show_picture_srv')
         self.show_picture_proxy = rospy.ServiceProxy('pytoolkit/ALTabletService/show_picture_srv', battery_service_srv)
@@ -176,7 +173,7 @@ class Evento(object):
     def hey_pepper_function(self):
         self.tm.hot_word([])
         self.tm.talk("Dímelo manzana","Spanish",animated=True)
-        text = self.spanish_speech2text_proxy(7).transcription
+        text = self.tm.speech2text_srv(7, "esp")
         anim_msg = self.gen_anim_msg("Waiting/Think_3")
         self.animationPublisher.publish(anim_msg)
         if not ("None" in text):
@@ -188,7 +185,7 @@ class Evento(object):
         self.set_hot_words()
 
     def set_hot_words(self):
-        self.tm.hot_word(["chao","detente","hey nova","baile","asereje","pose","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro","gracias"],thresholds=[0.5, 0.4, 0.39, 0.5, 0.55, 0.39, 0.4, 0.39, 0.5, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.5])
+        self.tm.hot_word(["chao","detente","hey nova","baile","asereje","pose","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro","gracias"],thresholds=[0.45, 0.4, 0.398, 0.43, 0.43, 0.39, 0.4, 0.4, 0.5, 0.4, 0.4, 0.4, 0.41, 0.4, 0.4, 0.43, 0.4])
 
     def gen_anim_msg(self, animation):
         anim_msg = animation_msg()
