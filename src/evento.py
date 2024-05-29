@@ -7,7 +7,7 @@ import rospy
 import os
 from speech_msgs.srv import speech2text_srv
 from robot_toolkit_msgs.msg import speech_recognition_status_msg, animation_msg, motion_tools_msg
-from robot_toolkit_msgs.srv import tablet_service_srv,  set_open_close_hand_srv, set_open_close_hand_srvRequest, motion_tools_srv, battery_service_srv, set_output_volume_srv
+from robot_toolkit_msgs.srv import tablet_service_srv,  set_open_close_hand_srv, set_open_close_hand_srvRequest, motion_tools_srv, battery_service_srv, set_output_volume_srv, tablet_service_srvRequest
 
 class Evento(object):
     def __init__(self):
@@ -23,6 +23,7 @@ class Evento(object):
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
         self.task_name = "Event"
+        self.hearing = False
         self.is_done = False
         self.hey_pepper=False
         self.already_asereje = False
@@ -59,6 +60,15 @@ class Evento(object):
         self.stop_tracker_srv = rospy.ServiceProxy("/pytoolkit/ALTracker/stop_tracker_srv", battery_service_srv)
         self.play_dance_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/play_dance_srv", set_output_volume_srv)
         self.animationPublisher = rospy.Publisher('/animations', animation_msg, queue_size=10)
+        rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
+        self.show_web_page_proxy = rospy.ServiceProxy(
+            "/pytoolkit/ALTabletService/show_web_view_srv", tablet_service_srv
+        )
+        request = tablet_service_srvRequest()
+        request.url = "http://192.168.0.229:8000/" 
+        self.show_web_page_proxy(request)
+        
+
         self.beggining()
 
     def on_enter_TALK(self):
@@ -71,7 +81,7 @@ class Evento(object):
         self.tm.talk("Di Hey Nova cuando quieras decirme algo, y chao cuando no quieras seguir hablando","Spanish",animated=True)
         while not self.is_done:
             if self.hey_pepper:
-                self.tm.show_words_proxy()
+                #self.tm.show_words_proxy()
                 self.hey_pepper_function()
                 self.hey_pepper=False
             rospy.sleep(0.1)
@@ -80,7 +90,7 @@ class Evento(object):
 
     def on_enter_WAIT4GUEST(self):
         self.stop_tracker_srv()
-        self.tm.show_words_proxy()
+        #self.tm.show_words_proxy()
         self.is_done=False
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
         self.tm.setRPosture_srv("stand")
@@ -185,7 +195,8 @@ class Evento(object):
         self.set_hot_words()
 
     def set_hot_words(self):
-        self.tm.hot_word(["chao","detente","hey nova","baile","asereje","pose","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro","gracias"],thresholds=[0.45, 0.4, 0.398, 0.43, 0.43, 0.39, 0.4, 0.4, 0.5, 0.4, 0.4, 0.4, 0.41, 0.4, 0.4, 0.43, 0.4])
+        if self.hearing:
+            self.tm.hot_word(["chao","detente","hey nova","baile","asereje","pose","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro","gracias"],thresholds=[0.45, 0.4, 0.398, 0.43, 0.43, 0.39, 0.4, 0.4, 0.5, 0.4, 0.4, 0.4, 0.41, 0.4, 0.4, 0.43, 0.4])
 
     def gen_anim_msg(self, animation):
         anim_msg = animation_msg()
