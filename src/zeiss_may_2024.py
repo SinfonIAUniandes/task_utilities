@@ -350,6 +350,10 @@ class ZeissCustomersReception(object):
                 print(self.consoleFormatter.format("Nova: I recognized a QR code, I will greet the person", "HEADER"))
                 self.tm.talk("Bienvenido al evento "+ qr_code + "Espero que lo disfrutes mucho. Fue un placer atenderte!", "Spanish", wait=False)
                 
+                # Save the attendance to the CSV file
+                with open('attended_guests.csv', 'a') as file:
+                    file.write(f'"{qr_code}",True\n')
+
                 # TODO: Logic to save the person's assistance in the database
                 # Idea: save the person's name and id in a file and report it to the company
             
