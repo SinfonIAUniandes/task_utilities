@@ -31,9 +31,9 @@ from std_msgs.msg import Bool
 from std_srvs.srv import SetBool
 
 # Robot Toolkit Services
-from robot_toolkit_msgs.srv import tablet_service_srv,  set_open_close_hand_srv, set_open_close_hand_srvRequest, motion_tools_srv, battery_service_srv, set_output_volume_srv
+from robot_toolkit_msgs.srv import tablet_service_srv,  set_open_close_hand_srv, tablet_service_srvRequest, set_open_close_hand_srvRequest, motion_tools_srv, battery_service_srv, set_output_volume_srv
 
-from robot_toolkit_msgs.msg import animation_msg, motion_tools_msg, leds_parameters_msg
+from robot_toolkit_msgs.msg import animation_msg, motion_tools_msg, leds_parameters_msg, speech_recognition_status_msg
 
 
 # Class definition and implementation
@@ -46,6 +46,12 @@ class ZeissCustomersReception(object):
         
         #Name of the task
         self.task_name = "ZeissCustomersReception"
+        self.hearing = False
+        self.is_done = False
+        self.hey_pepper=False
+        self.already_asereje = False
+        self.already_dance = False 
+        self.haciendo_animacion = False
         
         # Task module initialization
         self.tm = tm(perception = True,speech=True,manipulation=False, navigation=False, pytoolkit=True)
@@ -65,7 +71,9 @@ class ZeissCustomersReception(object):
             'SAYING_FACTS',
             
             # Ending state
-            'JOB_DONE'
+            'JOB_DONE',
+            
+            'MENU'
         ]
         
         # Reading the ZEISS facts csv
@@ -86,19 +94,25 @@ class ZeissCustomersReception(object):
             {'trigger': 'start_task', 'source': 'ZeissCustomersReception', 'dest': 'INIT'},
          
             # Transition 1: Start the task: Nova starts receiving customers
-            {'trigger': 'begin_reception', 'source': 'INIT', 'dest': 'RECEIVING_CUSTOMERS'},
+            {'trigger': 'begin_reception', 'source': 'MENU', 'dest': 'RECEIVING_CUSTOMERS'},
             
             # Transition 2: Start saying random facts
             {'trigger': 'start_saying_facts', 'source': 'RECEIVING_CUSTOMERS', 'dest': 'SAYING_FACTS'},
             
+            {'trigger': 'start_saying_facts', 'source': 'MENU', 'dest': 'SAYING_FACTS'},
+            
             # Transition 3: Stop saying random facts
-            {'trigger': 'stop_saying_facts', 'source': 'SAYING_FACTS', 'dest': 'RECEIVING_CUSTOMERS'},
+            {'trigger': 'stop_saying_facts', 'source': 'SAYING_FACTS', 'dest': 'MENU'},
             
             # Transition 4: Continue receiving customers
             {'trigger': 'continue_receiving_customers', 'source': 'RECEIVING_CUSTOMERS', 'dest': 'RECEIVING_CUSTOMERS'},
     
             # Transition 5: Finish the task
             {'trigger': 'finish_task_from_waiting', 'source': 'RECEIVING_CUSTOMERS', 'dest': 'JOB_DONE'}, # Finishes the task 
+            
+            {'trigger': 'return_menu', 'source': 'RECEIVING_CUSTOMERS','dest': 'MENU'},
+            
+            {'trigger': 'return_menu', 'source': 'INIT','dest': 'MENU'}
         ] 
         
         # States Machine initialization
@@ -113,6 +127,11 @@ class ZeissCustomersReception(object):
         rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
         self.show_image_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_image_srv",tablet_service_srv)
         
+        print(self.consoleFormatter.format("Waiting for /pytoolkit/ALTabletService/show_web_view_srv...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALTabletService/show_web_view_srv")
+        self.show_web_page_proxy = rospy.ServiceProxy(
+        "/pytoolkit/ALTabletService/show_web_view_srv", tablet_service_srv)
+        
         
         """
         2. VARIABLES
@@ -120,9 +139,6 @@ class ZeissCustomersReception(object):
         
         # 1. ROS Callbacks variables
         self.labels = {}
-        
-        # 2. Global variables
-        self.registration_qr_img= "https://raw.githubusercontent.com/fai-aher/Airline-Coberture-WebApp/main/qr_zeiss.png"
         
         
     """
@@ -239,24 +255,118 @@ class ZeissCustomersReception(object):
         anim_msg.animation_name = animation
         return anim_msg
     
+    def set_hot_words(self):
+        if self.hearing:
+            self.tm.hot_word(["chao","detente","hey nova","baile","asereje","pose","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro","gracias"],thresholds=[0.45, 0.4, 0.398, 0.43, 0.43, 0.39, 0.4, 0.4, 0.5, 0.4, 0.4, 0.4, 0.41, 0.4, 0.4, 0.43, 0.4])
+
     
+    def callback_hot_word(self,data):
+        word = data.status
+        print(word, "listened")
+        if word=="detente":
+            self.tm.setRPosture_srv("stand")
+            self.haciendo_animacion = False
+        if not self.haciendo_animacion:
+            self.haciendo_animacion = True
+            
+            if word == "QR":
+                self.begin_reception()
+                
+            elif word == "chao":
+                self.is_done = True
+                self.already_dance = False
+                self.already_asereje = False
+            elif word == "hey nova":
+                self.hey_pepper = True
+            elif word == "guitarra":
+                anim_msg = self.gen_anim_msg("Waiting/AirGuitar_1")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "besos":
+                anim_msg = self.gen_anim_msg("Gestures/Kisses_1")
+                self.animationPublisher.publish(anim_msg)
+                self.tm.talk("Muah!","Spanish")
+            elif word == "baile":
+                if not self.already_dance:
+                    dance_thread = threading.Thread(target=self.dance_threadf,args=[1])
+                    dance_thread.start()
+                    self.already_dance = True
+            elif word == "asereje":
+                if not self.already_asereje:
+                    dance_thread = threading.Thread(target=self.dance_threadf,args=[3])
+                    dance_thread.start()
+                    self.already_asereje = True
+            elif word == "pose":
+                anim_msg = self.gen_anim_msg("Gestures/ShowSky_8")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "foto":
+                anim_msg = self.gen_anim_msg("Waiting/TakePicture_1")
+                self.animationPublisher.publish(anim_msg)
+                rospy.sleep(2)
+                self.show_picture_proxy()
+            elif word == "cumpleaños":
+                anim_msg = self.gen_anim_msg("Waiting/HappyBirthday_1")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "corazon":
+                anim_msg = self.gen_anim_msg("Waiting/LoveYou_1")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "llama":
+                anim_msg = self.gen_anim_msg("Waiting/CallSomeone_1")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "helicoptero":
+                anim_msg = self.gen_anim_msg("Waiting/Helicopter_1")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "zombi":
+                anim_msg = self.gen_anim_msg("Waiting/Zombie_1")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "carro":
+                anim_msg = self.gen_anim_msg("Waiting/DriveCar_1")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "musculos":
+                anim_msg = self.gen_anim_msg("Waiting/ShowMuscles_3")
+                self.animationPublisher.publish(anim_msg)
+            elif word == "gracias":
+                anim_msg = self.gen_anim_msg("Gestures/BowShort_3")
+                self.animationPublisher.publish(anim_msg)
+                self.tm.talk("Con mucho gusto","Spanish")
+            self.haciendo_animacion = False
+            
+            
+            
+
     """
     4. TASK STATES LOGICAL IMPLEMENTATION
     """
     
+    def on_enter_MENU(self):
+        
+        self.enable_tracker_service()
+        self.tm.publish_filtered_image(filter_name="qr",camera_name="front_camera")
+        request = tablet_service_srvRequest()
+        request.url = "http://192.168.0.229:8000/" 
+        self.show_web_page_proxy(request)
+        #Set led color to white
+        self.setLedsColor(224,224,224)
+        rospy.sleep(30)
+        self.start_saying_facts()
+        
+
+    
     #1. on enter INIT
     def on_enter_INIT(self):    
+        
+        self.enable_tracker_service()
     
         # Initialization message
         print(self.consoleFormatter.format("Initializing the task - ENTERING 'INIT' STATE", "HEADER"))
         self.animationPublisher = rospy.Publisher('/animations', animation_msg, queue_size=10)
+        rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
         
         # Saying what Nova is going to do
         print(self.consoleFormatter.format("Nova: I am ready to do my task!", "HEADER"))
         
         # Greeting while the initialization completes
         self.tm.talk("""
-                Por favor dame un momento mientras termino de iniciar mis herramientas para esta tarea.
+                Por favor dame un momento mientras termino de iniciar mis herramientas.
                      
                 ""","Spanish", animated=True, wait=False)
         
@@ -266,6 +376,9 @@ class ZeissCustomersReception(object):
         self.enable_breathing_service()
         self.setLedsColor(255,255,255)
         self.tm.publish_filtered_image(filter_name="qr",camera_name="front_camera")
+        request = tablet_service_srvRequest()
+        request.url = "http://192.168.0.229:8000/" 
+        self.show_web_page_proxy(request)
         #Set led color to white
         self.setLedsColor(224,224,224)
 
@@ -277,17 +390,9 @@ class ZeissCustomersReception(object):
             
         print(self.consoleFormatter.format("Nova: Front camera enabled!", "HEADER"))
         
-        # Showing the registration QR code in the tablet
-        self.tm.show_image("https://raw.githubusercontent.com/fai-aher/Airline-Coberture-WebApp/main/qr_zeiss.png")
-    
-        self.tm.show_image("https://raw.githubusercontent.com/fai-aher/Airline-Coberture-WebApp/main/qr_zeiss.png")
-        
-        
         # Greeting while the initialization completes
-        self.tm.talk("""Hola! mi nombre es Nova, soy la robot de recepción en este evento.
-                
-                Seré la encargada de leer los códigos QR para el ingreso al evento.
-                Si no te has inscrito, escanea el QR de mi tablet.
+        self.tm.talk("""Hola! mi nombre es Nova, soy la robot de recepción e interacción en este evento.
+ 
                 ""","Spanish", wait=False, animated=True)
         
         rospy.sleep(2)
@@ -296,77 +401,67 @@ class ZeissCustomersReception(object):
         print(self.consoleFormatter.format("Nova: I will look for a person to greet him and start the reception of customers!", "HEADER"))
         self.tm.look_for_object("person")
         
-        # Transition: Moving to the next state
-        self.begin_reception()
+        self.return_menu()
         
     
     # 2. on enter RECEIVING_CUSTOMERS
     def on_enter_RECEIVING_CUSTOMERS(self):
         
         # Head tracking service activated
-        self.enable_tracker_service()
+        self.tm.show_topic("/perception_utilities/filtered_image")
+        self.tm.talk("""Voy a registrar tu ingreso al evento.
+                            """, "Spanish", wait=False, animated=True)
         
         # Initialization message
         print(self.consoleFormatter.format("Initializing the task - ENTERING 'RECEIVING_CUSTOMERS' STATE", "HEADER"))
         
         print(self.consoleFormatter.format("Nova: I'm waiting for someone to show me the QR", "HEADER"))
         
-        # If no person shows a QR code, Nova goes to the state of saying a random fact
-        person_detected = self.tm.wait_for_object(8)
-        
-        if person_detected == False:
-            print(self.consoleFormatter.format("Nova: I have seen no person in 10 seconds, I will start saying facts about ZEISS!", "HEADER"))
-            self.start_saying_facts()
-        
         # If Nova sees someone in front
+        
+        # Reading the QR code
+        print(self.consoleFormatter.format("Nova: Someone is in front of me, let's see if the person has a QR code", "HEADER"))
+        rospy.sleep(1.5)
+        self.disable_tracker_service()
+        
+        print(self.consoleFormatter.format("Nova: I will stop my head tracker service to let the person show me the QR code", "HEADER"))
+        self.setLedsColor(102,102,255)
+        self.qr_code = self.tm.qr_read(12)
+        
+        self.enable_tracker_service()
+        #Set led color to white
+        self.setLedsColor(224,224,224)
+        
+        # If the person does not show a QR code, Nova tells the person to show it or to register
+        if self.qr_code == "":
+            print(self.consoleFormatter.format("Nova: I could not read any QR code, I will tell the person to register", "HEADER"))
+            self.tm.talk("""No he podido leer el código, por favor inténtalo de nuevo.
+                            """, "Spanish", wait=False, animated=True)
         else:
-            # Reading the QR code
-            print(self.consoleFormatter.format("Nova: Someone is in front of me, let's see if the person has a QR code", "HEADER"))
-            rospy.sleep(1.5)
-            self.disable_tracker_service()
-            
-            print(self.consoleFormatter.format("Nova: I will stop my head tracker service to let the person show me the QR code", "HEADER"))
-            self.setLedsColor(102,102,255)
-            self.tm.show_topic("/perception_utilities/filtered_image")
-            self.tm.talk("""
-            Hola! te doy la bienvenida al evento de tsais. Por favor muestra el código QR de ingreso frente a mis ojos.
-            ""","Spanish", wait=False, animated=True)
-            qr_code = self.tm.qr_read(12)
-            self.tm.show_image("https://raw.githubusercontent.com/fai-aher/Airline-Coberture-WebApp/main/qr_zeiss.png")
-            #Set led color to white
-            self.setLedsColor(224,224,224)
-            
-            # If the person does not show a QR code, Nova tells the person to show it or to register
-            if qr_code == "":
-                print(self.consoleFormatter.format("Nova: I could not read any QR code, I will tell the person to register", "HEADER"))
-                self.tm.talk("""Si ya te registraste para el evento y tienes un código QR, por favor muéstralo frente a mis ojos.
-                                Si aún no te has registrado, puedes hacerlo escaneando el código QR en mi tablet.
-                             """, "Spanish", wait=False, animated=True)
-            else:
-                # Play greeting animation
-                anim_msg = self.gen_anim_msg("Gestures/BowShort_3")
-                self.animationPublisher.publish(anim_msg)
+            # Play greeting animation
+            anim_msg = self.gen_anim_msg("Gestures/BowShort_3")
+            self.animationPublisher.publish(anim_msg)
 
-                # Check if the scanned QR code matches any VIP guest's name
-                with open('vip_guests.csv', 'r') as file:
-                    reader = csv.DictReader(file)
-                    for row in reader:
-                        if row['guest_name'] == qr_code:
-                            # Greet the special customer with custom message
-                            self.tm.talk(row['custom_message'], "Spanish", wait=False)
-                            break
-                    else:
-                        # Greeting the person with a default message if not a VIP guest
-                        self.tm.talk("Bienvenido al evento. Espero que lo disfrutes mucho. Fue un placer atenderte!", "Spanish", wait=False)
-                
-                # Save the attendance to the CSV file
-                with open('attended_guests.csv', 'a', newline='') as file:
-                    writer = csv.writer(file)
-                    writer.writerow([qr_code, 'True'])
+            # Check if the scanned QR code matches any VIP guest's name
+            with open('/home/sinfonia/sinfonia_ws/src/task_utilities/src/events/2024/ZEISS_event/guests_list.csv', 'r') as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    if row['guest_name'] == self.qr_code:
+                        # Greet the special customer with custom message
+                        self.tm.talk(row['custom_message'], "Spanish", wait=False)
+                        break
+                else:
+                    # Greeting the person with a default message if not a VIP guest
+                    self.tm.talk("Bienvenido al evento " + self.qr_code + "Espero que lo disfrutes mucho. Fue un placer atenderte!", "Spanish", wait=False)
+            
+            # Save the attendance to the CSV file
+            with open('/home/sinfonia/sinfonia_ws/src/task_utilities/src/events/2024/ZEISS_event/attended_guests.csv', 'a', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow([self.qr_code, 'True'])
             
             
         # Transition: Moving to the same state to keep looking for QR codes
-        self.continue_receiving_customers()
+        self.return_menu()
         
         
     # 3. on enter SAYING_FACTS
@@ -377,6 +472,7 @@ class ZeissCustomersReception(object):
         self.setLedsColor(224,224,224)
         
         # Choosing the random fact
+        rospy.sleep(15)
         fact_content, fact_id = self.get_random_fact()
         
         print(self.consoleFormatter.format(f"Nova: I chose to say the fact with ID = {fact_id}", "HEADER"))
@@ -400,7 +496,6 @@ class ZeissCustomersReception(object):
     5. ROSPY FUNCTIONS
     """
     def check_rospy(self):
-        
         # Ending all processes if rospy is not running
         while not rospy.is_shutdown():
             time.sleep(0.1)
