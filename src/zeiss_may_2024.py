@@ -13,6 +13,7 @@ import threading
 import time
 import random
 import pandas as pd
+import csv
 
 # State Machine Library
 from transitions import Machine
@@ -47,7 +48,7 @@ class ZeissCustomersReception(object):
         self.task_name = "ZeissCustomersReception"
         
         # Task module initialization
-        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=True, pytoolkit=True)
+        self.tm = tm(perception = True,speech=True,manipulation=False, navigation=False, pytoolkit=True)
         
         # Task module node initialization
         time.sleep(1)
@@ -351,8 +352,9 @@ class ZeissCustomersReception(object):
                 self.tm.talk("Bienvenido al evento "+ qr_code + "Espero que lo disfrutes mucho. Fue un placer atenderte!", "Spanish", wait=False)
                 
                 # Save the attendance to the CSV file
-                with open('attended_guests.csv', 'a') as file:
-                    file.write(f'"{qr_code}",True\n')
+                with open('/home/sinfonia/sinfonia_ws/src/task_utilities/src/events/2024/ZEISS_event/attended_guests.csv', 'a') as file:
+                    writer = csv.writer(file)
+                    writer.writerow([qr_code, 'True'])
 
                 # TODO: Logic to save the person's assistance in the database
                 # Idea: save the person's name and id in a file and report it to the company
