@@ -20,7 +20,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
 }
 
 .logo {
@@ -34,11 +34,12 @@ body {
     justify-content: center;
     gap: 100px;
     max-width: 90%;
+    margin-bottom: -20px;
 }
 
 .option-button {
     border: none;
-    border-radius: 40%;
+    border-radius: 30%;
     width: 35px;
     height: 35px;
     font-size: 18px;
@@ -63,7 +64,7 @@ body {
 @media (min-width: 768px) and (max-width: 1024px) {
     .option-button {
         width: 125px; /* Ajusta el tamaño del botón */
-        height: 80px; /* Ajusta el tamaño del botón */
+        height: 70px; /* Ajusta el tamaño del botón */
         padding: 5px; /* Ajusta el relleno */
         font-size: 20px; /* Ajusta el tamaño de la fuente */
         margin: 5px;

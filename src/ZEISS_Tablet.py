@@ -24,10 +24,6 @@ html = """
                     <form action="/action" method="post">
                         <button type="submit" name="action" value="QR" class="option-button" style="background-color: #ffffff;">QR</button>
                     </form>
-                
-                    <form action="/action" method="post">
-                        <button type="submit" name="action" value="chao" class="option-button" style="background-color: #FF6347;">Chao</button>
-                    </form>
 
                     <form action="/action" method="post">
                         <button type="submit" name="action" value="detente" class="option-button" style="background-color: #FFA500;">Detente</button>
@@ -48,6 +44,10 @@ html = """
                     <form action="/action" method="post">
                         <button type="submit" name="action" value="pose" class="option-button" style="background-color: #00FA9A;">Pose</button>
                     </form>
+                    
+                    <form action="/action" method="post">
+                        <button type="submit" name="action" value="fact" class="option-button" style="background-color: #BA55F8;">Fact</button>
+                    </form>
 
                     <form action="/action" method="post">
                         <button type="submit" name="action" value="musculos" class="option-button" style="background-color: #00CED1;">Musculos</button>
@@ -55,10 +55,6 @@ html = """
 
                     <form action="/action" method="post">
                         <button type="submit" name="action" value="besos" class="option-button" style="background-color: #1E90FF;">Besos</button>
-                    </form>
-
-                    <form action="/action" method="post">
-                        <button type="submit" name="action" value="foto" class="option-button" style="background-color: #4169E1;">Foto</button>
                     </form>
 
                     <form action="/action" method="post">
@@ -71,10 +67,6 @@ html = """
 
                     <form action="/action" method="post">
                         <button type="submit" name="action" value="corazon" class="option-button" style="background-color: #C71585;">Corazon</button>
-                    </form>
-
-                    <form action="/action" method="post">
-                        <button type="submit" name="action" value="llama" class="option-button" style="background-color: #FF1493;">Llama</button>
                     </form>
 
                     <form action="/action" method="post">
@@ -91,10 +83,6 @@ html = """
 
                     <form action="/action" method="post">
                         <button type="submit" name="action" value="gracias" class="option-button" style="background-color: #BA55D3;">Gracias</button>
-                    </form>
-
-                    <form action="/action" method="post">
-                        <button type="submit" name="action" value="fact" class="option-button" style="background-color: #BA55F8;">Fact</button>
                     </form>
                 </div>
             </div>
