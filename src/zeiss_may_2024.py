@@ -346,18 +346,23 @@ class ZeissCustomersReception(object):
                 # Play greeting animation
                 anim_msg = self.gen_anim_msg("Gestures/BowShort_3")
                 self.animationPublisher.publish(anim_msg)
-                
-                # Greeting the person
-                print(self.consoleFormatter.format("Nova: I recognized a QR code, I will greet the person", "HEADER"))
-                self.tm.talk("Bienvenido al evento "+ qr_code + "Espero que lo disfrutes mucho. Fue un placer atenderte!", "Spanish", wait=False)
+
+                # Check if the scanned QR code matches any VIP guest's name
+                with open('vip_guests.csv', 'r') as file:
+                    reader = csv.DictReader(file)
+                    for row in reader:
+                        if row['guest_name'] == qr_code:
+                            # Greet the special customer with custom message
+                            self.tm.talk(row['custom_message'], "Spanish", wait=False)
+                            break
+                    else:
+                        # Greeting the person with a default message if not a VIP guest
+                        self.tm.talk("Bienvenido al evento. Espero que lo disfrutes mucho. Fue un placer atenderte!", "Spanish", wait=False)
                 
                 # Save the attendance to the CSV file
-                with open('/home/sinfonia/sinfonia_ws/src/task_utilities/src/events/2024/ZEISS_event/attended_guests.csv', 'a') as file:
+                with open('attended_guests.csv', 'a', newline='') as file:
                     writer = csv.writer(file)
                     writer.writerow([qr_code, 'True'])
-
-                # TODO: Logic to save the person's assistance in the database
-                # Idea: save the person's name and id in a file and report it to the company
             
             
         # Transition: Moving to the same state to keep looking for QR codes
