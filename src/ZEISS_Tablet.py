@@ -22,6 +22,10 @@ html = """
                 </div>
                 <div class="button-container">
                     <form action="/action" method="post">
+                        <button type="submit" name="action" value="QR" class="option-button" style="background-color: #ffffff;">QR</button>
+                    </form>
+                
+                    <form action="/action" method="post">
                         <button type="submit" name="action" value="chao" class="option-button" style="background-color: #FF6347;">Chao</button>
                     </form>
 
@@ -87,6 +91,10 @@ html = """
 
                     <form action="/action" method="post">
                         <button type="submit" name="action" value="gracias" class="option-button" style="background-color: #BA55D3;">Gracias</button>
+                    </form>
+
+                    <form action="/action" method="post">
+                        <button type="submit" name="action" value="fact" class="option-button" style="background-color: #BA55F8;">Fact</button>
                     </form>
                 </div>
             </div>
