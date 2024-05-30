@@ -24,7 +24,11 @@ html = """
                     <form action="/action" method="post">
                         <button type="submit" name="action" value="QR" class="option-button" style="background-color: #ffffff;">QR</button>
                     </form>
-
+                    
+                    <form action="/action" method="post">
+                        <button type="submit" name="action" value="Registro" class="option-button" style="background-color: #cca4a4;">Registro</button>
+                    </form>
+                    
                     <form action="/action" method="post">
                         <button type="submit" name="action" value="detente" class="option-button" style="background-color: #FFA500;">Detente</button>
                     </form>
@@ -38,7 +42,7 @@ html = """
                     </form>
 
                     <form action="/action" method="post">
-                        <button type="submit" name="action" value="asereje" class="option-button" style="background-color: #32CD32;">Asereje</button>
+                        <button type="submit" name="action" value="asereje" class="option-button" style="background-color: #32CD32;">Aserejé</button>
                     </form>
 
                     <form action="/action" method="post">
@@ -50,7 +54,7 @@ html = """
                     </form>
 
                     <form action="/action" method="post">
-                        <button type="submit" name="action" value="musculos" class="option-button" style="background-color: #00CED1;">Musculos</button>
+                        <button type="submit" name="action" value="musculos" class="option-button" style="background-color: #00CED1;">Músculos</button>
                     </form>
 
                     <form action="/action" method="post">
@@ -66,15 +70,15 @@ html = """
                     </form>
 
                     <form action="/action" method="post">
-                        <button type="submit" name="action" value="corazon" class="option-button" style="background-color: #C71585;">Corazon</button>
+                        <button type="submit" name="action" value="corazon" class="option-button" style="background-color: #C71585;">Corazón</button>
                     </form>
 
                     <form action="/action" method="post">
-                        <button type="submit" name="action" value="helicoptero" class="option-button" style="background-color: #FF4500;">Helicoptero</button>
+                        <button type="submit" name="action" value="helicoptero" class="option-button" style="background-color: #FF4500;">Helicóptero</button>
                     </form>
 
                     <form action="/action" method="post">
-                        <button type="submit" name="action" value="zombi" class="option-button" style="background-color: #DC143C;">Zombi</button>
+                        <button type="submit" name="action" value="zombi" class="option-button" style="background-color: #DC143C;">Zombie</button>
                     </form>
 
                     <form action="/action" method="post">

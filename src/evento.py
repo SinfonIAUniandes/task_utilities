@@ -60,6 +60,9 @@ class Evento(object):
         self.enable_hot_word_service()
         print(self.consoleFormatter.format("Waiting for pytoolkit/ALTabletService/show_picture_srv...", "WARNING"))
         rospy.wait_for_service('pytoolkit/ALTabletService/show_picture_srv')
+        print(self.consoleFormatter.format("Waiting for /pytoolkit/ALTabletService/show_image_srv...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
+        self.show_image_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_image_srv",tablet_service_srv)
         self.show_picture_proxy = rospy.ServiceProxy('pytoolkit/ALTabletService/show_picture_srv', battery_service_srv)
         self.stop_tracker_srv = rospy.ServiceProxy("/pytoolkit/ALTracker/stop_tracker_srv", battery_service_srv)
         self.play_dance_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/play_dance_srv", set_output_volume_srv)
@@ -269,12 +272,20 @@ class Evento(object):
         if word=="detente":
             self.tm.setRPosture_srv("stand")
             self.haciendo_animacion = False
+            request = tablet_service_srvRequest()
+            request.url = "http://192.168.0.229:8000/" 
+            self.show_web_page_proxy(request)
+            
         if not self.haciendo_animacion:
             self.haciendo_animacion = True
             if word == "chao":
                 self.is_done = True
                 self.already_dance = False
                 self.already_asereje = False
+                
+            elif word == "Registro":
+                self.tm.show_image("https://raw.githubusercontent.com/SinfonIAPepperTeam/Public-Images/main/QR-registro.jpg")
+                
             elif word == "QR":
                 self.tm.show_topic("/perception_utilities/filtered_image")
                 self.tm.talk("""Voy a registrar tu ingreso al evento.
@@ -310,7 +321,7 @@ class Evento(object):
                             # Greeting the person with a default message if not a VIP guest
                             self.tm.talk("Bienvenido al evento " + self.qr_code + "Espero que lo disfrutes mucho. Fue un placer atenderte!", "Spanish", wait=False)
                     
-                    # Save the attendance to the CSV file
+                    # Save the attendance to thehttps://raw.githubusercontent.com/SinfonIAUniandes/task_utilities/dev/src/static/QR-registro.jpg?token=GHSAT0AAAAAACRUXAJQA7DMHMONYDMTNQFSZSXYM3A CSV file
                     with open('/home/sinfonia/sinfonia_ws/src/task_utilities/src/events/2024/ZEISS_event/attended_guests.csv', 'a', newline='') as file:
                         writer = csv.writer(file)
                         writer.writerow([self.qr_code, 'True'])
