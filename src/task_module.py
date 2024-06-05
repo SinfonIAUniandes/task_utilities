@@ -1522,7 +1522,7 @@ class Task_module:
                     elif rospy.is_shutdown():
                         finish = True
                         response = False
-
+                self.setRPosture_srv("stand")
                 return response
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)

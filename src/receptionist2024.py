@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 from transitions import Machine
 from task_module import Task_module as tm
-from std_msgs.msg import Bool
 import ConsoleFormatter
 import time
 import random
 import threading
-import sys
 import rospy
-import math
 import os
-import numpy as np
 from std_srvs.srv import SetBool
 
 from navigation_msgs.srv import constant_spin_srv
@@ -47,10 +43,10 @@ class RECEPTIONIST(object):
             {'trigger': 'save_face_failed', 'source': 'SAVE_FACE', 'dest': 'SAVE_FACE'},
             {'trigger': 'save_face_succeded', 'source': 'SAVE_FACE', 'dest': 'GO2LIVING'},
             {'trigger': 'arrived_to_point', 'source': 'GO2LIVING', 'dest': 'INTRODUCE_NEW'},
-            {'trigger': 'introduced_new_person', 'source': 'INTRODUCE_NEW', 'dest': 'LOOK4PERSON'},
+            {'trigger': 'introduced_new_guest', 'source': 'INTRODUCE_NEW', 'dest': 'LOOK4PERSON'},
             {'trigger': 'person_not_found', 'source': 'LOOK4PERSON', 'dest': 'LOOK4PERSON'},
             {'trigger': 'person_found', 'source': 'LOOK4PERSON', 'dest': 'INTRODUCE_OLD'},
-            {'trigger': 'introduced_old_person', 'source': 'INTRODUCE_OLD', 'dest': 'LOOK4PERSON'},
+            {'trigger': 'introduced_old_guest', 'source': 'INTRODUCE_OLD', 'dest': 'LOOK4PERSON'},
             {'trigger': 'introduced_everyone', 'source': 'LOOK4PERSON', 'dest': 'LOOK4CHAIR'},
             {'trigger': 'chair_found', 'source': 'LOOK4CHAIR', 'dest': 'SIGNAL_SOMETHING'},
             {'trigger': 'person_accomodated', 'source': 'SIGNAL_SOMETHING', 'dest': 'GO2DOOR'},
@@ -62,6 +58,7 @@ class RECEPTIONIST(object):
 
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
+        
 
         # ROS Callbacks
 
@@ -98,20 +95,21 @@ class RECEPTIONIST(object):
         self.labels ={}
         ##################### GLOBAL VARIABLES #####################
 
-        self.initial_place ="init_living_room"
+        self.initial_place ="init"
         self.sinfonia_url_img="https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"
         self.img_dimensions = (320,240)
-        self.recognize_person_counter = 0
-        self.all_persons = {"Charlie":{"name":"Charlie","age": self.categorize_age(21),"drink":"Milk","gender":"Man","pronoun":"he"}}
-        self.introduced_persons = []
-        self.actual_person={}
+        self.recognized_guests_counter = 0
+        self.all_guests = {"Charlie":{"name":"Charlie","age": self.categorize_age(21),"drink":"Milk","gender":"Man","pronoun":"he"}}
+        self.introduced_guests = []
+        self.current_guest={}
         self.old_person = ""
         self.failed_saving_face=False
         self.angle_index = 0
-        self.chair_angles = [260,220,180,140]
+        self.chair_angles = [260+180,220+180,180+180,140+180]
         self.checked_chair_angles = []
         self.empty_chair_angles = []
-        self.first_time = True
+        self.is_first_guest = True
+        self.first_guest = {}
         self.host_name = "Charlie"
     
     def callback_get_labels(self,data):
@@ -133,7 +131,7 @@ class RECEPTIONIST(object):
         elif age < 35:
             category = "an adult"
         elif age < 50:
-            category = "a middle aged adult"
+            category = "a middle aged adult" 
         elif age < 65:
             category = "a senior"
         else:
@@ -149,7 +147,7 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.turn_camera("front_camera","custom",2,10) 
         # self.awareness_srv(False)
-        self.tm.go_to_place("door_living_room")
+        self.tm.go_to_place("living")
         self.beggining()
                 
     def on_enter_WAIT4GUEST(self):
@@ -166,11 +164,11 @@ class RECEPTIONIST(object):
     def on_enter_QA(self):
         print(self.consoleFormatter.format("QA", "HEADER"))
         clothes_color = self.tm.get_clothes_color()
-        self.actual_person["clothes_color"]=clothes_color
+        self.current_guest["clothes_color"]=clothes_color
         self.move_head_srv("up")
-        name=self.tm.q_a_speech("name")
-        drink=self.tm.q_a_speech("drink")
-        self.actual_person = {"name":name,"drink":drink}
+        name=self.tm.q_a("name")
+        drink=self.tm.q_a("drink")
+        self.current_guest = {"name":name,"drink":drink}
         self.tm.start_recognition("")
         self.person_met()
 
@@ -181,71 +179,83 @@ class RECEPTIONIST(object):
         if not self.failed_saving_face:
             self.tm.publish_filtered_image("face","front_camera")
             self.show_topic_srv("/perception_utilities/filtered_image")
-            self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.actual_person["name"]),"English")
-        success = self.tm.save_face(self.actual_person["name"],5)
+            self.tm.talk("Hey {}, I will take some pictures of your face to recognize you in future occasions".format(self.current_guest["name"]),"English")
+        success = self.tm.save_face(self.current_guest["name"],5)
         attributes = self.tm.get_person_description()
         print("attributes: ",attributes)
         # attributes = {"age":25,"gender":"Man","race":"White"}
         print("success ",success)
         if success and attributes!={}:
-            time.sleep(1)
-            self.actual_person["age"]=self.categorize_age(attributes["age"])
-            self.actual_person["gender"]=attributes["gender"]
-            self.actual_person["race"]=attributes["race"]
-            self.actual_person["pronoun"]= "he" if  attributes["gender"] == "Man" else "she"
-            self.actual_person["has_glasses"]=attributes["has_glasses"]
-            self.actual_person["has_beard"]=attributes["has_beard"]
-            self.actual_person["has_hat"]=attributes["has_hat"]
-            self.all_persons[self.actual_person["name"]] = self.actual_person
+            time.sleep(0.5)
+            self.current_guest["age"]=self.categorize_age(attributes["age"])
+            self.current_guest["gender"]=attributes["gender"]
+            self.current_guest["race"]=attributes["race"]
+            self.current_guest["pronoun"]= "he" if  attributes["gender"] == "Man" else "she"
+            self.current_guest["has_glasses"]=attributes["has_glasses"]
+            self.current_guest["has_beard"]=attributes["has_beard"]
+            self.current_guest["has_hat"]=attributes["has_hat"]
+            self.all_guests[self.current_guest["name"]] = self.current_guest
             self.move_head_srv("default")  
             self.failed_saving_face=False
             self.show_image_srv(self.sinfonia_url_img)
             self.save_face_succeded()
         else:
             self.failed_saving_face=True
-            self.tm.talk("I am sorry {}, I was not able to save your face, can you please see my tablet and fit your face".format(self.actual_person["name"]),"English")
+            self.tm.talk("I am sorry {}, I was not able to save your face, can you please see my tablet and fit your face".format(self.current_guest["name"]),"English")
             self.save_face_failed()
+        if self.is_first_guest:
+            self.is_first_guest = False
+            self.first_guest["name"] = self.current_guest["name"]
+            self.first_guest["drink"] = self.current_guest["drink"]
+            self.first_guest["age"]=self.categorize_age(attributes["age"])
+            self.first_guest["gender"]=attributes["gender"]
+            self.first_guest["race"]=attributes["race"]
+            self.first_guest["pronoun"]= "he" if  attributes["gender"] == "Man" else "she"
+            self.first_guest["has_glasses"]=attributes["has_glasses"]
+            self.first_guest["has_beard"]=attributes["has_beard"]
+            self.first_guest["has_hat"]=attributes["has_hat"]
+        
     
     def on_enter_GO2LIVING(self):
         print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
-        self.tm.talk("Please {}, follow me to the living room".format(self.actual_person["name"]),"English",wait=False)
-        self.tm.go_to_place("receptionist")
+        self.tm.talk("Please {}, follow me to the living room".format(self.current_guest["name"]),"English",wait=False)
+        self.tm.go_to_place("room")
         self.arrived_to_point()
-
+ 
     def on_enter_INTRODUCE_NEW(self):
         print(self.consoleFormatter.format("INTRODUCE_NEW", "HEADER"))
-        self.tm.talk("Please {}, stand besides me".format(self.actual_person["name"]),"English")
+        self.tm.talk("Please {}, stand besides me".format(self.current_guest["name"]),"English")
         time.sleep(2)
-        has_beard_str = "has a beard" if self.actual_person["has_beard"] else "does not have a beard"
-        has_glasses_str = "wears glasses" if self.actual_person["has_glasses"] else "does not wear glasses"
-        has_hat_str = "wears a hat" if self.actual_person["has_hat"] else "does not wear a hat"
-        self.tm.talk(f'Hello everyone, this is {self.actual_person["name"]}, {self.actual_person["pronoun"]} is a {self.actual_person["gender"]}.  {self.actual_person["pronoun"]} is {self.actual_person["age"]}, and {self.actual_person["pronoun"]} likes to drink {self.actual_person["drink"]}. {self.actual_person["pronoun"]} {has_beard_str}, {has_hat_str} and {has_glasses_str}',"English")
+        has_beard_str = "has a beard" if self.current_guest["has_beard"] else "does not have a beard"
+        has_glasses_str = "wears glasses" if self.current_guest["has_glasses"] else "does not wear glasses"
+        has_hat_str = "wears a hat" if self.current_guest["has_hat"] else "does not wear a hat"
+        self.tm.talk(f'Hello everyone, this is {self.current_guest["name"]}, {self.current_guest["pronoun"]} is a {self.current_guest["gender"]}.  {self.current_guest["pronoun"]} is {self.current_guest["age"]}, and {self.current_guest["pronoun"]} likes to drink {self.current_guest["drink"]}. {self.current_guest["pronoun"]} {has_beard_str}, {has_hat_str}, and {has_glasses_str}',"English")
         #Turns on recognition and looks for  person
         self.tm.start_recognition("front_camera")
         # Reiniciar las variables de presentacion de personas y sillas
-        self.introduced_persons=[]
-        self.introduced_persons.append(self.actual_person["name"])
+        self.introduced_guests=[]
+        self.introduced_guests.append(self.current_guest["name"])
         self.checked_chair_angles=[]
         self.empty_chair_angles=self.chair_angles.copy()
         self.angle_index=0
         self.show_topic_srv("/perception_utilities/yolo_publisher")
-        self.introduced_new_person()
+        self.introduced_new_guest()
     
     def on_enter_LOOK4PERSON(self):
         print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
         # El robot ya fue a todas las posiciones de personas o introdujo a todas las personas
-        if (len(self.checked_chair_angles)==len(self.chair_angles)) or (len(self.introduced_persons)==len(self.all_persons)):
-            if len(self.introduced_persons)==len(self.all_persons):
+        if (len(self.checked_chair_angles)==len(self.chair_angles)) or (len(self.introduced_guests)==len(self.all_guests)):
+            if len(self.introduced_guests)==len(self.all_guests):
                 print(self.consoleFormatter.format("INTRODUCED_EVERYONE", "OKGREEN"))
                 self.introduced_everyone()
             else:
                 print(self.consoleFormatter.format("FAILED_INTRODUCING", "FAIL"))
                 not_introduced = []
-                for person in self.all_persons:
-                    if person not in self.introduced_persons:
+                for person in self.all_guests:
+                    if person not in self.introduced_guests:
                         not_introduced.append(person)
                 not_introduced_persons = ", ".join(not_introduced)
-                self.tm.talk("{} I am sorry I was not able to recognize you, please introduce yourself to {}".format(not_introduced_persons,self.actual_person["name"]),"English",wait=True)
+                self.tm.talk("{} I am sorry I was not able to recognize you, please introduce yourself to {}".format(not_introduced_persons,self.current_guest["name"]),"English",wait=True)
                 self.introduced_everyone()
         # El robot busca una persona
         else:
@@ -255,7 +265,7 @@ class RECEPTIONIST(object):
             self.angle_index+=1
             t1 = time.time()
             self.labels ={}
-            while time.time()-t1<5:
+            while time.time()-t1<2:
                 if "person" in self.labels:
                     self.tm.talk("Recognizing person","English")
                     self.person_found()
@@ -264,21 +274,28 @@ class RECEPTIONIST(object):
             
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
-        person_name = ""
-        while person_name == "" and self.recognize_person_counter<3:
-            person_name = self.tm.recognize_face(3)
-            print("saw: "+person_name)
-            self.recognize_person_counter+=1
-            self.recognize_person_counter=0
-        if person_name not in self.introduced_persons and person_name in self.all_persons:
+        guest_name = ""        
+        while guest_name == "" and self.recognized_guests_counter<3:
+            guest_name = self.tm.recognize_face(3)
+            print("saw: "+guest_name)
+            self.recognized_guests_counter+=1
+            self.recognized_guests_counter=0
+        if guest_name not in self.introduced_guests and guest_name in self.all_guests:
             self.empty_chair_angles.remove(self.checked_chair_angles[-1])
-            person_introduce = self.all_persons[person_name]
-            print("Person introduce: ",person_introduce)
+            introduced_guest = self.all_guests[guest_name]
+            print("Person introduce: ", introduced_guest)
             #TODO manipulacion animations/poses
             self.animations_publisher.publish("animations","Gestures/TakePlace_2")
-            self.tm.talk(f' {self.actual_person["name"]} I introduce to you {person_name}. {person_introduce["pronoun"]} is a {person_introduce["gender"]}. {person_name} is around {person_introduce["age"]} years old and likes to drink {person_introduce["drink"]}',"English")
-            self.introduced_persons.append(person_name)
-        self.introduced_old_person()
+            self.introduced_guests.append(guest_name)
+            if guest_name == self.first_guest["name"]:
+                has_beard_str = "has a beard" if self.current_guest["has_beard"] else "does not have a beard"
+                has_glasses_str = "wears glasses" if self.current_guest["has_glasses"] else "does not wear glasses"
+                has_hat_str = "wears a hat" if self.current_guest["has_hat"] else "does not wear a hat"
+                self.tm.talk(f' {self.current_guest["name"]}, I introduce to you {guest_name} is a {introduced_guest["gender"]}. {introduced_guest["pronoun"]} is {introduced_guest["age"]}, and {introduced_guest["pronoun"]} likes to drink {introduced_guest["drink"]}. {introduced_guest["pronoun"]} {has_beard_str}, {has_hat_str} and {has_glasses_str}',"English")
+            else:
+                self.tm.talk(f'{self.current_guest["name"]}, I introduce to you {guest_name}. {introduced_guest["pronoun"]} is a {introduced_guest["gender"]}. {introduced_guest["pronoun"]} is {introduced_guest["age"]}, and {introduced_guest["pronoun"]} likes to drink {introduced_guest["drink"]}.')
+                
+        self.introduced_old_guest()
     
     def on_enter_LOOK4CHAIR(self):
         print(self.consoleFormatter.format("LOOK4CHAIR", "HEADER"))
@@ -294,14 +311,14 @@ class RECEPTIONIST(object):
     def on_enter_SIGNAL_SOMETHING(self):
         print(self.consoleFormatter.format("SIGNAL_SOMETHING", "HEADER"))
         self.animations_publisher.publish("animations","Gestures/TakePlace_2")
-        self.tm.talk("Please, take a seat {}".format(self.actual_person["name"]),"English")
+        self.tm.talk("Please, take a seat {}".format(self.current_guest["name"]),"English")
         time.sleep(0.5)
         self.person_accomodated()
 
     def on_enter_GO2DOOR(self):
         print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
         self.tm.talk("Waiting for other guests to come","English",wait=False)
-        self.tm.go_to_place("door_living_room")
+        self.tm.go_to_place("living")
         self.wait_new_guest()
 
     def check_rospy(self):

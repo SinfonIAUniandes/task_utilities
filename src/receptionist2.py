@@ -166,8 +166,8 @@ class RECEPTIONIST(object):
     def on_enter_QA(self):
         print(self.consoleFormatter.format("QA", "HEADER"))
         self.move_head_srv("up")
-        name=self.tm.q_a_speech("name")
-        drink=self.tm.q_a_speech("drink")
+        name=self.tm.q_a("name")
+        drink=self.tm.q_a("drink")
         self.actual_person = {"name":name,"drink":drink}
         self.tm.start_recognition("")
         self.person_met()
