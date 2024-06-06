@@ -259,6 +259,7 @@ class RECEPTIONIST(object):
                 self.introduced_everyone()
         # El robot busca una persona
         else:
+            print("XD")
             self.move_head_srv("default")
             self.tm.go_to_defined_angle_srv(self.chair_angles[self.angle_index])
             self.checked_chair_angles.append(self.chair_angles[self.angle_index])

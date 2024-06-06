@@ -1284,33 +1284,34 @@ class Task_module:
         ----------
         Helps the followed person stay within a good distance of the robot
         """
-        perfect = False
+        centered = False
         start_time = time.time()
         end_time = time.time()
         #0.2 is 20% of the total range
         close_threshold = max_width-(max_width - min_width)*0.10 #116
         far_threshold= min_width+(max_width-min_width)*0.10 #74
-        while(not perfect):
+        while(not centered):
             followed_person = self.closest_person
+            screen_center = 360 / 2
+            person_x = followed_person[1]
+            distance_from_center = person_x - screen_center
             person_width = followed_person[3]
             if "person" in self.labels: 
                 self.iterations=0
                 end_time = time.time()
-                if end_time-start_time >= 5:
+                if end_time-start_time >= 2:
                     if(person_width>=close_threshold):
                         self.talk("You're too close", "English", True, False)
-                    if(person_width<=far_threshold):
+                    if(person_width<=far_threshold and distance_from_center<30):
                         self.talk("You're too far", "English", True, False)
                     start_time = time.time()
-                if (int(person_width) in range(int(far_threshold),int(close_threshold))):
-                    perfect = True
+                if (int(person_width) in range(int(far_threshold),int(close_threshold))) or distance_from_center>15:
+                    centered = True
                     continue
             else:
                 self.iterations+=1
             if self.iterations >= 60:
                 self.talk("I have lost you", "English", True, False)
-                print("I have lost you")
-                print(self.closest_person)
                 while not ("person" in self.labels):
                     rospy.sleep(0.03)
         self.talk("Perfect. Try to keep at that distance", "English", True, False)
@@ -1342,18 +1343,17 @@ class Task_module:
             if "person" in self.labels:
                 # If that person is the closest person
                 followed_person = self.closest_person
-                print(followed_person)
                 person_width = followed_person[3]
                 # Person seen
                 self.iterations=0
                 # Calculate moving speed
                 target_x = followed_person[1]
                 # a = (0.1-0.5)/(max_width-min_width)**2
-                calculated_vel = speed*(max_width-person_width)+0.05 if person_width <max_width else 0
+                calculated_vel = speed*(max_width-person_width)+0.05 if person_width <max_width else 0.01
                 # calculated_vel = (a*(person_width-min_width)**2)+0.5 if person_width <max_width else 0
-                error_x = target_x - center_x
+                error_x = (target_x + person_width/2) - center_x 
                 # 0.005 worked well
-                angular_vel = 0.005 * error_x
+                angular_vel = 0.0025 * error_x
                 
                 if person_width>=max_width:
                     close = True

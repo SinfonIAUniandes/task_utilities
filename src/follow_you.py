@@ -1,29 +1,15 @@
 #!/usr/bin/env python3
 from transitions import Machine
 from task_module import Task_module as tm
-from std_msgs.msg import Bool
 import ConsoleFormatter
 import time
-import random
 import threading
-import sys
 import rospy
-import math
 import os
-import numpy as np
-from std_srvs.srv import SetBool
-from code_generation import ls_generate as gen
-from code_generation import generate_utils 
-from code_generation.database.models import Model
 
 from robot_toolkit_msgs.msg import touch_msg
 
-from navigation_msgs.srv import constant_spin_srv
-from navigation_msgs.msg import simple_feedback_msg
-from robot_toolkit_msgs.msg import animation_msg
-from geometry_msgs.msg import PoseWithCovarianceStamped
-from tf.transformations import euler_from_quaternion
-
+from robot_toolkit_msgs.srv import set_security_distance_srv
 class FOLLOW_YOU(object):
     def __init__(self):
 
@@ -50,12 +36,23 @@ class FOLLOW_YOU(object):
         
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
+        
+        
+        print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_orthogonal_security_distance_srv...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv")
+        self.set_orthogonal_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv",set_security_distance_srv)
+
+        print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_tangential_security_distance_srv...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALMotion/set_tangential_security_distance_srv")
+        self.set_tangential_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_tangential_security_distance_srv",set_security_distance_srv)
 
         ############################# STATES #############################
 
     def on_enter_INIT(self):
         print(self.consoleFormatter.format("INIT", "HEADER"))
         self.tm.initialize_pepper()
+        self.set_orthogonal_security_srv(0.3)
+        self.set_tangential_security_srv(0.05)
         print("I am going to test follow you")
         #self.tm.talk("I am going to test follow you","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))

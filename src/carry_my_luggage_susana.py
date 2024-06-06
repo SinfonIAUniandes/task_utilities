@@ -2,7 +2,6 @@
 import os
 import rospy
 import threading
-import numpy as np
 import ConsoleFormatter
 import time
 from transitions import Machine
@@ -10,25 +9,17 @@ from task_module import Task_module as tm
 
 from std_msgs.msg import String
 from std_srvs.srv import SetBool
-from perception_msgs.msg import get_labels_msg
 from robot_toolkit_msgs.msg import touch_msg
 from robot_toolkit_msgs.srv import (
     set_move_arms_enabled_srv,
-    set_security_distance_srv,
-    misc_tools_srv,
-    misc_tools_srvRequest,
-    set_security_distance_srvRequest,
+    set_security_distance_srv
 )
-from perception_msgs.msg import get_labels_msg
 from robot_toolkit_msgs.srv import (
     tablet_service_srv,
     move_head_srv,
-    misc_tools_srv,
     battery_service_srv,
 )
-from robot_toolkit_msgs.msg import animation_msg, touch_msg, speech_recognition_status_msg
-from geometry_msgs.msg import PoseWithCovarianceStamped
-from tf.transformations import euler_from_quaternion
+from robot_toolkit_msgs.msg import touch_msg, speech_recognition_status_msg
 
 
 class CARRY_MY_LUGGAGE(object):
@@ -107,6 +98,16 @@ class CARRY_MY_LUGGAGE(object):
         self.stop_tracker_proxy = rospy.ServiceProxy(
             "/pytoolkit/ALTracker/stop_tracker_srv", battery_service_srv
         )
+        
+        
+        print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_orthogonal_security_distance_srv...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv")
+        self.set_orthogonal_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv",set_security_distance_srv)
+
+        print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_tangential_security_distance_srv...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALMotion/set_tangential_security_distance_srv")
+        self.set_tangential_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_tangential_security_distance_srv",set_security_distance_srv)
+        
         # --------------- Subscribers ---------------
         self.posePublisherSubscriber = rospy.Subscriber(
             "perception_utilities/pose_publisher", String, self.posePublisherCallback
@@ -139,6 +140,8 @@ class CARRY_MY_LUGGAGE(object):
     def on_enter_INIT(self):
         print(self.consoleFormatter.format("INIT", "HEADER"))
         self.tm.initialize_pepper()
+        self.set_orthogonal_security_srv(0.3)
+        self.set_tangential_security_srv(0.05)
         self.tm.talk("Hello, I am ready to carry your luggage")
         self.tm.pose_srv("front_camera", True)
         time.sleep(1)
@@ -224,7 +227,7 @@ class CARRY_MY_LUGGAGE(object):
         self.tm.follow_you(False)
         save_place_thread = threading.Thread(target=self.save_place)
         save_place_thread.start()
-        self.save_place = False
+        self.save_places = False
         self.tm.talk("We have arrived! Could you pick up your bag?", "English")
         if self.bagSelectedRight:
             self.tm.go_to_pose("open_left_hand")
@@ -237,12 +240,14 @@ class CARRY_MY_LUGGAGE(object):
 
     def on_enter_GO_BACK(self):
         print(self.consoleFormatter.format("GO_BACK", "HEADER"))
+        self.tm.setRPosture_srv("stand")
         self.tm.talk("I am going back to my initial position")
         self.tm.go_to_place("place0")
         self.tm.talk("carry my luggage task completed succesfully")
         os._exit(os.EX_OK)
 
     def save_place(self):
+        self.save_places = True
         # anadir el lugar donde esta parado, junto con el anterior nodo
         while self.save_places:
             self.tm.add_place(
@@ -250,9 +255,8 @@ class CARRY_MY_LUGGAGE(object):
                 edges=["place" + str(self.place_counter - 1)],
             )
             self.place_counter += 1
-            self.tm.move_head_srv("up")
             # Guardar cada 3 segundos
-            time.sleep(10)
+            time.sleep(3)
 
     def posePublisherCallback(self, msg):
         if msg.data == "Pointing to the left":
