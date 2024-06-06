@@ -142,12 +142,12 @@ class CARRY_MY_LUGGAGE(object):
         self.tm.initialize_pepper()
         self.set_orthogonal_security_srv(0.3)
         self.set_tangential_security_srv(0.05)
-        self.tm.talk("Hello, I am ready to carry your luggage")
         self.tm.pose_srv("front_camera", True)
         time.sleep(1)
         self.tm.add_place("place" + str(self.place_counter))
         self.place_counter += 1
         subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
+        self.tm.talk("Hello, I am ready to carry your luggage")
         self.start()
 
     def on_enter_LOOK_FOR_BAG(self):

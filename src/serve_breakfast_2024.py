@@ -60,14 +60,15 @@ class SERVE_BREAKFAST(object):
         
         
         self.item = 0 # Contador para saber que ingrediente se esta manipulando
-        self.items = ["milk_cardboard", "bowl", "cereal_box", "spoon"] # Orden de los ingredientes (izquierda a derecha)
+        self.items = [ "bowl","cereal_box","milk_cardboard",  "spoon"] # Orden de los ingredientes (izquierda a derecha)
         self.distance_between_items = 0.2 # Distancia promedio entre los objetos en la cupboard
         
         # Grab instructions by object
         self.info_grab_items = {
-            "milk_cardboard": ["open_both_hands", "both_arms_milk", self.relative_milk_distance, "close_arms_milk", "raise_arms_milk", "finish"],
-            "bowl": ["mid_arms_bowl", "both_arms_bowl", self.relative_bowl_distance, "close_arms_bowl", "raise_arms_bowl", self.relative_bowl_distance, "finish"],
-            "cereal_box": ["open_both_hands", "both_arms_cereal", self.relative_bowl_distance, "close_arms_cereal", "raise_arms_cereal", self.relative_cereal_distance, "finish"]
+            "bowl": ["mid_arms_bowl", "both_arms_bowl", "close_arms_bowl", "raise_arms_bowl", "finish"],
+            "cereal_box": ["open_both_hands", "both_arms_cereal", "close_arms_cereal", "raise_arms_cereal",  "finish"],
+            "milk_cardboard": ["open_both_hands", "both_arms_milk", "close_arms_milk", "raise_arms_milk", "finish"],
+            
         }
         # Drop instruction by object
         self.info_drop_items = {
@@ -100,21 +101,17 @@ class SERVE_BREAKFAST(object):
 
     def on_enter_GO_2_CUPBOARD(self):
         self.actual_item = self.items[self.item]
-        self.tm.talk("I will navigate to the kitchen door and look for the ingredients. I will look for the milk cardboard, the cereal box and the bowl.", "English", wait=False)
+        self.tm.talk("I will navigate to the kitchen door and look for the ingredients.", "English", wait=False)
         self.tm.talk(f"on my way to the kitchen!", "English", wait=False)
-        self.tm.go_to_place("kitchen")
-        self.tm.talk(f"I am going to pick up the {self.actual_item}", "English", wait=False)
+        self.tm.go_to_place("kitchen", lower_arms=False)
         self.grab_ingredient()
         
         
 
     def on_enter_GRAB_OBJECT(self):
-        self.tm.go_to_relative_point(self.cupboard_approach_distance, 0.0, 0.0)
-        time.sleep(1)
-        self.tm.go_to_relative_point(0.0, self.right_corner_cupboard_table, 0.0)
         self.tm.go_to_pose("almost_down_head", self.normal_movement)
         actions = self.info_grab_items[self.actual_item]
-        self.tm.talk(f"Please put the {self.actual_item} in front of me, so I can grab it", "English", wait=False)
+        self.tm.talk(f"Please put the {self.actual_item} in the middle of my hands, so I can grab it", "English", wait=False)
         
         # TODO Cambiar "bottle" cuando perception tenga listo el modelo para los distintos objetos
         # self.tm.align_with_object(self.actual_item)
@@ -122,19 +119,16 @@ class SERVE_BREAKFAST(object):
             print(action)
             if isinstance(action, str):
                 if action != "finish":
-                    if self.actual_item == "bowl":
+                    if self.actual_item == "bowl" and action =="mid_arms_bowl":
                         self.tm.talk("Please, could you put the spoon in the bowl so I can take it to the next table?", "English", wait=False)
                         time.sleep(5)
                         self.tm.talk("Thank you!", "English", wait=False)
                         
                     self.tm.go_to_pose(action, self.slow_movement)
                     print(f"se ejcuto {action}")
-            else:
-                self.tm.go_to_relative_point(action, 0.0, 0.0)
             time.sleep(3)
                 
         self.tm.talk(f"Now I will go to the dining room to leave the {self.actual_item}", "English", wait=False)
-        self.tm.go_to_relative_point(-(self.cupboard_approach_distance), 0.0, 0.0)
         self.go_drop_place()
         
         
@@ -142,9 +136,7 @@ class SERVE_BREAKFAST(object):
 
     def on_enter_GO_DROP_PLACE(self):
         self.tm.talk(f"On my way to the dinning room", "English", wait=False)
-        self.tm.go_to_place("dining_table")
-        self.tm.go_to_relative_point(0.5,0.0,0.0)
-        self.tm.go_to_relative_point(0.0,0.0,90)
+        self.tm.go_to_place("dining_table", lower_arms=False)
         time.sleep(1)
         # self.threads_poses = threading.Thread(target=self.carry_object_thread, args=("raise_arms_milk", 0.05))
         # self.threads_poses.start()

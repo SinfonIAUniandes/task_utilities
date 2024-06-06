@@ -1173,7 +1173,7 @@ class Task_module:
             print("navigation as false")
             return False
 
-    def go_to_place(self, place_name: str, graph=1, wait=True) -> bool:
+    def go_to_place(self, place_name: str, graph=1, wait=True, lower_arms=True) -> bool:
         """
         Input:
         place_name: options -> ("door","living_room")
@@ -1189,6 +1189,8 @@ class Task_module:
                 approved = self.go_to_place_proxy(place_name, graph)
                 if wait:
                     self.wait_go_to_place()
+                if lower_arms:
+                    self.setRPosture_srv("stand")
                 if approved=="approved":
                     return True
                 else:
@@ -1290,7 +1292,7 @@ class Task_module:
         #0.2 is 20% of the total range
         close_threshold = max_width-(max_width - min_width)*0.10 #116
         far_threshold= min_width+(max_width-min_width)*0.10 #74
-        while(not centered):
+        while(not centered) and self.follow_you_active:
             followed_person = self.closest_person
             screen_center = 360 / 2
             person_x = followed_person[1]
@@ -1522,7 +1524,6 @@ class Task_module:
                     elif rospy.is_shutdown():
                         finish = True
                         response = False
-                self.setRPosture_srv("stand")
                 return response
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
