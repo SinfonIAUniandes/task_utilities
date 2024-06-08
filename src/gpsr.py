@@ -52,50 +52,51 @@ class GPSR(object):
             "perception_utilities/pose_publisher", String, self.posePublisherCallback
         )
         ############################# GLOBAL VARIABLES #############################
-        self.location = "init"
+        self.location = "house_door"
 
     def on_enter_INIT(self):
-        self.tm.talk("I am going to do the  "+self.task_name+" task","English")
+        #self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.initialize_pepper()
+        self.tm.turn_camera("bottom_camera","custom",1,15)
         subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
-        self.tm.turn_camera("front_camera","custom",1,15) 
-        self.tm.start_recognition("front_camera")
         self.tm.pose_srv("front_camera", True)
-        self.tm.hot_word(words=["stop"],thresholds=[0.5])
+        self.tm.hot_word(words=["stop", "nova"],thresholds=[0.5, 0.4])
         self.beggining()
 
     def on_enter_GPSR(self):
         print(self.consoleFormatter.format("GPSR", "HEADER"))
         self.tm.look_for_object("")
-        self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. Talk to me now: ","English")
-        task = self.tm.speech2text_srv(10)
+        #self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. Talk to me now: ","English")
+        self.tm.talk("talk, now")
+        task = self.tm.speech2text_srv(0)
         print(f"Task: {task}")
-        self.tm.talk("Processing your request")
-        generate_utils.load_code_gen_config() 
-        contador = 0
-        while contador<3:
-            try:
-                code = self.gen.generate_code(task,Model.GPT4).replace("`","").replace("python","")
-                print(code)
-                if not "I am sorry but I cannot complete this task" in code:
-                    print("es posible la task")
-                    exec(code)
-                    contador = 5
-                contador += 1
-            except:
-                print("Fallo el codigo")
-                contador+=1
-        if contador==4:
-            self.tm.talk("I cannot do this task: "+task,"English")
+        if task!="":
+            self.tm.talk("Processing your request")
+            generate_utils.load_code_gen_config() 
+            contador = 0
+            while contador<3:
+                try:
+                    code = self.gen.generate_code(task,Model.GPT4).replace("`","").replace("python","")
+                    print(code)
+                    if not "I am sorry but I cannot complete this task" in code:
+                        print("es posible la task")
+                        exec(code)
+                        contador = 5
+                    contador += 1
+                except:
+                    print("Fallo el codigo")
+                    contador+=1
+            if contador==4:
+                self.tm.talk("I cannot do this task: "+task,"English")
         self.GPSR_done()
 
     def on_enter_GO2GPSR(self):
         while self.tm.follow_you_active: 
             rospy.sleep(0.1)
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
-        self.tm.talk("I am going to the GPSR location","English")
-        self.tm.go_to_place(self.location)
+        #self.tm.talk("I am going to the GPSR location","English")
+        #self.tm.go_to_place(self.location)
         self.go_to_gpsr()
 
     def on_enter_WAIT4GUEST(self):

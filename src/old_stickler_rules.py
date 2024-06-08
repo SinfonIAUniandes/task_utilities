@@ -45,9 +45,6 @@ class STICKLER_RULES(object):
         rospy.wait_for_service("/pytoolkit/ALMotion/move_head_srv")
         self.move_head_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/move_head_srv",move_head_srv)
 
-
-
-
         print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_orthogonal_security_distance_srv...", "WARNING"))
         rospy.wait_for_service("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv")
         self.set_orthogonal_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv",set_security_distance_srv)

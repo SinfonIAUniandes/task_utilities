@@ -237,8 +237,6 @@ class Task_module:
             print(self.consoleFormatter.format('Waiting for speech_utilities/hot_word_srv service!', 'WARNING'))  
             rospy.wait_for_service('/speech_utilities/hot_word_srv')
             self.hot_word_srv= rospy.ServiceProxy("/speech_utilities/hot_word_srv", hot_word_srv)
-            self.hot_word_srv= rospy.ServiceProxy("/speech_utilities/hot_word_srv", hot_word_srv)
-
             print(self.consoleFormatter.format("SPEECH services enabled","OKGREEN"))
 
 
@@ -492,7 +490,7 @@ class Task_module:
         else:
             print("perception as false")
         if self.speech:
-            self.calibrate_srv(5)
+            #self.calibrate_srv(5)
             pass
         else:
             print("speech as false")
@@ -604,27 +602,31 @@ class Task_module:
             print("perception as false")
             return False
 
-    def find_item_with_characteristic(self, class_type,characteristic) -> str:
+    def find_item_with_characteristic(self, class_type,characteristic,place="") -> str:
         """
         Input:
         class_type: The characteristic to search for ("color", "size", "weight", "position", "description")
-        characteristic: The specific thing to search for (example: red,blue,black with white dots, smallest, largest, thinnest, big one, lightest, heaviest,left, right,fragile)
-        timeout: Timeout in seconds || -1 for infinite
+        characteristic: The specific thing to search for (example: red,blue,black, white dots, smallest, largest, thinnest, big one, lightest, heaviest,left, right,fragile)
+        place: The specific place the robot is looking for the item.
         Output: String with the item with the characteristic name or "none" if it wasn't found
         ----------
         Aks chatgpt vision which item in front of the robot has the characteristic
         """
         if self.perception:
             try:
+                place_prompt = ""
+                if place != "":
+                    place_prompt = f" in the {place}"
+                rospy.sleep(1)
                 if class_type == "color":
-                    gpt_vision_prompt = f"Which item in the picture has these colors: {characteristic}. Answer only with the item name or none"
+                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture has these colors: {characteristic}. Answer only with one word, either the item name or None"
                 elif class_type == "size" or class_type == "weight":
-                    gpt_vision_prompt = f"Which item in the picture is the {characteristic}. Answer only with the item name or none"
+                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is the {characteristic}. Answer only with one word, either the item name or None"
                 elif class_type == "position":
-                    gpt_vision_prompt = f"Which item in the picture is positioned {characteristic}most. Answer only with the item name or none"
+                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is positioned {characteristic}most. Answer only with one word, either the item name or None"
                 elif class_type == "description":
-                    gpt_vision_prompt = f"Which item in the picture is {characteristic}. Answer only with the item name or none"
-                return self.img_description(gpt_vision_prompt)["message"]
+                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is {characteristic}. Answer only with one word, either the item name or None"
+                return self.img_description(gpt_vision_prompt,camera_name="bottom_camera")["message"]
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return "none"
@@ -866,7 +868,7 @@ class Task_module:
     def img_description(self, prompt: str, camera_name="front_camera") -> dict:
         """
         Input:
-        camera_name: "front_camera" || "bottom_camera" || "depth_camera"
+        camera_name: "front_camera" || "bottom_camera" || "depth_camera" || "Both
         prompt: A string that indicates what gpt vision must do with the image. example: "Describe this image:"
         Output: Dictionary containing the answer from gpt vision.
         ----------
@@ -1020,12 +1022,12 @@ class Task_module:
         ----------
         Allows the robot to detect hot words
         """
-        if thresholds ==None:
+        if thresholds == None:
             thresholds = [0.4 for _ in range(len(words))]
         else:
             if len(words)!= len(thresholds):
-                error_msg = "Words: "+str(len(words))+" Thresholds: "+str(len(len(thresholds)))
-                print(self.consoleFormatter.format(error_msg, "ERROR"))
+                error_msg = "Words: "+str(len(words))+" Thresholds: "+str(len(thresholds))
+                print(self.consoleFormatter.format(error_msg, "FAIL"))
                 return False
             
         if self.speech:

@@ -95,7 +95,7 @@ class RECEPTIONIST(object):
         self.labels ={}
         ##################### GLOBAL VARIABLES #####################
 
-        self.initial_place ="init"
+        self.initial_place ="house_door"
         self.sinfonia_url_img="https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"
         self.img_dimensions = (320,240)
         self.recognized_guests_counter = 0
@@ -142,19 +142,16 @@ class RECEPTIONIST(object):
 
     def on_enter_INIT(self):
         print(self.consoleFormatter.format("INIT", "HEADER"))
-        self.tm.set_current_place(self.initial_place)
+        self.tm.initialize_pepper()
         self.tm.talk("I am going to do the  "+self.task_name+" task","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        self.tm.turn_camera("front_camera","custom",2,10) 
-        # self.awareness_srv(False)
-        self.tm.go_to_place("living")
+        self.tm.go_to_place(self.initial_place)
         self.beggining()
                 
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
         self.show_topic_srv("/perception_utilities/yolo_publisher")
-        self.tm.start_recognition("front_camera")
-        time.sleep(0.2)
+        rospy.sleep(0.2)
         self.tm.talk("Waiting for guests","English")
         self.tm.look_for_object("person",False)
         self.tm.wait_for_object(-1)        
@@ -186,7 +183,7 @@ class RECEPTIONIST(object):
         # attributes = {"age":25,"gender":"Man","race":"White"}
         print("success ",success)
         if success and attributes!={}:
-            time.sleep(0.5)
+            rospy.sleep(0.5)
             self.current_guest["age"]=self.categorize_age(attributes["age"])
             self.current_guest["gender"]=attributes["gender"]
             self.current_guest["race"]=attributes["race"]
@@ -225,7 +222,7 @@ class RECEPTIONIST(object):
     def on_enter_INTRODUCE_NEW(self):
         print(self.consoleFormatter.format("INTRODUCE_NEW", "HEADER"))
         self.tm.talk("Please {}, stand besides me".format(self.current_guest["name"]),"English")
-        time.sleep(2)
+        rospy.sleep(2)
         has_beard_str = "has a beard" if self.current_guest["has_beard"] else "does not have a beard"
         has_glasses_str = "wears glasses" if self.current_guest["has_glasses"] else "does not wear glasses"
         has_hat_str = "wears a hat" if self.current_guest["has_hat"] else "does not wear a hat"
@@ -313,7 +310,7 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("SIGNAL_SOMETHING", "HEADER"))
         self.animations_publisher.publish("animations","Gestures/TakePlace_2")
         self.tm.talk("Please, take a seat {}".format(self.current_guest["name"]),"English")
-        time.sleep(0.5)
+        rospy.sleep(0.5)
         self.person_accomodated()
 
     def on_enter_GO2DOOR(self):
@@ -325,7 +322,7 @@ class RECEPTIONIST(object):
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo
         while not rospy.is_shutdown():
-            time.sleep(0.1)
+            rospy.sleep(0.1)
         print(self.consoleFormatter.format("Shutting down", "FAIL"))
         os._exit(os.EX_OK)
 
