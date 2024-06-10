@@ -394,9 +394,7 @@ class RECEPTIONIST(object):
     def on_enter_LOOK4PERSON(self):
         print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
         # El robot ya fue a todas las posiciones de personas o introdujo a todas las personas
-        if (len(self.checked_chair_angles) == len(self.chair_angles)) or (
-            len(self.introduced_guests) == len(self.all_guests)
-        ):
+        if (len(self.checked_chair_angles) == len(self.chair_angles)):
             if len(self.introduced_guests) == len(self.all_guests):
                 print(self.consoleFormatter.format("INTRODUCED_EVERYONE", "OKGREEN"))
                 self.introduced_everyone()
@@ -423,7 +421,7 @@ class RECEPTIONIST(object):
             self.angle_index += 1
             t1 = time.time()
             self.labels = {}
-            while time.time() - t1 < 2:
+            while time.time() - t1 < 1:
                 if "person" in self.labels:
                     self.tm.talk("Recognizing person", "English")
                     self.person_found()
