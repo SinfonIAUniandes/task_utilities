@@ -49,7 +49,7 @@ class ServeBreakfast(object):
         
         # Instrucciones para agarrar los objetos
         self.grab_items_poses = {
-            "bowl": ["mid_arms_bowl", "open_both_hands", "both_arms_bowl", "close_arms_bowl", "bowl_hands", "raise_arms_bowl", "finish"],
+            "bowl": ["mid_arms_bowl", "open_both_hands", "both_arms_bowl", "close_arms_bowl", "bowl_hands", "raise_arms_bowl", "finish"], # TODO Terminar de revisar poses
             "cereal_box": ["open_both_hands", "both_arms_cereal", "close_arms_cereal", "raise_arms_cereal", "finish"],
             "milk_carton": ["open_both_hands", "both_arms_milk", "close_arms_milk", "raise_arms_milk", "finish"] #TODO Cerrar mas los brazos
         }
@@ -57,17 +57,17 @@ class ServeBreakfast(object):
         # Posiciones finales relativas para dejar los objetos
         # TODO Ajustar posiciones relativas
         self.drop_and_serve_position = {
-            "bowl": 0,  # Posición para dejar el bowl
-            "milk_carton": 0.2,  # Posición para dejar el cartón de leche
-            "cereal_box": -0.2  # Posición para dejar la caja de cereal
+            "bowl": 0,  # Posición para dejar el bowl TODO
+            "milk_carton": 0.2,  # Posición para dejar el cartón de leche TODO
+            "cereal_box": -0.2  # Posición para dejar la caja de cereal TODO
         }
         
         # Instrucciones para dejar los objetos
         # TODO Crear poses para dejar objetos y servir
         self.drop_and_serve_items_poses = {
-            "bowl": ["close_arms_bowl", "both_arms_bowl", "finish"],
-            "milk_carton": ["close_arms_milk", "both_arms_milk", "finish"],
-            "cereal_box": ["close_arms_cereal", "both_arms_cereal", "finish"]
+            "bowl": ["close_arms_bowl", "both_arms_bowl", "finish"], # TODO Terminar poses para servir y soltar (en ese orden)
+            "milk_carton": ["close_arms_milk", "both_arms_milk", "finish"], # TODO Terminar poses para servir y soltar (en ese orden)
+            "cereal_box": ["close_arms_cereal", "both_arms_cereal", "finish"] # TODO Terminar poses para servir y soltar (en ese orden)
         }
         
         self.item_counter=0
