@@ -14,7 +14,7 @@ class ServeBreakfast(object):
         self.console_formatter = ConsoleFormatter.ConsoleFormatter()
         
         # Inicializa el módulo de tareas con las herramientas necesarias
-        self.task_module = TaskModule(navigation=True, manipulation=True, speech=True, perception=True, pytoolkit=True)
+        self.task_module = TaskModule(navigation=True, manipulation=True, speech=True, perception=False, pytoolkit=True)
         self.task_module.initialize_node('SERVE_BREAKFAST')
         
         # Define los estados de la máquina de estados
@@ -44,17 +44,19 @@ class ServeBreakfast(object):
         self.slow_movement = 0.05  # Velocidad de movimiento lento
         
         # Lista de objetos a recoger
-        self.items = ["bowl", "cereal_box", "milk_carton", "spoon"]
+        self.items = ["bowl", "cereal_box", "milk_carton"]
         self.items_collected = []  # Lista de objetos recogidos
         
         # Posiciones iniciales relativas de los objetos
+        # TODO Ajustar posiciones relativas
         self.position_items = {
-            "bowl": 0.2,  # Posición del bowl
-            "milk_carton": 0.2,  # Posición del cartón de leche
-            "cereal_box": 0.2  # Posición de la caja de cereal
+            "bowl": 0.45,  # Posición del bowl
+            "milk_carton": -0.5,  # Posición del cartón de leche
+            "cereal_box": 0.0  # Posición de la caja de cereal
         }
         
         # Instrucciones para agarrar los objetos
+        # TODO Probar poses
         self.grab_items_poses = {
             "bowl": ["mid_arms_bowl", "both_arms_bowl", "close_arms_bowl", "raise_arms_bowl", "finish"],
             "cereal_box": ["open_both_hands", "both_arms_cereal", "close_arms_cereal", "raise_arms_cereal", "finish"],
@@ -62,6 +64,7 @@ class ServeBreakfast(object):
         }
         
         # Posiciones finales relativas para dejar los objetos
+        # TODO Ajustar posiciones relativas
         self.drop_and_serve_position = {
             "bowl": 0,  # Posición para dejar el bowl
             "milk_carton": 0.2,  # Posición para dejar el cartón de leche
@@ -69,6 +72,7 @@ class ServeBreakfast(object):
         }
         
         # Instrucciones para dejar los objetos
+        # TODO Crear poses para dejar objetos y servir
         self.drop_and_serve_items_poses = {
             "bowl": ["close_arms_bowl", "both_arms_bowl", "finish"],
             "milk_carton": ["close_arms_milk", "both_arms_milk", "finish"],
@@ -114,16 +118,18 @@ class ServeBreakfast(object):
             self.actual_item = "cereal_box"
         
         relative_collect_point = self.position_items[self.actual_item]  # Obtiene la posición relativa del objeto
+        self.task_module.go_to_relative_point(0.0, relative_collect_point, 0.0)  # Mueve el robot a la posición relativa en X del objeto
+        self.task_module.go_to_pose("both_arms_cereal")
+        self.task_module.go_to_relative_point(0.7, 0.0, 0.0)  # Mueve el robot a la posición relativa en Y del objeto
         actions = self.grab_items_poses[self.actual_item]  # Obtiene las acciones necesarias para recoger el objeto
-        
-        self.task_module.go_to_relative_point(0.0, relative_collect_point, 0.0)  # Mueve el robot al punto relativo del objeto
         self.task_module.talk(f"Now, I am in front of the {self.actual_item}, please put it in the middle of my hands, so I can grab it", "English", wait=False)  # Solicita ayuda para colocar el objeto
-        
-        for action in actions:  # Ejecuta las acciones para recoger el objeto
-            if self.actual_item == "bowl" and action == "close_arms_bowl":
+        if self.actual_item == "bowl":  
                 self.task_module.talk("Please, could you put the spoon in the bowl so I can take it to the next table?", "English", wait=False)  # Solicita colocar la cuchara en el bowl
-                time.sleep(5)  # Espera 5 segundos
+                time.sleep(5)
                 self.task_module.talk("Thank you!", "English", wait=False)  # Agradece la ayuda
+
+        for action in actions:  # Ejecuta las acciones para recoger el objeto
+              # Espera 5 segundos
             self.task_module.go_to_pose(action, self.slow_movement)  # Ejecuta la pose
             time.sleep(3)  # Espera 3 segundos
         
@@ -137,20 +143,20 @@ class ServeBreakfast(object):
         self.task_module.talk("On my way to the dining room", "English", wait=False)  # Informa que se dirige al comedor
         self.task_module.go_to_place("dining_table", lower_arms=False)  # Mueve el robot al comedor
         time.sleep(1)  # Espera 1 segundo
-        self.drop_object()  # Transición a DROP_OBJECT
+        self.drop_object()  # Transición a DROP_AND_SERVE
         
 
 
-    def on_enter_DROP_OBJECT(self):
+    def on_enter_DROP_AND_SERVE(self):
         """Acciones al entrar en el estado DROP_OBJECT."""
         if self.actual_item == "bowl":
             self.task_module.talk("Now, I will leave the bowl and the spoon on the table", "English", wait=False)  # Informa que dejará el bowl y la cuchara
         else:
             self.task_module.talk(f"Now, I will serve the {self.actual_item} and then drop it on the table", "English", wait=False)  # Informa que servirá y dejará el objeto
-            self.task_module.go_to_relative_point(0.0, 0.0, -90)  # Gira 90 grados
+            self.task_module.go_to_relative_point(0.0, 0.0, 90)  # Gira 90 grados
         
         drop_relative_point = self.drop_and_serve_position[self.actual_item]  # Obtiene la posición relativa para dejar el objeto
-        self.task_module.go_to_relative_point(drop_relative_point, 0.0, 0.0)  # Mueve el robot a la posición relativa
+        self.task_module.go_to_relative_point(0.0, drop_relative_point, 0.0)  # Mueve el robot a la posición relativa
         actions = self.drop_and_serve_items_poses[self.actual_item]  # Obtiene las acciones para dejar el objeto
         
         for action in actions:  # Ejecuta las acciones para dejar el objeto
