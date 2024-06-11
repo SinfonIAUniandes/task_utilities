@@ -277,9 +277,10 @@ class RECEPTIONIST(object):
 
     def on_enter_QA(self):
         print(self.consoleFormatter.format("QA", "HEADER"))
-        clothes_color = self.tm.get_clothes_color()
-        self.current_guest["clothes_color"] = clothes_color
+        # clothes_color = self.tm.get_clothes_color()
+        # self.current_guest["clothes_color"] = clothes_color
         self.move_head_srv("up")
+        self.tm.talk("Hello, when you are going to talk to me, please wait until my eyes turn blue.")
         name = self.tm.q_a("name")
         drink = self.tm.q_a("drink")
         self.current_guest = {"name": name, "drink": drink}
@@ -331,6 +332,9 @@ class RECEPTIONIST(object):
             )
             self.save_face_failed()
         if self.is_first_guest:
+            gpt_vision_prompt = "What color is the person in the photo wearing? Answer only with the color's name"
+            answer = self.tm.img_description(gpt_vision_prompt)["message"]
+            print(answer)
             self.is_first_guest = False
             self.first_guest["name"] = self.current_guest["name"]
             self.first_guest["drink"] = self.current_guest["drink"]
@@ -343,6 +347,7 @@ class RECEPTIONIST(object):
             self.first_guest["has_glasses"] = attributes["has_glasses"]
             self.first_guest["has_beard"] = attributes["has_beard"]
             self.first_guest["has_hat"] = attributes["has_hat"]
+            self.first_guest["color"] = answer
 
     def on_enter_GO2LIVING(self):
         print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
@@ -438,34 +443,35 @@ class RECEPTIONIST(object):
             self.recognized_guests_counter = 0
         if guest_name not in self.introduced_guests and guest_name in self.all_guests:
             self.empty_chair_angles.remove(self.checked_chair_angles[-1])
-            introduced_guest = self.all_guests[guest_name]
-            print("Person introduce: ", introduced_guest)
+            guest_being_introduced = self.all_guests[guest_name]
+            print("Introducing person: ", guest_being_introduced)
             # TODO manipulacion animations/poses
             self.animations_publisher.publish("animations", "Gestures/TakePlace_2")
             self.introduced_guests.append(guest_name)
             if (guest_name == self.first_guest["name"]) and self.introducing_2nd_guest:
+                clothes_color_str = f"is wearing {self.first_guest["color"]}"
                 has_beard_str = (
                     "has a beard"
-                    if self.current_guest["has_beard"]
+                    if self.first_guest["has_beard"]
                     else "does not have a beard"
                 )
-                has_glasses_str = (
-                    "wears glasses"
-                    if self.current_guest["has_glasses"]
-                    else "does not wear glasses"
-                )
+                # has_glasses_str = (
+                #     "wears glasses"
+                #     if self.current_guest["has_glasses"]
+                #     else "does not wear glasses"
+                # )
                 has_hat_str = (
                     "wears a hat"
-                    if self.current_guest["has_hat"]
+                    if self.first_guest["has_hat"]
                     else "does not wear a hat"
                 )
                 self.tm.talk(
-                    f' {self.current_guest["name"]}, I introduce to you {guest_name} is a {introduced_guest["gender"]}. {introduced_guest["pronoun"]} is {introduced_guest["age"]}, and {introduced_guest["pronoun"]} likes to drink {introduced_guest["drink"]}. {introduced_guest["pronoun"]} {has_beard_str}, {has_hat_str} and {has_glasses_str}',
+                    f' {self.current_guest["name"]}, I introduce to you {guest_name} is a {guest_being_introduced["gender"]}. {guest_being_introduced["pronoun"]} is {guest_being_introduced["age"]}, and {guest_being_introduced["pronoun"]} likes to drink {guest_being_introduced["drink"]}. {guest_being_introduced["pronoun"]} {clothes_color_str}, {has_beard_str}, and {has_hat_str}',
                     "English",
                 )
             else:
                 self.tm.talk(
-                    f'{self.current_guest["name"]}, I introduce to you {guest_name}. {introduced_guest["pronoun"]} is a {introduced_guest["gender"]}. {introduced_guest["pronoun"]} is {introduced_guest["age"]}, and {introduced_guest["pronoun"]} likes to drink {introduced_guest["drink"]}.'
+                    f'{self.current_guest["name"]}, I introduce to you {guest_name}. {guest_being_introduced["pronoun"]} is a {guest_being_introduced["gender"]}. {guest_being_introduced["pronoun"]} is {guest_being_introduced["age"]}, and {guest_being_introduced["pronoun"]} likes to drink {guest_being_introduced["drink"]}.'
                 )
 
         self.introduced_old_guest()
