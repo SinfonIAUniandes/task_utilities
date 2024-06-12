@@ -18,9 +18,9 @@ class LongStringGenerator:
         self.tm.find_item_with_characteristic(class_type,characteristic,place)->str: Allows the robot to find the item which has the given "characteristic", the options for class_type are: "color", "size", "weight", "position", "description". the options for characteristic depend on class_type: Color ("red","blue","black with white dots"). Size ("smallest", "largest", "thinnest", "big one", "small one"). Weight ("lightest", "heaviest"). Position ("left", "right"). Description("fragile","container","pourable","two-handed"). "place" Indicates the furniture or item on top of which the robot needs to search for the object.Returns a String with the name of the object with the needed characteristics or "None" if it wasn't found.
 
         Speech functions:
-        self.tm.talk(text): Allows the robot to say the input of the service.
+        self.tm.talk(text): Allows the robot to say the input of the service. If you call the q_a function it calls this function to make the robot say the question.
         self.tm.speech2text_srv()->str: Allows the robot to listen to the user and returns the text that the robot heard
-        self.tm.q_a_speech(tag)->str: Allows the robot to ASK a question and returns the answer of the user, the list of possible questions with exact syntax is: {self.question_tags}
+        self.tm.q_a(tag)->str: Makes the robot AKS a question and returns the answer of the user, the list of possible questions with exact syntax is: {self.question_tags}. Use this every time you can instead of speech2text_srv to ask questions. This function calls talk to ask the question, so you don't have to call talk to ask the question yourself.
         self.tm.answer_question(question)->bool: Returns a string with an answer to the question
 
         Navigation functions:
@@ -65,6 +65,7 @@ class LongStringGenerator:
 
         - The only available default questions are: {self.question_tags}
         - If you need to ask a question that is not listed just use the `talk` method to say the question and the `speech2text_srv` followed to save the answer. Use the syntax from the list when calling the codebase functions.
+        - If you need to ask a question that is listed don't use the `talk` method to say the question, the q_a function already does it for you.
 
         # Output Format:
         - Your output needs to be formatted in markdown as a python code snippet, do not add anything else to the output (don't add any exec calls or "Here's your code" statements), just the code.
@@ -82,7 +83,7 @@ class LongStringGenerator:
         else:
             self.tm.talk("I cannot find the bottle")'
         self.tm.talk("I am going to the living room")
-        self.tm.go_to_place("living_room")
+        self.tm.go_to_place("living")
         if found_bottle:
             self.tm.leave_object("bottle")
         else:
