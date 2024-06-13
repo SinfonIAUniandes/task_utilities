@@ -49,26 +49,31 @@ class ServeBreakfast(object):
         
         # Instrucciones para agarrar los objetos
         self.grab_items_poses = {
-            "bowl": ["mid_arms_bowl", "open_both_hands", "both_arms_bowl", "close_arms_bowl", "bowl_hands", "raise_arms_bowl", "finish"], # TODO Terminar de revisar poses
-            "cereal_box": ["open_both_hands", "both_arms_cereal", "close_arms_cereal", "raise_arms_cereal", "finish"],
-            "milk_carton": ["open_both_hands", "both_arms_milk", "close_arms_milk", "raise_arms_milk", "finish"] #TODO Cerrar mas los brazos
+            "bowl": ["open_both_hands", "close_arms_bowl", "bowl_hands", "raise_arms_bowl"],
+            "cereal_box": ["open_both_hands", "both_arms_cereal", "close_arms_cereal","bowl_hands" , "raise_arms_cereal"],
+            "milk_carton": ["open_both_hands", "both_arms_milk", "close_arms_milk", "bowl_hands" ,"raise_arms_milk"] #TODO Cerrar mas los brazos
         }
         
         # Posiciones finales relativas para dejar los objetos
         # TODO Ajustar posiciones relativas
         self.drop_and_serve_position = {
-            "bowl": 0,  # Posición para dejar el bowl TODO
-            "milk_carton": 0.2,  # Posición para dejar el cartón de leche TODO
-            "cereal_box": -0.2  # Posición para dejar la caja de cereal TODO
+            "bowl": -0.2,  # Posición para dejar el bowl TODO
+            "milk_carton": 0,  # Posición para dejar el cartón de leche TODO
+            "cereal_box": -0.4  # Posición para dejar la caja de cereal TODO
         }
         
         # Instrucciones para dejar los objetos
         # TODO Crear poses para dejar objetos y servir
         self.drop_and_serve_items_poses = {
-            "bowl": ["close_arms_bowl", "both_arms_bowl", "finish"], # TODO Terminar poses para servir y soltar (en ese orden)
-            "milk_carton": ["close_arms_milk", "both_arms_milk", "finish"], # TODO Terminar poses para servir y soltar (en ese orden)
-            "cereal_box": ["close_arms_cereal", "both_arms_cereal", "finish"] # TODO Terminar poses para servir y soltar (en ese orden)
+            "bowl": ["close_arms_bowl","open_both_hands", "both_arms_bowl"],
+            "milk_carton": ["close_arms_milk", "both_arms_milk"], # TODO Terminar poses para servir y soltar (en ese orden)
+            "cereal_box": ["close_arms_cereal", "both_arms_cereal"] # TODO Terminar poses para servir y soltar (en ese orden)
+    
         }
+        #Joints de los brazos
+        self.joints_arms = ["LShoulderPitch", "LShoulderRoll", "LElbowYaw", "LElbowRoll", "LWristYaw",
+                            "RShoulderPitch", "RShoulderRoll", "RElbowYaw", "RElbowRoll", "RWristYaw"]
+        
         
         self.item_counter=0
         
@@ -98,7 +103,6 @@ class ServeBreakfast(object):
         self.grab_ingredient()  # Transición de GO_TO_CUPBOARD a GRAB_OBJECT
 
 
-
     def on_enter_GRAB_OBJECT(self):
         """Acciones al entrar en el estado GRAB_OBJECT."""
         print(self.consoleFormatter.format("GRAB_OBJECT", "HEADER"))
@@ -117,16 +121,17 @@ class ServeBreakfast(object):
         
         self.task_module.go_to_pose("both_arms_cereal")
         actions = self.grab_items_poses[self.actual_item]  # Obtiene las acciones necesarias para recoger el objeto
-        self.task_module.talk(f"Now, please the {self.actual_item} in the middle of my hands, so I can grab it", "English", wait=False)  # Solicita ayuda para colocar el objeto
+        self.task_module.talk(f"Now, I am going to pick up the {self.actual_item} to the dinning table", "English", wait=False)  # Solicita ayuda para colocar el objeto
         if self.actual_item == "bowl":  
                 self.task_module.talk("Please, could you put the spoon in the bowl so I can take it to the next table?", "English", wait=False)  # Solicita colocar la cuchara en el bowl
                 time.sleep(7)
                 self.task_module.talk("Thank you!", "English", wait=False)  # Agradece la ayuda
 
         for action in actions:  # Ejecuta las acciones para recoger el objeto
+            if action == "close_arms_bowl" or "both_arms_cereal" or "both_arms_milk":
+              self.task_module.talk(f"Please hold the {self.actual_item} in middle of my hands!", "English", wait=False)   
             self.task_module.go_to_pose(action, self.slow_movement)  # Ejecuta la pose
             time.sleep(2)  # Espera 3 segundos
-        
         self.task_module.talk(f"Now I will go to the dining room to leave the {self.actual_item}", "English", wait=False)  # Informa que se dirige al comedor
         self.go_to_drop_place()  # Transición a GO_TO_DROP_PLACE
         
@@ -136,6 +141,8 @@ class ServeBreakfast(object):
         """Acciones al entrar en el estado GO_TO_DROP_PLACE."""
         print(self.consoleFormatter.format("GO_TO_DROP_PLACE", "HEADER"))
         self.task_module.talk("On my way to the dining room", "English", wait=False)  # Informa que se dirige al comedor
+        self.task_module.set_move_arms_enabled(False)
+        self.task_module.stiffness_joints(self.joints_arms)
         self.task_module.go_to_place("dining_table", lower_arms=False)  # Mueve el robot al comedor
         time.sleep(1)  # Espera 1 segundo
         self.drop_object()  # Transición a DROP_AND_SERVE
@@ -184,6 +191,7 @@ class ServeBreakfast(object):
         print(self.console_formatter.format("Shutting down", "FAIL"))  # Imprime mensaje de apagado
         os._exit(os.EX_OK)  # Sale del programa
 
+    
 
 
     def run(self):
