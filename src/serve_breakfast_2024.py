@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import os  # Módulo para interactuar con el sistema operativo
-import time  # Módulo para manejar el tiempo
+# import rospy  # Módulo para manejar el tiempo
 import rospy  # Módulo para manejar nodos ROS
 import threading  # Módulo para manejar hilos
 import ConsoleFormatter  # Módulo para formatear la consola
@@ -49,17 +49,17 @@ class ServeBreakfast(object):
         
         # Instrucciones para agarrar los objetos
         self.grab_items_poses = {
-            "bowl": ["open_both_hands", "close_arms_bowl", "bowl_hands", "raise_arms_bowl"],
+            "bowl": ["close_arms_bowl", "mid_arms_bowl", "bowl_hands", "raise_arms_bowl"],
             "cereal_box": ["open_both_hands", "both_arms_cereal", "close_arms_cereal","bowl_hands" , "raise_arms_cereal"],
-            "milk_carton": ["open_both_hands", "both_arms_milk", "close_arms_milk", "bowl_hands" ,"raise_arms_milk"] #TODO Cerrar mas los brazos
+            "milk_carton": ["open_both_hands", "both_arms_milk", "close_arms_milk", "bowl_hands" ,"raise_arms_milk"]
         }
         
         # Posiciones finales relativas para dejar los objetos
         # TODO Ajustar posiciones relativas
         self.drop_and_serve_position = {
-            "bowl": -0.2,  # Posición para dejar el bowl TODO
-            "milk_carton": 0,  # Posición para dejar el cartón de leche TODO
-            "cereal_box": -0.4  # Posición para dejar la caja de cereal TODO
+            "bowl": -0.8,  # Posición para dejar el bowl
+            "milk_carton": 0.6,  # Posición para dejar el cartón de leche
+            "cereal_box": -1.0  # Posición para dejar la caja de cereal
         }
         
         # Instrucciones para dejar los objetos
@@ -70,14 +70,12 @@ class ServeBreakfast(object):
             "cereal_box": ["close_arms_cereal", "both_arms_cereal"] # TODO Terminar poses para servir y soltar (en ese orden)
     
         }
-        #Joints de los brazos
-        self.joints_arms = ["LShoulderPitch", "LShoulderRoll", "LElbowYaw", "LElbowRoll", "LWristYaw",
-                            "RShoulderPitch", "RShoulderRoll", "RElbowYaw", "RElbowRoll", "RWristYaw"]
-        
         
         self.item_counter=0
         
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
+        
+        self.relative_drop_position=0.3
 
     # ---------------------------------------------------------------------------
     #                       ESTADOS / TRANSICIONES
@@ -98,7 +96,7 @@ class ServeBreakfast(object):
     def on_enter_GO_TO_CUPBOARD(self):
         """Acciones al entrar en el estado GO_TO_CUPBOARD."""
         print(self.consoleFormatter.format("GO_TO_CUPBOARD", "HEADER"))
-        self.task_module.talk("I will navigate to the kitchen door and look for the ingredients.", "English", wait=False)  # Mensaje informativo
+        self.task_module.talk("I will navigate to the kitchen door to look for the ingredients.", "English", wait=False)  # Mensaje informativo
         self.task_module.go_to_place("kitchen", lower_arms=False)  # Dirige al robot a la cocina
         self.grab_ingredient()  # Transición de GO_TO_CUPBOARD a GRAB_OBJECT
 
@@ -106,33 +104,44 @@ class ServeBreakfast(object):
     def on_enter_GRAB_OBJECT(self):
         """Acciones al entrar en el estado GRAB_OBJECT."""
         print(self.consoleFormatter.format("GRAB_OBJECT", "HEADER"))
-        self.task_module.go_to_pose("almost_down_head", self.normal_movement)  # Baja la cabeza para ver los objetos
-        self.task_module.talk("I will tell the order of the objects from left to right", "English", wait=False)  # Informa el orden de los objetos
+        self.task_module.go_to_pose("default_head", self.normal_movement)  # Baja la cabeza para ver los objetos
+        rospy.sleep(3)
+        #TODO: Revision de objetos alerededor con perception
+        self.task_module.talk("I see the breakfast ingredients are in the following order from left to right:", "English", wait=False)  # Informa el orden de los objetos
         for item in self.items[self.item_counter:]:
-            self.task_module.talk(f"the {item}", "English", wait=False)  # Menciona cada objeto
+            self.task_module.talk(item, "English", wait=False)  # Menciona cada objeto
         
         # Determina el siguiente objeto a recoger
         if "bowl" not in self.items_collected:
             self.actual_item = "bowl"
-        elif "milk_carton" not in self.items_collected:
-            self.actual_item = "milk_carton"
         elif "cereal_box" not in self.items_collected:
             self.actual_item = "cereal_box"
+        elif "milk_carton" not in self.items_collected:
+            self.actual_item = "milk_carton"
         
         self.task_module.go_to_pose("both_arms_cereal")
         actions = self.grab_items_poses[self.actual_item]  # Obtiene las acciones necesarias para recoger el objeto
         self.task_module.talk(f"Now, I am going to pick up the {self.actual_item} to the dinning table", "English", wait=False)  # Solicita ayuda para colocar el objeto
         if self.actual_item == "bowl":  
-                self.task_module.talk("Please, could you put the spoon in the bowl so I can take it to the next table?", "English", wait=False)  # Solicita colocar la cuchara en el bowl
-                time.sleep(7)
+                self.task_module.talk("Could you put the spoon in the bowl so I can take it to the table please?", "English", wait=False)  # Solicita colocar la cuchara en el bowl
+                rospy.sleep(7)
                 self.task_module.talk("Thank you!", "English", wait=False)  # Agradece la ayuda
-
+        self.carry_to_serve = True
         for action in actions:  # Ejecuta las acciones para recoger el objeto
-            if action == "close_arms_bowl" or "both_arms_cereal" or "both_arms_milk":
-              self.task_module.talk(f"Please hold the {self.actual_item} in middle of my hands!", "English", wait=False)   
+            if action == "mid_arms_bowl" :
+                self.task_module.talk("Please place the bowl in my hands like the image in my tablet shows. So I can take it to the table safely")
+            if action == "both_arms_cereal" or action == "both_arms_milk":
+              self.task_module.talk(f"Please hold the {self.actual_item} in middle of my hands like the image in my tablet shows!", "English", wait=False)   
             self.task_module.go_to_pose(action, self.slow_movement)  # Ejecuta la pose
-            time.sleep(2)  # Espera 3 segundos
+            if action  == "raise_arms_cereal" or action  == "raise_arms_milk" or action  == "raise_arms_bowl":
+                carry_thread = threading.Thread(target=self.carry_thread,args=[action])
+                carry_thread.start()
+
+            rospy.sleep(2)  # Espera 3 segundos
+                
+        
         self.task_module.talk(f"Now I will go to the dining room to leave the {self.actual_item}", "English", wait=False)  # Informa que se dirige al comedor
+        
         self.go_to_drop_place()  # Transición a GO_TO_DROP_PLACE
         
 
@@ -142,9 +151,10 @@ class ServeBreakfast(object):
         print(self.consoleFormatter.format("GO_TO_DROP_PLACE", "HEADER"))
         self.task_module.talk("On my way to the dining room", "English", wait=False)  # Informa que se dirige al comedor
         self.task_module.set_move_arms_enabled(False)
-        self.task_module.stiffness_joints(self.joints_arms)
+        # self.task_module.stiffness_joints(self.joints_arms)
         self.task_module.go_to_place("dining_table", lower_arms=False)  # Mueve el robot al comedor
-        time.sleep(1)  # Espera 1 segundo
+        rospy.sleep(1)  # Espera 1 segundo
+        self.carry_to_serve = False
         self.drop_object()  # Transición a DROP_AND_SERVE
         
 
@@ -160,11 +170,12 @@ class ServeBreakfast(object):
         drop_relative_point = self.drop_and_serve_position[self.actual_item]  # Obtiene la posición relativa para dejar el objeto
         self.task_module.go_to_relative_point(0.0, drop_relative_point, 0.0)  # Mueve el robot a la posición relativa
         actions = self.drop_and_serve_items_poses[self.actual_item]  # Obtiene las acciones para dejar el objeto
-        
+        self.task_module.go_to_relative_point(self.relative_drop_position, 0.0, 0.0)  # Mueve el robot a la posición relativa cerca na a a mesa
         for action in actions:  # Ejecuta las acciones para dejar el objeto
             self.task_module.go_to_pose(action, self.slow_movement)  # Ejecuta la pose
-            time.sleep(2)  # Espera 3 segundos
-        
+            rospy.sleep(2)  # Espera 2 segundos
+
+        self.task_module.go_to_relative_point(-(self.relative_drop_position), 0.0, 0.0)  # Aleja el robot de la posición relativa a la mesa
         self.task_module.go_to_pose("standard")  # Vuelve a la pose estándar
         self.items_collected.append(self.actual_item)  # Añade el objeto a la lista de recogidos
         
@@ -191,7 +202,11 @@ class ServeBreakfast(object):
         print(self.console_formatter.format("Shutting down", "FAIL"))  # Imprime mensaje de apagado
         os._exit(os.EX_OK)  # Sale del programa
 
-    
+    def carry_thread(self, pose):
+        while self.carry_to_serve:
+            self.task_module.go_to_pose(pose)
+            rospy.sleep(1)
+        
 
 
     def run(self):

@@ -1747,7 +1747,6 @@ class Task_module:
         else:
             print("manipulation and speech as false")
             return False
-                
 
     ################ PYTOOLKIT ################
 
