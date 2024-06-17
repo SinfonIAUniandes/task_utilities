@@ -68,7 +68,6 @@ class CLEAN_THE_TABLE(object):
             "cup":["close_arms_cereal", "both_arms_cereal", "finish"]
             }
         
-        
         # -------------------------------------------------------------------------------------------------------------------------------------------
         #                                                            ESTADOS / TRANSICIONES
         # -------------------------------------------------------------------------------------------------------------------------------------------
@@ -80,14 +79,13 @@ class CLEAN_THE_TABLE(object):
         self.tm.set_security_distance(False)
         self.tm.initialize_pepper()
         self.tm.go_to_pose("up_head", 0.1)
-        self.tm.talk("Have you finished eating? Let me clean the table.", "English", wait=True)
+        self.tm.talk("I am going to clean the table.", "English", wait=False)
         self.start()
 
     def on_enter_GO_2_TABLE(self):
         self.actual_item = self.items[self.item]
-        self.tm.talk("I will navigate to the kitchen table.", "English", wait=False)
         self.tm.talk("on my way to the kitchen!", "English", wait=False)
-        self.tm.go_to_place("kitchen_table")
+        self.tm.go_to_place("kitchen")
         self.tm.talk(f"I am going to pick up the {self.actual_item}", "English", wait=False)
         self.grab_ingredient()
 
