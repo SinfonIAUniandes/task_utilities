@@ -18,7 +18,7 @@ class FOLLOW_YOU(object):
         self.task_name = "TEST"
         self.isTouched = False
         states = ['TEST', 'INIT', 'FOLLOW_YOU', 'FINISH']
-        self.tm = tm(perception = True, speech=True, manipulation=False, navigation=False, pytoolkit=True)
+        self.tm = tm(perception = True, speech=True, manipulation=False, navigation=True, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
@@ -53,6 +53,7 @@ class FOLLOW_YOU(object):
         self.tm.initialize_pepper()
         self.set_orthogonal_security_srv(0.3)
         self.set_tangential_security_srv(0.05)
+        self.tm.show_topic("/perception_utilities/yolo_publisher")
         print("I am going to test follow you")
         #self.tm.talk("I am going to test follow you","English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))

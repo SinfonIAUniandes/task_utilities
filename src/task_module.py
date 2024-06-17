@@ -13,8 +13,8 @@ from threading import Thread
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv, tablet_service_srvRequest
-from robot_toolkit_msgs.msg import touch_msg
+from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv, tablet_service_srvRequest, navigate_to_srv
+from robot_toolkit_msgs.msg import touch_msg, speech_recognition_status_msg
 
 from manipulation_msgs.srv import *
 
@@ -47,6 +47,9 @@ class Task_module:
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
         ################### GLOBAL VARIABLES ###################
         self.follow_you_active = False
+        self.navigating = False
+        self.stopped_for_safety = False
+        self.safety_stop_start_time = 0
         self.center_active = False
         self.head_thread = False
         self.linear_vel = 0
@@ -258,6 +261,10 @@ class Task_module:
                 "/navigation_utilities/set_current_place_srv", set_current_place_srv
             )
 
+            print(self.consoleFormatter.format("Waiting for navigation_utilities/get_absolute_position_srv...", "WARNING"))
+            rospy.wait_for_service("navigation_utilities/get_absolute_position_srv")
+            self.get_absolute_position_proxy = rospy.ServiceProxy("navigation_utilities/get_absolute_position_srv",get_absolute_position_srv)
+
             print(
                 self.consoleFormatter.format(
                     "Waiting for navigation_utilities/go_to_relative_point...",
@@ -406,6 +413,11 @@ class Task_module:
             self.setMoveHead_srv = rospy.ServiceProxy(
                 "/pytoolkit/ALMotion/move_head_srv",
                 move_head_srv
+            )
+
+            self.Navigate_to_srv = rospy.ServiceProxy(
+                "/pytoolkit/ALNavigation/navigate_to_srv",
+                navigate_to_srv
             )
             
             self.setDistance_srv = rospy.ServiceProxy(
@@ -1064,7 +1076,7 @@ class Task_module:
 
     def speech2text_srv(
         self, seconds=0, lang="eng"
-    ) -> bool:
+    ) -> str:
         """
         Input:
         seconds: 0 for automatic stop || >0 for seconds to record
@@ -1072,7 +1084,7 @@ class Task_module:
         transcription: True || False
         Output: text that the robot heard
         ----------
-        Allows the robot to save audio and saves it to a file.
+        Allows the robot to understand what a person is saying and return a string with the words.
         """
         if self.speech:
             try:
@@ -1214,7 +1226,7 @@ class Task_module:
         ----------
         The robots starts moving with the parameters given AND DOESN'T STOP until stopped (by calling stop_moving).
         """
-
+        print(f"going to move at {x} {y} {rotate}")
         movement_msg = Twist()
         movement_msg.linear.x = x
         movement_msg.linear.y = y
@@ -1250,6 +1262,8 @@ class Task_module:
 
         self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
 
+        self.subscriber = rospy.Subscriber("/pytoolkit/ALMotion/failed",speech_recognition_status_msg,self.callback_move_failed)
+
         if self.pytoolkit:
             try:
                 if command:
@@ -1258,17 +1272,15 @@ class Task_module:
                     self.set_move_arms_enabled(False)
                     follow_thread = Thread(target=self.follow_you_srv_thread,args=([speed]))
                     follow_thread.start()
-                    head_thread = Thread(target=self.head_srv_thread, args=(["default"]))
+                    head_thread = Thread(target=self.head_srv_thread, args=(["up"]))
                     head_thread.start()
                     person_thread = Thread(target=self.get_closer_person)
                     person_thread.start()
-                    #self.follow_you_proxy(command)
                     print("Started following")
                 else:
-                    #self.set_move_arms_enabled(True)
+                    self.set_move_arms_enabled(True)
                     self.follow_you_active = command
                     self.head_thread = command
-                    #self.follow_you_proxy(command)
                     self.stop_moving()
                     print("Finished following")
                     return True
@@ -1294,7 +1306,7 @@ class Task_module:
         #0.2 is 20% of the total range
         close_threshold = max_width-(max_width - min_width)*0.10 #116
         far_threshold= min_width+(max_width-min_width)*0.10 #74
-        while(not centered) and self.follow_you_active:
+        while (not centered) and self.follow_you_active:
             followed_person = self.closest_person
             screen_center = 360 / 2
             person_x = followed_person[1]
@@ -1320,8 +1332,7 @@ class Task_module:
                     rospy.sleep(0.03)
         self.talk("Perfect. Try to keep at that distance", "English", True, False)
         self.iterations=0
-            
-    
+          
     def follow_you_srv_thread(self, speed) -> None:
         """
         Input:
@@ -1338,8 +1349,8 @@ class Task_module:
         # Variables to check if too close or too far
         # 140 is a value that worked well in testing
         max_width = 140
-        # 60 is a value that worked well in testing
-        min_width = 55
+        # 55 is a value that worked well in testing
+        min_width = 30
         speed = 0.5/(max_width-min_width)if speed is None else speed
         angular_vel = 0
         while self.follow_you_active: 
@@ -1374,7 +1385,7 @@ class Task_module:
                         continue
                 
                 # If the rotation is big or the robot is not moving
-                change_motion =(abs(angular_vel) > 0.2 and person_width>min_width) or abs(self.linear_vel-calculated_vel)>0.025
+                change_motion =(abs(angular_vel) > 0.1 and person_width>min_width) or abs(self.linear_vel-calculated_vel)>0.025
                 if change_motion:
                     self.linear_vel=calculated_vel
                     if not close:
@@ -1383,6 +1394,19 @@ class Task_module:
                         rospy.sleep(0.2)
                         # Stop rotating but keeping moving forward
                         self.start_moving(self.linear_vel, 0, 0)
+                if self.stopped_for_safety and not self.navigating and not close:
+                    print(self.consoleFormatter.format("navigate around obstacle", "FAIL"))
+                    self.add_place("start_skip")
+                    self.stop_moving()
+                    self.navigating = True
+                    angulo_original = self.get_absolute_position_proxy().theta           
+                    self.add_place(
+                        "end_skip",
+                        edges=["place" + str(self.place_counter - 1)],
+                    )
+                    rospy.sleep(5)
+                    self.go_to_defined_angle_srv(angulo_original)
+                    self.navigating = False
             else:
                 self.iterations+=1
 
@@ -1390,6 +1414,7 @@ class Task_module:
             if self.iterations >=60:
                 self.stop_moving()
                 self.calibrate_follow_distance(max_width,min_width)
+                continue
             time.sleep(0.05)
 
 
@@ -1879,6 +1904,14 @@ class Task_module:
     def callback_head_sensor_subscriber(self, msg):
         if "head" in msg.name:
             self.iterationssTouched = msg.state
+
+    def callback_move_failed(self, msg):
+        if "Safety" in msg.status:
+            self.stopped_for_safety = True
+            self.safety_stop_start_time = time.time()
+            rospy.sleep(5)
+            self.stopped_for_safety = False
+            
             
     def callback_get_labels_subscriber(self, msg):
         self.labels = {}
