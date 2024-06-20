@@ -123,6 +123,7 @@ class CARRY_MY_LUGGAGE(object):
         self.bagSelectedRight = False
         self.save_places = False
         self.place_counter = 0
+        self.pose = ""
         self.isTouched = False
         self.closest_person = {
             "id": None,
@@ -147,7 +148,7 @@ class CARRY_MY_LUGGAGE(object):
         self.tm.add_place("place" + str(self.place_counter))
         self.place_counter += 1
         subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
-        self.tm.talk("Hello, I am ready to carry your luggage")
+        #self.tm.talk("Hello, I am ready to carry your luggage", wait=False)
         self.start()
 
     def on_enter_LOOK_FOR_BAG(self):
@@ -158,25 +159,25 @@ class CARRY_MY_LUGGAGE(object):
             "https://steamuserimages-a.akamaihd.net/ugc/941712200376608618/779F3940B9610C85543AAC2F2BCEE7E451410DD9/?imw=512&&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=false"
         )
         self.move_head_srv("default")
-        self.tm.talk(
-            "I am looking for the bag you want me to carry, please point to it, raise your hand clearly. Just like you see in my tablet"
-        )
+        #self.tm.talk("I am looking for the bag you want me to carry, please point to it, raise your hand clearly. Just like you see in my tablet",)
         start_time = rospy.get_time()
         while (
             self.isBagAtTheLeft == False
             and self.isBagAtTheRight == False
-            and (rospy.get_time() - start_time) < 25.0
+            and (rospy.get_time() - start_time) < 10.0
         ):
             rospy.sleep(0.05)
         print("Signaled")
         if self.isBagAtTheRight:
             self.bagSelectedRight = True
-            self.tm.talk("I found your bag to my left")
-            self.tm.go_to_pose("small_object_left_hand", 0.1)
+            self.tm.talk("I found your bag to my left",wait=False)
+            self.pose = "small_object_left_high"
+            self.tm.go_to_pose("small_object_left_high", 0.1)
         elif self.isBagAtTheLeft:
             self.bagSelectedLeft = True
-            self.tm.talk("I found your bag to my right")
-            self.tm.go_to_pose("small_object_right_hand", 0.1)
+            self.tm.talk("I found your bag to my right",wait=False)
+            self.pose = "small_object_right_high"
+            self.tm.go_to_pose("small_object_right_high", 0.1)
 
         self.move_to_bag()
 
@@ -186,64 +187,60 @@ class CARRY_MY_LUGGAGE(object):
         self.tm.show_image(
             "https://media.discordapp.net/attachments/876543237270163498/1123367466102427708/logo_sinfonia.png?ex=662cc83b&is=662b76bb&hm=83939b98f39ae528eb941223c1b25a1eb72155625ee59b7bfd719e882bbae33a&=&format=webp&quality=lossless"
         )
-        if self.isBagAtTheLeft:
-            self.tm.talk("Im moving right", wait=False)
-            self.tm.go_to_relative_point(0.2, -0.5, 0)
-        elif self.isBagAtTheRight:
-            self.tm.talk("Im moving left", wait=False)
-            self.tm.go_to_relative_point(0.2, 0.5, 0)
         self.grab_bag()
 
     def on_enter_GRAB_BAG(self):
         print(self.consoleFormatter.format("GRAB_BAG", "HEADER"))
         self.setMoveArms_srv.call(False, False)
         if self.bagSelectedRight:
-            self.tm.go_to_pose("small_object_left_hand", 0.1)
+            self.tm.go_to_pose("small_object_left_high", 0.1)
         else:
             self.tm.go_to_pose("small_object_right_hand", 0.1)
         self.tm.talk(
             "Please place the bag in my hand, when you have finished please touch my head!",
-            "English",
+            "English",wait=False
         )
-        #self.tm.hot_word(["ready","stop"], thresholds=[0.4,0.1])
-        #while not self.is_ready:
-        #    print("Waiting hot word")
-        #    time.sleep(0.1)
-        while self.isTouched == False:
+        while not self.isTouched:
             time.sleep(0.1)
         if self.bagSelectedRight:
             self.tm.go_to_pose("close_left_hand")
         else:
             self.tm.go_to_pose("close_right_hand")
-        self.tm.talk("Thank you", "English")
+        self.tm.talk("Thank you", "English",wait=False)
         self.follow_you()
 
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
-        self.tm.follow_you(True)
+        #self.tm.follow_you(True)
+        self.tm.start_follow_face_proxy()
         print("Follow you activated!")
-        while self.isTouched == False:
-            time.sleep(0.1)
-        self.tm.follow_you(False)
+        self.following = True
+        carry_thread = threading.Thread(target=self.carry_thread,args=[self.pose])
+        carry_thread.start()
         save_place_thread = threading.Thread(target=self.save_place)
         save_place_thread.start()
+        while not self.isTouched:
+            time.sleep(0.1)
+        #self.tm.follow_you(False)
+        self.tm.stop_tracker_proxy()
         self.save_places = False
+        self.following = False
         self.tm.talk("We have arrived! Could you pick up your bag?", "English")
         if self.bagSelectedRight:
             self.tm.go_to_pose("open_left_hand")
         else:
             self.tm.go_to_pose("open_right_hand")
         rospy.sleep(5)
-        self.tm.talk("Thank you for using my services, have a nice day!")
+        self.tm.talk("Thank you for using my services, have a nice day!",wait=False)
         self.setMoveArms_srv.call(True, True)
         self.go_back()
 
     def on_enter_GO_BACK(self):
         print(self.consoleFormatter.format("GO_BACK", "HEADER"))
         self.tm.setRPosture_srv("stand")
-        self.tm.talk("I am going back to my initial position")
+        self.tm.talk("I am going back to my initial position",wait=False)
         self.tm.go_to_place("place0")
-        self.tm.talk("carry my luggage task completed succesfully")
+        self.tm.talk("carry my luggage task completed succesfully",wait=False)
         os._exit(os.EX_OK)
 
     def save_place(self):
@@ -256,7 +253,7 @@ class CARRY_MY_LUGGAGE(object):
             )
             self.place_counter += 1
             # Guardar cada 3 segundos
-            time.sleep(3)
+            time.sleep(5)
 
     def posePublisherCallback(self, msg):
         if msg.data == "Pointing to the left":
@@ -286,7 +283,11 @@ class CARRY_MY_LUGGAGE(object):
         print(self.consoleFormatter.format("Shutting down", "FAIL"))
         os._exit(os.EX_OK)
 
-    
+    def carry_thread(self, pose):
+        while self.following:
+            self.tm.go_to_pose(pose)
+            rospy.sleep(1)
+
 if __name__ == "__main__":
     sm = CARRY_MY_LUGGAGE()
     sm.run()

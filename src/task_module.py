@@ -485,6 +485,14 @@ class Task_module:
             print(self.consoleFormatter.format("Waiting for pytoolkit/stop_tracker...", "WARNING"))
             rospy.wait_for_service("/pytoolkit/ALTracker/stop_tracker_srv")
             self.stop_tracker_proxy = rospy.ServiceProxy("/pytoolkit/ALTracker/stop_tracker_srv",battery_service_srv)
+
+            print(self.consoleFormatter.format("Waiting for pytoolkit/start_tracker...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALTracker/start_tracker_srv")
+            self.start_tracker_proxy = rospy.ServiceProxy("/pytoolkit/ALTracker/start_tracker_srv",battery_service_srv)
+
+            print(self.consoleFormatter.format("Waiting for pytoolkit/start_follow_face...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALTracker/start_follow_face")
+            self.start_follow_face_proxy = rospy.ServiceProxy("/pytoolkit/ALTracker/start_follow_face",battery_service_srv)
             
             self.move_publisher = rospy.Publisher('/pytoolkit/ALMotion/move', Twist, queue_size=10)
 
@@ -507,11 +515,6 @@ class Task_module:
             self.start_recognition("front_camera")
         else:
             print("perception as false")
-        if self.speech:
-            #self.calibrate_srv(5)
-            pass
-        else:
-            print("speech as false")
         if self.pytoolkit:
             self.show_words_proxy()
             self.setRPosture_srv("stand")
@@ -1455,19 +1458,6 @@ class Task_module:
                         rospy.sleep(0.2)
                         # Stop rotating but keeping moving forward
                         self.start_moving(self.linear_vel, 0, 0)
-                if self.stopped_for_safety and not self.navigating and not close:
-                    print(self.consoleFormatter.format("navigate around obstacle", "FAIL"))
-                    self.add_place("start_skip")
-                    self.stop_moving()
-                    self.navigating = True
-                    angulo_original = self.get_absolute_position_proxy().theta           
-                    self.add_place(
-                        "end_skip",
-                        edges=["place" + str(self.place_counter - 1)],
-                    )
-                    rospy.sleep(5)
-                    self.go_to_defined_angle_srv(angulo_original)
-                    self.navigating = False
             else:
                 self.iterations+=1
 
