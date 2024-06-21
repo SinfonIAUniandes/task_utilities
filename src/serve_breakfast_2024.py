@@ -7,7 +7,7 @@ import ConsoleFormatter  # Módulo para formatear la consola
 
 from transitions import Machine  # Módulo para manejar máquinas de estados
 from task_module import Task_module as TaskModule  # Importa y renombra el módulo de tareas
-from robot_toolkit_msgs.srv import set_angle__srv, set_angle_srvRequest
+from robot_toolkit_msgs.srv import set_angle_srv, set_angle_srvRequest
 
 class ServeBreakfast(object):
     def __init__(self) -> None:
