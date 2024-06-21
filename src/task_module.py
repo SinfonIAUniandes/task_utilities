@@ -1391,7 +1391,7 @@ class Task_module:
             else:
                 self.iterations+=1
             if self.iterations >= 60:
-                self.talk("I have lost you", "English", True, False)
+                self.talk("I have lost you! Please come back", "English", True, False)
                 while not ("person" in self.labels):
                     rospy.sleep(0.03)
         self.talk("Perfect. Try to keep at that distance", "English", True, False)

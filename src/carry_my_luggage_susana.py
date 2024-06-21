@@ -147,19 +147,16 @@ class CARRY_MY_LUGGAGE(object):
         time.sleep(1)
         self.tm.add_place("place" + str(self.place_counter))
         self.place_counter += 1
-        subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
-        #self.tm.talk("Hello, I am ready to carry your luggage", wait=False)
+        self.tm.talk("Hello, I am ready to carry your luggage", wait=False)
         self.start()
 
     def on_enter_LOOK_FOR_BAG(self):
         print(self.consoleFormatter.format("LOOK_FOR_BAG", "HEADER"))
         self.isBagAtTheLeft = False
         self.isBagAtTheRight = False
-        self.tm.show_image(
-            "https://steamuserimages-a.akamaihd.net/ugc/941712200376608618/779F3940B9610C85543AAC2F2BCEE7E451410DD9/?imw=512&&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=false"
-        )
+        self.tm.show_image("https://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/carrymyluggage.jpg")
         self.move_head_srv("default")
-        #self.tm.talk("I am looking for the bag you want me to carry, please point to it, raise your hand clearly. Just like you see in my tablet",)
+        self.tm.talk("I am looking for the bag you want me to carry, please point to it, raise your hand clearly. Just like you see in my tablet",)
         start_time = rospy.get_time()
         while (
             self.isBagAtTheLeft == False
@@ -195,7 +192,7 @@ class CARRY_MY_LUGGAGE(object):
         if self.bagSelectedRight:
             self.tm.go_to_pose("small_object_left_high", 0.1)
         else:
-            self.tm.go_to_pose("small_object_right_hand", 0.1)
+            self.tm.go_to_pose("small_object_right_high", 0.1)
         self.tm.talk(
             "Please place the bag in my hand, when you have finished please touch my head!",
             "English",wait=False
@@ -212,6 +209,8 @@ class CARRY_MY_LUGGAGE(object):
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
         #self.tm.follow_you(True)
+        self.tm.talk("I will follow you now. Please walk backwards and look at my face at all times and walk slowly. If i can't see you anymore please come back!", "English", wait=False)
+        self.tm.setMoveHead_srv("up")
         self.tm.start_follow_face_proxy()
         print("Follow you activated!")
         self.following = True
@@ -225,11 +224,11 @@ class CARRY_MY_LUGGAGE(object):
         self.tm.stop_tracker_proxy()
         self.save_places = False
         self.following = False
-        self.tm.talk("We have arrived! Could you pick up your bag?", "English")
         if self.bagSelectedRight:
             self.tm.go_to_pose("open_left_hand")
         else:
             self.tm.go_to_pose("open_right_hand")
+        self.tm.talk("We have arrived! Could you pick up your bag?", "English")
         rospy.sleep(5)
         self.tm.talk("Thank you for using my services, have a nice day!",wait=False)
         self.setMoveArms_srv.call(True, True)
@@ -270,12 +269,6 @@ class CARRY_MY_LUGGAGE(object):
     def callback_head_sensor_subscriber(self, msg: touch_msg):
         if "head" in msg.name:
             self.isTouched = msg.state
-    
-    def callback_hot_word(self,data):
-       word = data.status
-       print(word, " listened")
-       if word == "ready":
-            self.is_ready= True
 
     def check_rospy(self):
         while not rospy.is_shutdown():

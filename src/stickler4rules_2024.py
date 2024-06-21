@@ -136,11 +136,12 @@ class STICKLER_RULES(object):
                 centered_point = (315 / 2) - (person_x + person_width/2)
                 if angulo_nuevo and centered_point<=15 and "person" in self.tm.labels:
                     print(self.consoleFormatter.format("ROBOT STOP", "WARNING"))
-                    while ( -30 >= centered_point or centered_point>= 15) and "person" in self.tm.labels:
+                    while ( -10 >= centered_point or centered_point>= 15) and "person" in self.tm.labels:
                         found_person = self.tm.closest_person
                         person_x = found_person[1]
                         person_width = found_person[3]
                         centered_point = (315 / 2) - (person_x + person_width/2)
+                        print(centered_point)
                     self.tm.robot_stop_srv()
                     angulos_personas.append(angulo_persona)
                     is_in_forbidden = self.check_forbidden(angulo_persona)
@@ -167,7 +168,8 @@ class STICKLER_RULES(object):
                         self.breakers_found += 1
                         breakers_current_room +=1
                     else:
-                        self.tm.talk("Congratulations! You're not breaking any rule","English", wait=False)
+                        if self.has_drink!=4 or self.has_shoes!=4:
+                            self.tm.talk("Congratulations! You're not breaking any rule","English", wait=False)
                     self.has_drink = 2
                     self.has_shoes = 2
             else:
@@ -185,7 +187,7 @@ class STICKLER_RULES(object):
         self.tm.robot_stop_srv()
         gpt_vision_prompt = f"Is the closest person in the picture barefooted or in socks? Answer only with True or False. If you can't see their feet answer only with 'None'. If the person you see is behind a wall answer only with 'Wall' and don't check the other rules. If you are not 100% sure that a person is wearing shoes answer True"
         answer = self.tm.img_description(prompt=gpt_vision_prompt,camera_name="both")["message"]
-        print("GPT ANSWER:"+answer)
+        print("SHOES GPT ANSWER:"+answer)
         if "True" in answer:
             self.has_shoes = 0
         elif "None" in answer:
@@ -202,7 +204,7 @@ class STICKLER_RULES(object):
         self.tm.robot_stop_srv()
         gpt_vision_prompt = f"Is the closest person in the picture holding a bottle,a juice box, a cup, a can, or any kind of drink in their hand? Answer only with True or False. If the person you see is behind a wall answer only with 'Wall' and don't check the other rules"
         answer = self.tm.img_description(gpt_vision_prompt,camera_name="both")["message"]
-        print("GPT ANSWER:"+answer)
+        print("DRINK: GPT ANSWER:"+answer)
         if "True" in answer:
             self.has_drink = 1
         elif "Wall" in answer:
@@ -216,7 +218,8 @@ class STICKLER_RULES(object):
         self.tm.robot_stop_srv()
         self.move_head_srv("up")
         if self.confirm_comppliance_forbidden and self.last_place == self.forbidden:
-            self.tm.talk("You should not be here, because this room is forbidden.","English", wait=False)
+            self.tm.talk("You should not be here, because this room is forbidden.","English", wait=True)
+            self.move_head_srv("default")
             return True
         return False
 

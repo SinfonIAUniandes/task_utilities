@@ -11,6 +11,7 @@ import math
 import os
 import numpy as np
 import re
+import ast
 from code_generation import ls_generate as gen
 from code_generation import generate_utils 
 from code_generation.database.models import Model
@@ -80,8 +81,9 @@ class GPSR(object):
                 print(code)
                 if not "I am sorry but I cannot complete this task" in code:
                     print("es posible la task")
-                    exec(code)
-                    contador = 5
+                    if self.is_valid_syntax(code):
+                        exec(code)
+                        contador = 5
                 contador += 1
             if contador==4:
                 self.tm.talk("I cannot do this task: "+task,"English")
@@ -138,6 +140,13 @@ class GPSR(object):
         print(word)
         if word == "stop":
             self.tm.follow_you(False)
+    
+    def is_valid_syntax(self, code):
+        try:
+            ast.parse(code)
+            return True
+        except SyntaxError:
+            return False
     
 # Crear una instancia de la maquina de estados
 if __name__ == "__main__":

@@ -188,6 +188,7 @@ class RECEPTIONIST(object):
         ##################### GLOBAL VARIABLES #####################
 
         self.initial_place = "house_door"
+        self.guests_place = "dining_bedroom"
         self.sinfonia_url_img = "https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"
         self.img_dimensions = (320, 240)
         self.recognized_guests_counter = 0
@@ -198,14 +199,16 @@ class RECEPTIONIST(object):
                 "drink": "Milk",
                 "gender": "Man",
                 "pronoun": "he",
+                "id": 0
             }
         }
+        self.id_counter = 1
         self.introduced_guests = []
         self.current_guest = {}
         self.old_person = ""
         self.failed_saving_face = False
         self.angle_index = 0
-        self.chair_angles = [260 + 180, 220 + 180, 180 + 180, 140 + 180]
+        self.chair_angles = [140, 160, 220, 260]
         self.checked_chair_angles = []
         self.empty_chair_angles = []
         self.is_first_guest = True
@@ -257,6 +260,7 @@ class RECEPTIONIST(object):
         self.tm.initialize_pepper()
         self.tm.turn_camera("front_camera", "custom", 2, 15)
         self.tm.talk("I am going to do the  " + self.task_name + " task", "English")
+        self.tm.set_current_place("house_door")  # Establece la posición inicial del robot
         print(
             self.consoleFormatter.format(
                 "Inicializacion del task: " + self.task_name, "HEADER"
@@ -295,7 +299,7 @@ class RECEPTIONIST(object):
             self.tm.publish_filtered_image("face", "front_camera")
             self.show_topic_srv("/perception_utilities/filtered_image")
             self.tm.talk(
-                "Hey {}, I will take some pictures of your face to recognize you in future occasions".format(
+                "Hey {}, I will take some pictures of your face to recognize you in future occasions, please place your face inside the green circle.".format(
                     self.current_guest["name"]
                 ),
                 "English",
@@ -315,12 +319,32 @@ class RECEPTIONIST(object):
             self.current_guest["has_glasses"] = attributes["has_glasses"]
             self.current_guest["has_beard"] = attributes["has_beard"]
             self.current_guest["has_hat"] = attributes["has_hat"]
+            self.current_guest["id"] = self.id_counter
             self.all_guests[self.current_guest["name"]] = self.current_guest
             if len(self.all_guests) == 3:
                 self.introducing_2nd_guest = True
             self.move_head_srv("default")
             self.failed_saving_face = False
             self.show_image_srv(self.sinfonia_url_img)
+            if self.is_first_guest:
+                gpt_vision_prompt = "What color is the person in the photo wearing? Answer only with the color's name"
+                answer = self.tm.img_description(gpt_vision_prompt)["message"]
+                print(answer)
+                self.is_first_guest = False
+                self.first_guest["name"] = self.current_guest["name"]
+                self.first_guest["drink"] = self.current_guest["drink"]
+                self.first_guest["age"] = self.categorize_age(attributes["age"])
+                self.first_guest["gender"] = attributes["gender"]
+                self.first_guest["race"] = attributes["race"]
+                self.first_guest["pronoun"] = (
+                    "he" if attributes["gender"] == "Man" else "she"
+                )
+                self.first_guest["has_glasses"] = attributes["has_glasses"]
+                self.first_guest["has_beard"] = attributes["has_beard"]
+                self.first_guest["has_hat"] = attributes["has_hat"]
+                self.first_guest["color"] = answer
+                self.first_guest["id"] = self.id_counter
+            self.id_counter += 1
             self.save_face_succeded()
         else:
             self.failed_saving_face = True
@@ -331,23 +355,6 @@ class RECEPTIONIST(object):
                 "English",
             )
             self.save_face_failed()
-        if self.is_first_guest:
-            gpt_vision_prompt = "What color is the person in the photo wearing? Answer only with the color's name"
-            answer = self.tm.img_description(gpt_vision_prompt)["message"]
-            print(answer)
-            self.is_first_guest = False
-            self.first_guest["name"] = self.current_guest["name"]
-            self.first_guest["drink"] = self.current_guest["drink"]
-            self.first_guest["age"] = self.categorize_age(attributes["age"])
-            self.first_guest["gender"] = attributes["gender"]
-            self.first_guest["race"] = attributes["race"]
-            self.first_guest["pronoun"] = (
-                "he" if attributes["gender"] == "Man" else "she"
-            )
-            self.first_guest["has_glasses"] = attributes["has_glasses"]
-            self.first_guest["has_beard"] = attributes["has_beard"]
-            self.first_guest["has_hat"] = attributes["has_hat"]
-            self.first_guest["color"] = answer
 
     def on_enter_GO2LIVING(self):
         print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
@@ -358,7 +365,7 @@ class RECEPTIONIST(object):
             "English",
             wait=False,
         )
-        self.tm.go_to_place("room")
+        self.tm.go_to_place(self.guests_place)
         self.arrived_to_point()
 
     def on_enter_INTRODUCE_NEW(self):
@@ -382,8 +389,8 @@ class RECEPTIONIST(object):
         #     "wears a hat" if self.current_guest["has_hat"] else "does not wear a hat"
         # )
         self.tm.talk(
-            f'Hello everyone, this is {self.current_guest["name"]}, {self.current_guest["pronoun"]} is a {self.current_guest["gender"]}.  {self.current_guest["pronoun"]} is {self.current_guest["age"]}, and {self.current_guest["pronoun"]} likes to drink {self.current_guest["drink"]}.'
-            "English",
+            f'Hello everyone, this is {self.current_guest["name"]}, {self.current_guest["pronoun"]} is a {self.current_guest["gender"]}.  {self.current_guest["pronoun"]} is {self.current_guest["age"]}, and {self.current_guest["pronoun"]} likes to drink {self.current_guest["drink"]}.',
+            "English", animated=True
         )
         # Turns on recognition and looks for  person
         self.tm.start_recognition("front_camera")
@@ -449,7 +456,7 @@ class RECEPTIONIST(object):
             self.animations_publisher.publish("animations", "Gestures/TakePlace_2")
             self.introduced_guests.append(guest_name)
             if (guest_name == self.first_guest["name"]) and self.introducing_2nd_guest:
-                clothes_color_str = f"is wearing {self.first_guest["color"]}"
+                clothes_color_str = f"is wearing {self.first_guest['color']}"
                 has_beard_str = (
                     "has a beard"
                     if self.first_guest["has_beard"]
@@ -499,7 +506,7 @@ class RECEPTIONIST(object):
     def on_enter_GO2DOOR(self):
         print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
         self.tm.talk("Waiting for other guests to come", "English", wait=False)
-        self.tm.go_to_place("living")
+        self.tm.go_to_place(self.initial_place)
         self.wait_new_guest()
 
     def check_rospy(self):
