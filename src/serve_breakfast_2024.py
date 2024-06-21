@@ -7,7 +7,7 @@ import ConsoleFormatter  # Módulo para formatear la consola
 
 from transitions import Machine  # Módulo para manejar máquinas de estados
 from task_module import Task_module as TaskModule  # Importa y renombra el módulo de tareas
-from robot_toolkit_msgs.srv import set_angle_srv, set_angle_srvRequest
+from robot_toolkit_msgs.srv import set_angle_srv, set_angle_srvRequest, set_security_distance_srv
 
 class ServeBreakfast(object):
     def __init__(self) -> None:
@@ -95,24 +95,19 @@ class ServeBreakfast(object):
         
         self.relative_drop_position=0.3
         
-        
-        
-    # --------------------------------------------------------------------------
-    #                           SERVICIOS DE APOYO
-    # --------------------------------------------------------------------------
-    
-    self.setAngles_srv = rospy.ServiceProxy('pytoolkit/ALMotion/set_angles_srv', set_angles_enabled_srv)
-    set_angles_request = set_angles_enabled_srvRequest()
-    
-    def tilt_hip(self, angle):
-        
-        # Max angle: 1.03 rads and Min angle: -0.41 rads
-        
-        self.setAngles_srv.data.name = "HipPitch"
-        self.setAngles_srv.data.angle = angle
-        self.setAngles_srv.data.speed = 0.1
-        self.setAngles_srv.call(self.setAngles_srv.data)
+        print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_orthogonal_security_distance_srv...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv")
+        self.set_orthogonal_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv",set_security_distance_srv)
 
+        print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_tangential_security_distance_srv...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALMotion/set_tangential_security_distance_srv")
+        self.set_tangential_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_tangential_security_distance_srv",set_security_distance_srv)
+        
+        rospy.wait_for_service("/pytoolkit/ALMotion/set_angle_srv")
+        self.set_angle_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_angle_srv",set_angle_srv)
+        
+        
+        
     # ---------------------------------------------------------------------------
     #                       ESTADOS / TRANSICIONES
     # ---------------------------------------------------------------------------
@@ -120,6 +115,8 @@ class ServeBreakfast(object):
     def on_enter_INIT(self):
         """Acciones al entrar en el estado INIT."""
         self.task_module.go_to_pose("standard", self.slow_movement)
+        self.set_orthogonal_security_srv(0.3)
+        self.set_tangential_security_srv(0.05)
         print(self.consoleFormatter.format("INIT", "HEADER"))
         self.task_module.set_current_place("entrance")  # Establece la posición inicial del robot
         self.task_module.go_to_pose("standard", self.fast_movement)  # Pone al robot en la posición estándar
@@ -282,7 +279,7 @@ class ServeBreakfast(object):
         self.task_module.go_to_relative_point(self.relative_drop_position, 0.0, 0.0)  # Mueve el robot a la posición relativa cerca na a a mesa
         
         # Antes de ejecutar las acciones: Inclinar al robot según la altura de la mesa
-        self.tilt_hip(-0.3)
+        self.set_angle_srv("HipPitch", -0.3, 0.1)
         
         for action in actions:  # Ejecuta las acciones para dejar el objeto
             self.task_module.go_to_pose(action, self.slow_movement)  # Ejecuta la pose
@@ -333,6 +330,19 @@ class ServeBreakfast(object):
         while self.carry_to_serve:
             self.task_module.go_to_pose(pose)
             rospy.sleep(1)
+            
+# --------------------------------------------------------------------------
+#                           SERVICIOS DE APOYO
+# --------------------------------------------------------------------------
+    
+    # def tilt_hip(self, angle):
+        
+    #     # Max angle: 1.03 rads and Min angle: -0.41 rads
+        
+    #     self.setAngles_srv.data.name = "HipPitch"
+    #     self.setAngles_srv.data.angle = angle
+    #     self.setAngles_srv.data.speed = 0.1
+    #     self.setAngles_srv.call(self.setAngles_srv.data)
         
 
 
