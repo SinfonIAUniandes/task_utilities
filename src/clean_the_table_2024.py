@@ -48,10 +48,10 @@ class CLEAN_THE_TABLE(object):
         self.drop_dish_point = -0.3
         self.drop_bowl_point = 0
         self.drop_cup_point = 0.3
-        
+            
         self.get_closer = 0.2
 
-
+        self.possible_objects_to_pick = ["fork", "knife", "spoon",""]
 
         self.item = 0 # Contador para saber que ingrediente se esta manipulando
         self.items = ["cup", "bowl", "dish", "spoon", "fork"] # Orden de los ingredientes (izquierda a derecha)
@@ -76,9 +76,8 @@ class CLEAN_THE_TABLE(object):
         self.tm.set_current_place("init")
         self.tm.go_to_pose("standard", self.fast_movement)
         self.tm.go_to_pose("default_head", self.fast_movement)
-        self.tm.set_security_distance(False)
         self.tm.initialize_pepper()
-        self.tm.go_to_pose("up_head", 0.1)
+        self.tm.go_to_pose("up_head", s)
         self.tm.talk("I am going to clean the table.", "English", wait=False)
         self.start()
 

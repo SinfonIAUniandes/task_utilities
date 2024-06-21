@@ -169,7 +169,7 @@ class GAY_BLIND_BALD(object):
         rospy.sleep(2)
         self.tm.talk(f"Great. I will have a look around the room to find the {object_2_search} for you.", wait=False)
         object_found = False
-        while not object_found or :
+        while not object_found:
             response = self.tm.img_description(
                 f'Please find the specified object: {object_2_search} in the provided image. If the object is present, respond with "true". If the object is not present, respond with "false".'
             )["message"]
