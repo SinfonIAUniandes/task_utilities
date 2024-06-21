@@ -281,6 +281,9 @@ class ServeBreakfast(object):
         actions = self.drop_and_serve_items_poses[self.actual_item]  # Obtiene las acciones para dejar el objeto
         self.task_module.go_to_relative_point(self.relative_drop_position, 0.0, 0.0)  # Mueve el robot a la posición relativa cerca na a a mesa
         
+        # Antes de ejecutar las acciones: Inclinar al robot según la altura de la mesa
+        self.tilt_hip(-0.3)
+        
         for action in actions:  # Ejecuta las acciones para dejar el objeto
             self.task_module.go_to_pose(action, self.slow_movement)  # Ejecuta la pose
             rospy.sleep(1)  # Espera 2 segundos
