@@ -51,7 +51,6 @@ class CLEAN_THE_TABLE(object):
             
         self.get_closer = 0.2
 
-        self.possible_objects_to_pick = ["fork", "knife", "spoon",""]
 
         self.item = 0 # Contador para saber que ingrediente se esta manipulando
         self.items = ["cup", "bowl", "dish", "spoon", "fork"] # Orden de los ingredientes (izquierda a derecha)
@@ -114,7 +113,7 @@ class CLEAN_THE_TABLE(object):
     def on_enter_GO_DISHWASHER(self):
         self.tm.go_to_place("kitchen_dishwasher")
         self.tm.go_to_relative_point(0.0,0.0,90)
-        time.sleep(1)
+        rospy.sleep(1)
         self.drop_object()
 
     def on_enter_DROP_OBJECT(self):
