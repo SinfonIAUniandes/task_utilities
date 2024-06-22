@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os  # Módulo para interactuar con el sistema operativo
-# import rospy  # Módulo para manejar el tiempo
-import rospy  # Módulo para manejar nodos ROS
+import rospy  # Módulo para manejar el tiempo
+import math # Módulo para operaciones matemáticas
 import threading  # Módulo para manejar hilos
 import ConsoleFormatter  # Módulo para formatear la consola
 
@@ -85,8 +85,8 @@ class ServeBreakfast(object):
         }
         
         self.serve_items_poses = {
-            "milk_carton": [], # TODO Terminar poses para servir y soltar (en ese orden)
-            "cereal_box": [] # TODO Terminar poses para servir y soltar (en ese orden)
+            "milk_carton": [], # TODO Terminar poses para tomar, servir y soltar (en ese orden)
+            "cereal_box": [] # TODO Terminar poses para tomar, servir y soltar (en ese orden)
         }
         
         self.item_counter=0
@@ -279,7 +279,7 @@ class ServeBreakfast(object):
         self.task_module.go_to_relative_point(self.relative_drop_position, 0.0, 0.0)  # Mueve el robot a la posición relativa cerca na a a mesa
         
         # Antes de ejecutar las acciones: Inclinar al robot según la altura de la mesa
-        self.set_angle_srv(["HipPitch"], [-0.3], 0.1)
+        self.tilt_hip(self.bowl_angle)
         
         for action in actions:  # Ejecuta las acciones para dejar el objeto
             self.task_module.go_to_pose(action, self.slow_movement)  # Ejecuta la pose
@@ -335,14 +335,19 @@ class ServeBreakfast(object):
 #                           SERVICIOS DE APOYO
 # --------------------------------------------------------------------------
     
-    # def tilt_hip(self, angle):
+    def tilt_hip(self, angle):
         
-    #     # Max angle: 1.03 rads and Min angle: -0.41 rads
+        # Max angle: 1.03 rads and Min angle: -0.41 rads
         
-    #     self.setAngles_srv.data.name = "HipPitch"
-    #     self.setAngles_srv.data.angle = angle
-    #     self.setAngles_srv.data.speed = 0.1
-    #     self.setAngles_srv.call(self.setAngles_srv.data)
+        # Turning angle from degrees to rads
+        angle_rads = ((angle * math.pi) / 180)
+        
+        # Corresponding joint name
+        joint_name = "HipPitch"
+        
+        # Calling the service to tilt the hip and printing the message in the console
+        self.set_angle_srv(joint_name, angle_rads, 0.1)
+        self.console_formatter.format(f"Tilting {joint_name} to {angle} degrees", "INFO")
         
 
 
