@@ -225,7 +225,7 @@ class ServeBreakfast(object):
         actions = self.grab_items_poses[self.actual_item]  # Obtiene las acciones necesarias para recoger el objeto
 
         if self.actual_item == "bowl":
-            self.task_module.show_image("https://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/grab_bowl.jpeg")
+            self.task_module.show_image("http://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/grab_bowl.jpeg")
             self.task_module.talk("Could you please put the spoon in the bowl?", "English", wait=False)  # Solicita colocar la cuchara en el bowl       
             rospy.sleep(4)
             self.task_module.talk("Thank you!", "English", wait=False) 
@@ -237,7 +237,7 @@ class ServeBreakfast(object):
                 self.task_module.talk("Now please place the bowl in my hands just like the image in my tablet shows, so I can take it to the table safely! I will tell you when to stop holding it", wait=False)
 
             if action == "both_arms_cereal" or action == "both_arms_milk":
-                self.task_module.show_image(f"https://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/grab_{self.actual_item}.jpeg")
+                self.task_module.show_image(f"http://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/grab_{self.actual_item}.jpeg")
                 self.task_module.talk(f"Now please hold the {self.actual_item} in middle of my hands like the image in my tablet shows! I will tell you when to stop holding it.", "English", wait=False)   
             
             self.task_module.go_to_pose(action, self.slow_movement)  # Ejecuta la pose
@@ -279,7 +279,7 @@ class ServeBreakfast(object):
         self.task_module.go_to_relative_point(self.relative_drop_position, 0.0, 0.0)  # Mueve el robot a la posición relativa cerca na a a mesa
         
         # Antes de ejecutar las acciones: Inclinar al robot según la altura de la mesa
-        self.set_angle_srv("HipPitch", -0.3, 0.1)
+        self.set_angle_srv(["HipPitch"], [-0.3], 0.1)
         
         for action in actions:  # Ejecuta las acciones para dejar el objeto
             self.task_module.go_to_pose(action, self.slow_movement)  # Ejecuta la pose
