@@ -154,15 +154,11 @@ class CARRY_MY_LUGGAGE(object):
         print(self.consoleFormatter.format("LOOK_FOR_BAG", "HEADER"))
         self.isBagAtTheLeft = False
         self.isBagAtTheRight = False
-        self.tm.show_image("https://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/carrymyluggage.jpg")
+        self.tm.show_image("http://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/carrymyluggage.jpg")
         self.move_head_srv("default")
         self.tm.talk("I am looking for the bag you want me to carry, please point to it, raise your hand clearly. Just like you see in my tablet",)
         start_time = rospy.get_time()
-        while (
-            self.isBagAtTheLeft == False
-            and self.isBagAtTheRight == False
-            and (rospy.get_time() - start_time) < 10.0
-        ):
+        while (self.isBagAtTheLeft == False and self.isBagAtTheRight == False and (rospy.get_time() - start_time) < 10.0):
             rospy.sleep(0.05)
         print("Signaled")
         if self.isBagAtTheRight:
@@ -181,9 +177,6 @@ class CARRY_MY_LUGGAGE(object):
     def on_enter_MOVE_TO_BAG(self):
         print(self.consoleFormatter.format("MOVE_TO_BAG", "HEADER"))
         self.setMoveArms_srv.call(True, True)
-        self.tm.show_image(
-            "https://media.discordapp.net/attachments/876543237270163498/1123367466102427708/logo_sinfonia.png?ex=662cc83b&is=662b76bb&hm=83939b98f39ae528eb941223c1b25a1eb72155625ee59b7bfd719e882bbae33a&=&format=webp&quality=lossless"
-        )
         self.grab_bag()
 
     def on_enter_GRAB_BAG(self):
@@ -208,10 +201,9 @@ class CARRY_MY_LUGGAGE(object):
 
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
-        #self.tm.follow_you(True)
+        self.tm.follow_you(True)
         self.tm.talk("I will follow you now. Please walk backwards and look at my face at all times and walk slowly. If i can't see you anymore please come back!", "English", wait=False)
         self.tm.setMoveHead_srv("up")
-        self.tm.start_follow_face_proxy()
         print("Follow you activated!")
         self.following = True
         carry_thread = threading.Thread(target=self.carry_thread,args=[self.pose])
@@ -220,8 +212,7 @@ class CARRY_MY_LUGGAGE(object):
         save_place_thread.start()
         while not self.isTouched:
             time.sleep(0.1)
-        #self.tm.follow_you(False)
-        self.tm.stop_tracker_proxy()
+        self.tm.follow_you(False)
         self.save_places = False
         self.following = False
         if self.bagSelectedRight:

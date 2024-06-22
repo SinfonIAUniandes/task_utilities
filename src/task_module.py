@@ -5,6 +5,7 @@ import rospkg
 import rosservice
 import ConsoleFormatter
 import json
+import math
 
 from std_msgs.msg import Int32, String, Bool
 from std_srvs.srv import Trigger, TriggerRequest, SetBool
@@ -13,8 +14,8 @@ from threading import Thread
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv, tablet_service_srvRequest, navigate_to_srv
-from robot_toolkit_msgs.msg import touch_msg, speech_recognition_status_msg
+from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv, tablet_service_srvRequest, navigate_to_srv, set_angle_srv, set_angle_srvRequest
+from robot_toolkit_msgs.msg import touch_msg, speech_recognition_status_msg, set_angles_msg
 
 from manipulation_msgs.srv import *
 
@@ -47,6 +48,7 @@ class Task_module:
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
         ################### GLOBAL VARIABLES ###################
         self.follow_you_active = False
+        self.angles = ""
         self.navigating = False
         self.stopped_for_safety = False
         self.safety_stop_start_time = 0
@@ -54,6 +56,7 @@ class Task_module:
         self.head_thread = False
         self.linear_vel = 0
         self.closest_person = [0,0,0,0,0]
+        self.closest_label = [0,0,0,0,0]
         self.labels = dict()
         self.clothes_color = "pink"
         self.pointing = "none"
@@ -421,6 +424,16 @@ class Task_module:
                 move_head_srv
             )
 
+            self.toggle_get_angles_topic_srv = rospy.ServiceProxy(
+                "/pytoolkit/ALMotion/toggle_get_angle_srv",
+                set_angle_srv
+            )
+
+            self.set_angles_topic_srv = rospy.ServiceProxy(
+                "/pytoolkit/ALMotion/set_angle_srv",
+                set_angle_srv
+            )
+
             self.Navigate_to_srv = rospy.ServiceProxy(
                 "/pytoolkit/ALNavigation/navigate_to_srv",
                 navigate_to_srv
@@ -511,7 +524,7 @@ class Task_module:
         Initializes the pepper robot with default parameteres
         """
         if self.perception:
-            self.turn_camera("front_camera","custom",1,15)
+            self.turn_camera("front_camera","custom",1,30)
             self.start_recognition("front_camera")
         else:
             print("perception as false")
@@ -1031,6 +1044,23 @@ class Task_module:
             print("perception as false")
             return False
     
+    
+    def get_closer_label(self, label) -> None:
+        """
+        Input: None
+        Output: None
+        ----------
+        Updates the information of the person that is closest to the robot.
+        Runs in a thread in follow you
+        """
+        # follow_you_active is used to halt thread execution
+        while self.yolo_awareness_active:
+            labels_actuales = self.labels
+            for clabel in labels_actuales:
+                if clabel == label:
+                    self.closest_label = max(labels_actuales[clabel], key=lambda x: x[3])
+                    self.iterations = 0
+    
     def get_closer_person(self) -> None:
         """
         Input: None
@@ -1290,7 +1320,7 @@ class Task_module:
         ----------
         The robots starts moving with the parameters given AND DOESN'T STOP until stopped (by calling stop_moving).
         """
-        print(f"going to move at {x} {y} {rotate}")
+        #print(f"going to move at {x} {y} {rotate}")
         movement_msg = Twist()
         movement_msg.linear.x = x
         movement_msg.linear.y = y
@@ -1314,6 +1344,38 @@ class Task_module:
         self.linear_vel = 0
 
 
+    def start_yolo_awareness(self,command: bool, label="person") -> bool:
+        """
+        Input: 
+        command: Whether to start following 
+        speed: The speed with which the robot will move forward or backward -> [0.0,0.5]
+        Output: True if the service was called correctly, False if not
+        ----------
+        Starts following the closest person to the robot
+        """
+
+        self.subscriber_angles = rospy.Subscriber("/pytoolkit/ALMotion/get_angles",set_angles_msg,self.callback_get_angles)
+        self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
+        if self.pytoolkit:
+            try:
+                if command:
+                    self.yolo_awareness_active = command
+                    yolo_awareness_thread = Thread(target=self.yolo_awareness_srv_thread, args=([label]))
+                    yolo_awareness_thread.start()
+                    label_thread = Thread(target=self.get_closer_label, args=([label]))
+                    label_thread.start()
+                    print("Started yolo awareness")
+                else:
+                    self.yolo_awareness_active = command
+                    print("Finished yolo awareness")
+                    return True
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("pytoolkit as false")
+            return False
+
     def follow_you(self, command: bool, speed=None) -> bool:
         """
         Input: 
@@ -1326,7 +1388,8 @@ class Task_module:
 
         self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
 
-        self.subscriber = rospy.Subscriber("/pytoolkit/ALMotion/failed",speech_recognition_status_msg,self.callback_move_failed)
+        self.subscriber_yolo = rospy.Subscriber("/pytoolkit/ALMotion/failed",speech_recognition_status_msg,self.callback_move_failed)
+        self.subscriber_angles = rospy.Subscriber("/pytoolkit/ALMotion/get_angles",set_angles_msg,self.callback_get_angles)
 
         if self.pytoolkit:
             try:
@@ -1336,8 +1399,8 @@ class Task_module:
                     self.set_move_arms_enabled(False)
                     follow_thread = Thread(target=self.follow_you_srv_thread,args=([speed]))
                     follow_thread.start()
-                    head_thread = Thread(target=self.head_srv_thread, args=(["up"]))
-                    head_thread.start()
+                    #head_thread = Thread(target=self.head_srv_thread, args=(["up"]))
+                    #head_thread.start()
                     person_thread = Thread(target=self.get_closer_person)
                     person_thread.start()
                     print("Started following")
@@ -1397,6 +1460,39 @@ class Task_module:
         self.talk("Perfect. Try to keep at that distance", "English", True, False)
         self.iterations=0
           
+    
+    def yolo_awareness_srv_thread(self, label: str, speed=0.1) -> None:   
+        """
+        Input:
+        speed: The speed with which the robot will move forward or backward -> [0.0,0.5]
+        Output: None
+        ----------
+        A thread dedicated to tracking a label.
+        """
+        toggle_msg =  set_angle_srvRequest()
+        toggle_msg.name = ["HeadYaw"]
+        toggle_msg.angle = []
+        toggle_msg.speed = 0
+        self.toggle_get_angles_topic_srv(toggle_msg)
+        while self.yolo_awareness_active: 
+            rospy.sleep(0.02)
+            # If a person was found
+            if label in self.labels:
+                # If that person is the closest person
+                followed_label = self.closest_label
+                label_width = followed_label[3]
+                label_center = (followed_label[1] + label_width/2)
+                label_degree_yolo = (label_center*0.16875) - 27
+                current_head_angle = self.angles
+                label_degree = math.radians(label_degree_yolo - current_head_angle)
+                print("degree:"+str(round(label_degree_yolo,4))+" head:"+str(round(-current_head_angle,3)))
+                joints_msg =  set_angle_srvRequest()
+                joints_msg.name = ["HeadYaw","HeadPitch"]
+                joints_msg.angle = [-label_degree, 0]
+                joints_msg.speed = speed
+                self.set_angles_topic_srv(joints_msg)
+                
+            
     def follow_you_srv_thread(self, speed) -> None:
         """
         Input:
@@ -1408,7 +1504,6 @@ class Task_module:
         # Number of iterations with no person in sight
         self.iterations=0
         close = False
-        center_x = 180 # 360 degrees / 2
         calculated_vel = self.linear_vel
         # Variables to check if too close or too far
         # 140 is a value that worked well in testing
@@ -1417,6 +1512,11 @@ class Task_module:
         min_width = 30
         speed = 0.5/(max_width-min_width)if speed is None else speed
         angular_vel = 0
+        joints_msg =  set_angle_srvRequest()
+        joints_msg.name = ["HeadYaw"]
+        joints_msg.angle = []
+        joints_msg.speed = 0
+        self.toggle_get_angles_topic_srv(joints_msg)
         while self.follow_you_active: 
             # If a person was found
             if "person" in self.labels:
@@ -1426,14 +1526,16 @@ class Task_module:
                 # Person seen
                 self.iterations=0
                 # Calculate moving speed
-                target_x = followed_person[1]
                 # a = (0.1-0.5)/(max_width-min_width)**2
                 calculated_vel = speed*(max_width-person_width)+0.05 if person_width <max_width else 0.01
                 # calculated_vel = (a*(person_width-min_width)**2)+0.5 if person_width <max_width else 0
-                error_x = (target_x + person_width/2) - center_x 
-                # 0.005 worked well
-                angular_vel = 0.0025 * error_x
-                
+                person_center = (followed_person[1] + person_width/2)
+                person_degree_yolo = (person_center*0.16875) - 27
+                current_head_angle = self.angles
+                person_degree = person_degree_yolo - current_head_angle
+                print("degree:"+str(round(person_degree,4))+" angular:"+str(round(angular_vel,3)))
+                # 0.0025 worked well
+                angular_vel = -min(0.5,abs(person_degree*(0.5/45)))*(person_degree/abs(person_degree))
                 if person_width>=max_width:
                     close = True
                     if self.linear_vel != 0:
@@ -1449,7 +1551,7 @@ class Task_module:
                         continue
                 
                 # If the rotation is big or the robot is not moving
-                change_motion =(abs(angular_vel) > 0.1 and person_width>min_width) or abs(self.linear_vel-calculated_vel)>0.025
+                change_motion =(abs(angular_vel) > 0.07 and person_width>min_width) or abs(self.linear_vel-calculated_vel)>0.025
                 if change_motion:
                     self.linear_vel=calculated_vel
                     if not close:
@@ -1466,7 +1568,7 @@ class Task_module:
                 self.stop_moving()
                 self.calibrate_follow_distance(max_width,min_width)
                 continue
-            time.sleep(0.05)
+            time.sleep(0.02)
 
 
     def robot_stop_srv(self) -> bool:
@@ -1961,6 +2063,10 @@ class Task_module:
             self.safety_stop_start_time = time.time()
             rospy.sleep(5)
             self.stopped_for_safety = False
+
+    def callback_get_angles(self, msg):
+        self.angles = math.degrees(msg.angles[0])
+        
             
             
     def callback_get_labels_subscriber(self, msg):
