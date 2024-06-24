@@ -1485,7 +1485,6 @@ class Task_module:
                 label_degree_yolo = (label_center*0.16875) - 27
                 current_head_angle = self.angles
                 label_degree = math.radians(label_degree_yolo - current_head_angle)
-                print("degree:"+str(round(label_degree_yolo,4))+" head:"+str(round(-current_head_angle,3)))
                 joints_msg =  set_angle_srvRequest()
                 joints_msg.name = ["HeadYaw","HeadPitch"]
                 joints_msg.angle = [-label_degree, 0]
@@ -1533,7 +1532,6 @@ class Task_module:
                 person_degree_yolo = (person_center*0.16875) - 27
                 current_head_angle = self.angles
                 person_degree = person_degree_yolo - current_head_angle
-                print("degree:"+str(round(person_degree,4))+" angular:"+str(round(angular_vel,3)))
                 # 0.0025 worked well
                 angular_vel = -min(0.5,abs(person_degree*(0.5/45)))*(person_degree/abs(person_degree))
                 if person_width>=max_width:
