@@ -88,6 +88,7 @@ class STICKLER_RULES(object):
         self.tm.show_topic("/perception_utilities/yolo_publisher")
         self.set_orthogonal_security_srv(0.3)
         self.set_tangential_security_srv(0.05)
+        self.tm.set_current_place("entrance")
         self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.tm.callback_get_labels_subscriber)
         person_thread = threading.Thread(target=self.tm.get_closer_person)
         person_thread.start()
@@ -118,8 +119,10 @@ class STICKLER_RULES(object):
         while (tiempo_transcurrido < tiempo_una_vuelta): # and self.breakers_found<self.total_rule_breakers: (Chunk opcional si se quiere detener la task cuando se haya encontrado a todos los rule breakers)
             tiempo_inicio_rotacion = time.time()
             self.tm.look_for_object("person")
-            self.tm.constant_spin_srv(grados_seg)
-            person_found = self.tm.wait_for_object(tiempo_una_vuelta-tiempo_transcurrido)
+            #self.tm.constant_spin_srv(grados_seg)
+            self.tm.set_angles_srv("HeadYaw",-1.39,0.1)
+            self.tm.set_angles_srv("HeadYaw",-1.39,0.1)
+            #person_found = self.tm.wait_for_object(tiempo_una_vuelta-tiempo_transcurrido)
             tiempo_rotando = time.time()-tiempo_inicio_rotacion
             tiempo_transcurrido += tiempo_rotando
             if person_found:
@@ -142,7 +145,7 @@ class STICKLER_RULES(object):
                         person_width = found_person[3]
                         centered_point = (315 / 2) - (person_x + person_width/2)
                         print(centered_point)
-                    self.tm.robot_stop_srv()
+                    #self.tm.robot_stop_srv()
                     angulos_personas.append(angulo_persona)
                     is_in_forbidden = self.check_forbidden(angulo_persona)
                     if not is_in_forbidden:
@@ -153,7 +156,7 @@ class STICKLER_RULES(object):
                         while self.has_drink==2 and self.has_shoes==2:
                             rospy.sleep(0.1)
                     self.move_head_srv("up")
-                    self.tm.robot_stop_srv()
+                    #self.tm.robot_stop_srv()
                     if self.has_drink==0:
                         self.ASK4DRINK(angulo_persona)
                     if self.has_shoes==1:

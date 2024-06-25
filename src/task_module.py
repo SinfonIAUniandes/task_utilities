@@ -14,7 +14,7 @@ from threading import Thread
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv, tablet_service_srvRequest, navigate_to_srv, set_angle_srv, set_angle_srvRequest
+from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv, tablet_service_srvRequest, navigate_to_srv, navigate_to_srvRequest, set_angle_srv, set_angle_srvRequest
 from robot_toolkit_msgs.msg import touch_msg, speech_recognition_status_msg, set_angles_msg
 
 from manipulation_msgs.srv import *
@@ -23,7 +23,7 @@ from speech_msgs.srv import q_a_srv, talk_srv, speech2text_srv , talk_srvRequest
 
 from perception_msgs.srv import img_description_with_gpt_vision_srv, get_first_clothes_color_srv, get_clothes_color_srv, start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv, get_person_description_srv, add_recognition_model_srv, add_recognition_model_srvRequest, remove_recognition_model_srv, remove_recognition_model_srvRequest
 
-from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
+from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, add_place_with_coordinates_srv ,add_place_with_coordinates_srvRequest,follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
 from perception_msgs.msg import get_labels_msg, get_clothes_color_msg
 
@@ -48,10 +48,10 @@ class Task_module:
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
         ################### GLOBAL VARIABLES ###################
         self.follow_you_active = False
-        self.angles = ""
+        self.angles = 0
         self.navigating = False
         self.stopped_for_safety = False
-        self.safety_stop_start_time = 0
+        self.avoiding_obstacle = False
         self.center_active = False
         self.head_thread = False
         self.linear_vel = 0
@@ -220,6 +220,8 @@ class Task_module:
             print(
                 self.consoleFormatter.format("PERCEPTION services enabled", "OKGREEN")
             )
+            
+            self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
 
         self.speech = speech
 
@@ -316,6 +318,10 @@ class Task_module:
             rospy.wait_for_service("navigation_utilities/add_place_srv")
             self.add_place_proxy = rospy.ServiceProxy(
                 "/navigation_utilities/add_place_srv", add_place_srv
+            )
+            rospy.wait_for_service("navigation_utilities/add_place_with_coordinates_srv")
+            self.add_place_with_coordinates_proxy = rospy.ServiceProxy(
+                "/navigation_utilities/add_place_with_coordinates_srv", add_place_with_coordinates_srv
             )
 
             print(
@@ -429,7 +435,7 @@ class Task_module:
                 set_angle_srv
             )
 
-            self.set_angles_topic_srv = rospy.ServiceProxy(
+            self.set_angles_proxy = rospy.ServiceProxy(
                 "/pytoolkit/ALMotion/set_angle_srv",
                 set_angle_srv
             )
@@ -508,6 +514,8 @@ class Task_module:
             self.start_follow_face_proxy = rospy.ServiceProxy("/pytoolkit/ALTracker/start_follow_face",battery_service_srv)
             
             self.move_publisher = rospy.Publisher('/pytoolkit/ALMotion/move', Twist, queue_size=10)
+            
+            self.subscriber_angles = rospy.Subscriber("/pytoolkit/ALMotion/get_angles",set_angles_msg,self.callback_get_angles)
 
             print(self.consoleFormatter.format("PYTOOLKIT services enabled", "OKGREEN"))
 
@@ -1353,9 +1361,6 @@ class Task_module:
         ----------
         Starts following the closest person to the robot
         """
-
-        self.subscriber_angles = rospy.Subscriber("/pytoolkit/ALMotion/get_angles",set_angles_msg,self.callback_get_angles)
-        self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
         if self.pytoolkit:
             try:
                 if command:
@@ -1376,7 +1381,7 @@ class Task_module:
             print("pytoolkit as false")
             return False
 
-    def follow_you(self, command: bool, speed=None) -> bool:
+    def follow_you(self, command: bool, speed=None, awareness=True, avoid_obstacles=False) -> bool:
         """
         Input: 
         command: Whether to start following whoever is closests or not.
@@ -1385,26 +1390,21 @@ class Task_module:
         ----------
         Starts following the closest person to the robot
         """
-
-        self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
-
         self.subscriber_yolo = rospy.Subscriber("/pytoolkit/ALMotion/failed",speech_recognition_status_msg,self.callback_move_failed)
-        self.subscriber_angles = rospy.Subscriber("/pytoolkit/ALMotion/get_angles",set_angles_msg,self.callback_get_angles)
-
         if self.pytoolkit:
             try:
                 if command:
+                    self.start_yolo_awareness(awareness)
                     self.follow_you_active = command
                     self.head_thread = command
                     self.set_move_arms_enabled(False)
-                    follow_thread = Thread(target=self.follow_you_srv_thread,args=([speed]))
+                    follow_thread = Thread(target=self.follow_you_srv_thread,args=([speed,awareness,avoid_obstacles]))
                     follow_thread.start()
-                    #head_thread = Thread(target=self.head_srv_thread, args=(["up"]))
-                    #head_thread.start()
                     person_thread = Thread(target=self.get_closer_person)
                     person_thread.start()
                     print("Started following")
                 else:
+                    self.start_yolo_awareness(False)
                     self.set_move_arms_enabled(True)
                     self.follow_you_active = command
                     self.head_thread = command
@@ -1453,7 +1453,7 @@ class Task_module:
                     continue
             else:
                 self.iterations+=1
-            if self.iterations >= 60:
+            if self.iterations >= 30:
                 self.talk("I have lost you! Please come back", "English", True, False)
                 while not ("person" in self.labels):
                     rospy.sleep(0.03)
@@ -1485,14 +1485,10 @@ class Task_module:
                 label_degree_yolo = (label_center*0.16875) - 27
                 current_head_angle = self.angles
                 label_degree = math.radians(label_degree_yolo - current_head_angle)
-                joints_msg =  set_angle_srvRequest()
-                joints_msg.name = ["HeadYaw","HeadPitch"]
-                joints_msg.angle = [-label_degree, 0]
-                joints_msg.speed = speed
-                self.set_angles_topic_srv(joints_msg)
+                self.set_angles_srv(["HeadYaw","HeadPitch"],[-label_degree, 0],speed)
                 
             
-    def follow_you_srv_thread(self, speed) -> None:
+    def follow_you_srv_thread(self, speed=None, awareness=True, avoid_obstacles=False) -> None:
         """
         Input:
         speed: The speed with which the robot will move forward or backward -> [0.0,0.5]
@@ -1544,7 +1540,7 @@ class Task_module:
                 if person_width<min_width:
                     if self.linear_vel != 0:
                         self.stop_moving()
-                        self.talk("You're too far", "English", True, False)
+                        self.talk("You're too far", "English", wait=True, animated=False)
                         self.calibrate_follow_distance(max_width,min_width)
                         continue
                 
@@ -1554,15 +1550,44 @@ class Task_module:
                     self.linear_vel=calculated_vel
                     if not close:
                         # Start moving and rotating to center person in frame
-                        self.start_moving(self.linear_vel/2, 0, angular_vel)
+                        # Slower linear speed for turns
+                        self.start_moving(self.linear_vel/3, 0, angular_vel)
                         rospy.sleep(0.2)
                         # Stop rotating but keeping moving forward
                         self.start_moving(self.linear_vel, 0, 0)
-            else:
-                self.iterations+=1
+                if self.stopped_for_safety and avoid_obstacles:
+                    self.stop_moving()
+                    rospy.sleep(1.5)
+                    self.start_moving(-0.2, 0, 0)
+                    rospy.sleep(2)
+                    self.stop_moving()
+                    self.stopped_for_safety = False
+                    self.avoiding_obstacle = True
+                    self.talk("I found an obstacle in my path, i will attempt to go around it, if i fail, please help me remove it", wait=False, animated=False)
+                    if awareness:
+                        self.start_yolo_awareness(False)
+                    current_x = self.get_absolute_position_proxy().x
+                    current_y = self.get_absolute_position_proxy().y
+                    current_angle = self.get_absolute_position_proxy().theta
+                    theta_radians = math.radians(current_angle)
+
+                    # Calcular las nuevas coordenadas
+                    x_new = current_x + 2 * math.cos(theta_radians)
+                    y_new = current_y + 2 * math.sin(theta_radians)
+                    
+                    self.add_place("start_avoid")
+                    self.add_place("end_avoid",with_coordinates=True,x=x_new,y=y_new,theta=current_angle, edges=["start_avoid"])
+                    self.set_current_place("start_avoid")
+                    self.go_to_place("end_avoid")
+                    print("ended avoiding obstacle")
+                    self.avoiding_obstacle = False
+                    self.setRPosture_srv("stand")
+                    if awareness:
+                        self.start_yolo_awareness(True)
+                    self.talk("I'm done avoiding the obstacle, i will continue following you", wait=False, animated=False)  
 
             # If a person has not been seen for 30 iterations
-            if self.iterations >=60:
+            if self.iterations >=30:
                 self.stop_moving()
                 self.calibrate_follow_distance(max_width,min_width)
                 continue
@@ -1710,7 +1735,7 @@ class Task_module:
             print("perception as false")
             return False
 
-    def add_place(self, name: str, persist=0, edges=[]) -> bool:
+    def add_place(self, name: str, persist=0, edges=[], with_coordinates=False,x=0,y=0,theta=0) -> bool:
         """
         Input: name, edges, persist
         Output: True if the service was called correctly, False if not
@@ -1720,7 +1745,10 @@ class Task_module:
         if self.navigation:
             try:
                 self.set_move_arms_enabled(False)
-                approved = self.add_place_proxy(name, persist, edges)
+                if with_coordinates:
+                    approved = self.add_place_with_coordinates_proxy(name, persist, edges,x,y,theta)
+                else:
+                    approved = self.add_place_proxy(name, persist, edges)
                 if approved == "approved":
                     return True
                 else:
@@ -1741,7 +1769,6 @@ class Task_module:
         ----------
         Helps the followed person stay within a good distance of the robot
         """
-        self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
         if self.pytoolkit:
             try:
                 object_thread = Thread(target=self.get_closest_object,args=([object_name]))
@@ -1788,7 +1815,6 @@ class Task_module:
 
     def align_with_object(self, object_name: str) -> bool:
         if self.navigation and self.perception:
-            self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.callback_get_labels_subscriber)
             object_found = False
             while not object_found:
 
@@ -1991,6 +2017,32 @@ class Task_module:
             print("pytoolkit as false")
             return False
 
+    def set_angles_srv(self, joints: list, angles:list, speed:float) -> bool:
+        """
+        joints: The list of joints to move to the desired angle.
+        angles: The joints move the angles toward this angle.
+        speed: Speed at which the angles are moved.
+        ----------
+        Moves the robots joints toward an angle at a set speed
+        """
+        if self.pytoolkit:
+            try:
+                joints_msg =  set_angle_srvRequest()
+                joints_msg.name = joints
+                joints_msg.angle = angles
+                joints_msg.speed = speed
+                approved =self.set_angles_proxy(joints_msg)
+                if approved == "OK":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("pytoolkit as false")
+            return False
+
     def set_autonomous_life(self, state: bool) -> bool:
         """
         Input: True turn on || False turn off
@@ -2056,11 +2108,9 @@ class Task_module:
             self.iterationssTouched = msg.state
 
     def callback_move_failed(self, msg):
-        if "Safety" in msg.status:
-            self.stopped_for_safety = True
-            self.safety_stop_start_time = time.time()
-            rospy.sleep(5)
-            self.stopped_for_safety = False
+        if not self.avoiding_obstacle:
+            if "Safety" in msg.status:
+                self.stopped_for_safety = True
 
     def callback_get_angles(self, msg):
         self.angles = math.degrees(msg.angles[0])

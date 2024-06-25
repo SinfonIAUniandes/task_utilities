@@ -51,18 +51,21 @@ class FOLLOW_YOU(object):
     def on_enter_INIT(self):
         print(self.consoleFormatter.format("INIT", "HEADER"))
         self.tm.initialize_pepper()
-        self.set_orthogonal_security_srv(0.2)
-        self.set_tangential_security_srv(0.03)
+        # Super safe parameters
+        #self.set_orthogonal_security_srv(0.3)
+        #self.set_tangential_security_srv(0.05)
+        # Maybe unsafe
+        self.set_orthogonal_security_srv(0.1)
+        self.set_tangential_security_srv(0.01)
         self.tm.show_topic("/perception_utilities/yolo_publisher")
         print("I am going to test follow you")
-        #self.tm.talk("I am going to test follow you","English")
+        self.tm.talk("I am going to test follow you","English",wait=False)
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.beggining()
 
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
         self.tm.follow_you(True)
-        self.tm.start_yolo_awareness(True)
         print("Follow you activated!")
         while self.isTouched == False:
             time.sleep(0.1)
@@ -70,7 +73,6 @@ class FOLLOW_YOU(object):
             
     def on_enter_FINISH (self):
         self.tm.follow_you(False)
-        self.tm.start_yolo_awareness(False)
         print(self.consoleFormatter.format("FINISH", "HEADER"))
         self.tm.talk("I have finished the "+self.task_name+" task","English")
         os._exit(os.EX_OK)

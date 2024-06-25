@@ -106,6 +106,7 @@ class CARRY_MY_LUGGAGE(object):
         rospy.wait_for_service("/pytoolkit/ALMotion/set_tangential_security_distance_srv")
         self.set_tangential_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_tangential_security_distance_srv",set_security_distance_srv)
         
+        self.choosing = False
         # --------------- Subscribers ---------------
         self.posePublisherSubscriber = rospy.Subscriber(
             "perception_utilities/pose_publisher", String, self.posePublisherCallback
@@ -115,7 +116,6 @@ class CARRY_MY_LUGGAGE(object):
         )
         # --------------- Variables Absolutas ---------------
         self.bag_place = "none"
-        self.choosing = False
         self.is_ready = False
         self.save_places = False
         self.place_counter = 0
@@ -144,6 +144,7 @@ class CARRY_MY_LUGGAGE(object):
         self.set_orthogonal_security_srv(0.1)
         self.set_tangential_security_srv(0.01)
         self.tm.pose_srv("front_camera", True)
+        self.tm.set_current_place("arena_outside")
         rospy.sleep(1)
         self.tm.add_place("place" + str(self.place_counter))
         self.place_counter += 1
@@ -154,7 +155,7 @@ class CARRY_MY_LUGGAGE(object):
         print(self.consoleFormatter.format("LOOK_FOR_BAG", "HEADER"))
         self.bag_place = "none"
         self.choosing = True
-        self.tm.show_image("http://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/carrymyluggage.jpg")
+        self.tm.show_image("https://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/cml2.png")
         self.move_head_srv("up")
         self.tm.talk("I am looking for the bag you want me to carry, please point to it, raise your hand clearly. Just like you see in my tablet",wait=False)
         start_time = rospy.get_time()
@@ -180,7 +181,7 @@ class CARRY_MY_LUGGAGE(object):
         self.tm.talk("Please place the bag in my hand, when you have finished please touch my head!","English",wait=False)
         start_time = rospy.get_time()
         last_talk_time = rospy.get_time()
-        while (not self.isTouched) and rospy.get_time() - start_time < 10:
+        while (not self.isTouched) and rospy.get_time() - start_time < 15:
             rospy.sleep(0.1)
             if rospy.get_time()-last_talk_time > 5:
                 self.tm.talk("Touch my head to get going!","English",wait=False)
@@ -197,7 +198,6 @@ class CARRY_MY_LUGGAGE(object):
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
         self.tm.follow_you(True, speed=0.5)
-        self.tm.start_yolo_awareness(True)
         self.tm.talk("If i can't see you anymore please come back!", "English", wait=False)
         self.tm.setMoveHead_srv("up")
         print("Follow you activated!")
@@ -213,7 +213,6 @@ class CARRY_MY_LUGGAGE(object):
                 self.tm.talk("Remember to touch my head when we arrive","English",wait=False)
                 last_talk_time = rospy.get_time()
         self.tm.follow_you(False)
-        self.tm.start_yolo_awareness(False)
         self.save_places = False
         self.following = False
         if self.bag_place=="right":
