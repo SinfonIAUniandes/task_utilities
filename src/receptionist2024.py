@@ -327,7 +327,6 @@ class RECEPTIONIST(object):
         self.current_guest["age"] = self.categorize_age(attributes["age"])
         self.current_guest["gender"] = attributes["gender"]
         self.current_guest["pronoun"] = "he" if attributes["gender"] == "Man" else "she"
-        self.current_guest["color"] = self.clothes_color
         self.all_guests[self.current_guest["name"]] = self.current_guest
         if self.is_first_guest:
             self.get_clothes_and_hair_color_thread.join()
