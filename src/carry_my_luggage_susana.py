@@ -141,8 +141,9 @@ class CARRY_MY_LUGGAGE(object):
         #self.set_orthogonal_security_srv(0.3)
         #self.set_tangential_security_srv(0.05)
         # Maybe unsafe
-        self.set_orthogonal_security_srv(0.1)
-        self.set_tangential_security_srv(0.01)
+        #self.set_orthogonal_security_srv(0.1)
+        #self.set_tangential_security_srv(0.01)
+        self.tm.setDistance_srv(0)
         self.tm.pose_srv("front_camera", True)
         self.tm.set_current_place("arena_outside")
         rospy.sleep(1)
@@ -192,6 +193,7 @@ class CARRY_MY_LUGGAGE(object):
             self.tm.go_to_pose("close_left_hand")
         else:
             self.tm.go_to_pose("close_right_hand")
+        self.tm.show_topic("/perception_utilities/yolo_publisher")
         self.tm.talk("Thank you. I will follow you now! Please touch my head when we arrive", "English",wait=False)
         self.follow_you()
 

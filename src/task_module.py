@@ -17,11 +17,11 @@ from threading import Thread
 from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv, tablet_service_srvRequest, navigate_to_srv, navigate_to_srvRequest, set_angle_srv, set_angle_srvRequest
 from robot_toolkit_msgs.msg import touch_msg, speech_recognition_status_msg, set_angles_msg
 
-from manipulation_msgs.srv import *
+from manipulation_msgs.srv import go_to_pose, move_head
 
 from speech_msgs.srv import q_a_srv, talk_srv, speech2text_srv , talk_srvRequest, speech2text_srvRequest, answer_srv, calibrate_srv, hot_word_srv
 
-from perception_msgs.srv import img_description_with_gpt_vision_srv, get_first_clothes_color_srv, get_clothes_color_srv, start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv, get_person_description_srv, add_recognition_model_srv, add_recognition_model_srvRequest, remove_recognition_model_srv, remove_recognition_model_srvRequest
+from perception_msgs.srv import img_description_with_gpt_vision_srv, get_first_clothes_color_srv, get_clothes_color_srv, start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest, filter_labels_by_distance_srv, filter_labels_by_distance_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv, get_person_description_srv, add_recognition_model_srv, add_recognition_model_srvRequest, remove_recognition_model_srv, remove_recognition_model_srvRequest
 
 from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, add_place_with_coordinates_srv ,add_place_with_coordinates_srvRequest,follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
@@ -48,6 +48,7 @@ class Task_module:
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
         ################### GLOBAL VARIABLES ###################
         self.follow_you_active = False
+        self.person_attributes = {}
         self.angles = 0
         self.navigating = False
         self.stopped_for_safety = False
@@ -81,6 +82,11 @@ class Task_module:
             rospy.wait_for_service("/perception_utilities/turn_camera_srv")
             self.turn_camera_proxy = rospy.ServiceProxy(
                 "/perception_utilities/turn_camera_srv", turn_camera_srv
+            )
+            
+            rospy.wait_for_service("/perception_utilities/filter_labels_by_distance_srv")
+            self.filter_by_distance_proxy= rospy.ServiceProxy(
+                "/perception_utilities/filter_labels_by_distance_srv", filter_labels_by_distance_srv
             )
 
 
@@ -468,7 +474,14 @@ class Task_module:
             self.awareness_proxy = rospy.ServiceProxy(
                 "/pytoolkit/ALBasicAwareness/set_awareness_srv", SetBool
             )
+            
+            print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_orthogonal_security_distance_srv...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv")
+            self.set_orthogonal_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv",set_security_distance_srv)
 
+            print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_tangential_security_distance_srv...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALMotion/set_tangential_security_distance_srv")
+            self.set_tangential_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_tangential_security_distance_srv",set_security_distance_srv)
             print(
                 self.consoleFormatter.format(
                     "Waiting for pytoolkit/show_words...", "WARNING"
@@ -532,13 +545,15 @@ class Task_module:
         Initializes the pepper robot with default parameteres
         """
         if self.perception:
-            self.turn_camera("front_camera","custom",1,30)
+            self.turn_camera("front_camera","custom",1,20)
             self.start_recognition("front_camera")
         else:
             print("perception as false")
         if self.pytoolkit:
             self.show_words_proxy()
             self.setRPosture_srv("stand")
+            self.set_orthogonal_security_srv(0.3)
+            self.set_tangential_security_srv(0.05)
         else:
             print("pytoolkit as false")
 
@@ -864,14 +879,12 @@ class Task_module:
             try:
                 response = self.get_person_description_proxy()
                 attributes = {
-                    "status": response.status,
                     "gender": response.gender,
                     "age": int(response.age),
-                    "race": response.attributes,
-                    "has_glasses": response.has_glasses,
                     "has_beard": response.has_beard,
                     "has_hat": response.has_hat
                 }
+                self.person_attributes = attributes
                 return attributes
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -931,7 +944,31 @@ class Task_module:
         else:
             print("perception as false")
             return {}
-                
+        
+        
+    def toggle_filter_by_distance(self, activate: bool, distance: float, labels=["person"]) -> dict:
+        """
+        Input:
+        activate: True to filter, false to stop filtering labels by distance
+        distance: A float that indicates the distance threshold in meters at which perception utilities should not publish the detected label
+        labels: A list of labels to filter by distance
+        ----------
+        Toggles the filter by distance in perception utilities to stop the node from publishing far away labels
+        """
+        if self.perception:
+            try:
+                filter_label_msg = filter_labels_by_distance_srvRequest()
+                filter_label_msg.activate = activate
+                filter_label_msg.labels = labels
+                filter_label_msg.threshold_in_meters = distance
+                self.filter_by_distance_proxy(filter_label_msg)
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return {}
+        else:
+            print("perception as false")
+            return {}
+
                 
 
     def pose_srv(self, camera_name: str, start: bool) -> bool:
@@ -1061,7 +1098,7 @@ class Task_module:
         Updates the information of the person that is closest to the robot.
         Runs in a thread in follow you
         """
-        # follow_you_active is used to halt thread execution
+        # yolo_awareness_active is used to halt thread execution
         while self.yolo_awareness_active:
             labels_actuales = self.labels
             for clabel in labels_actuales:
@@ -1093,7 +1130,7 @@ class Task_module:
         Updates the information of the object that is closest to the robot.
         Runs in a thread.
         """
-        # follow_you_active is used to halt thread execution
+        # center_active is used to halt thread execution
         while self.center_active:
             labels_actuales = self.labels
             for label in labels_actuales:
@@ -1460,6 +1497,30 @@ class Task_module:
         self.talk("Perfect. Try to keep at that distance", "English", True, False)
         self.iterations=0
           
+    def center_head_with_label(self, label_info) -> None:   
+        """
+        Input:
+        label_info: tuple that represents the label to center
+        Output: None
+        ----------
+        Service to center a label.
+        """
+        toggle_msg =  set_angle_srvRequest()
+        toggle_msg.name = ["HeadYaw"]
+        toggle_msg.angle = []
+        toggle_msg.speed = 0
+        self.toggle_get_angles_topic_srv(toggle_msg)
+        label_width = label_info[3]
+        label_center = (label_info[1] + label_width/2)
+        label_degree_yolo = (label_center*0.16875) - 27
+        current_head_angle = self.angles
+        label_degree = math.radians(label_degree_yolo - current_head_angle)
+        self.set_angles_srv(["HeadYaw","HeadPitch"],[-label_degree, -0.3],0.1)
+        toggle_msg =  set_angle_srvRequest()
+        toggle_msg.name = ["None"]
+        toggle_msg.angle = []
+        toggle_msg.speed = 0
+        self.toggle_get_angles_topic_srv(toggle_msg)
     
     def yolo_awareness_srv_thread(self, label: str, speed=0.1) -> None:   
         """
@@ -1507,11 +1568,12 @@ class Task_module:
         min_width = 30
         speed = 0.5/(max_width-min_width)if speed is None else speed
         angular_vel = 0
-        joints_msg =  set_angle_srvRequest()
-        joints_msg.name = ["HeadYaw"]
-        joints_msg.angle = []
-        joints_msg.speed = 0
-        self.toggle_get_angles_topic_srv(joints_msg)
+        if awareness:
+            joints_msg =  set_angle_srvRequest()
+            joints_msg.name = ["HeadYaw"]
+            joints_msg.angle = []
+            joints_msg.speed = 0
+            self.toggle_get_angles_topic_srv(joints_msg)
         while self.follow_you_active: 
             # If a person was found
             if "person" in self.labels:
@@ -1587,7 +1649,7 @@ class Task_module:
                     self.talk("I'm done avoiding the obstacle, i will continue following you", wait=False, animated=False)  
 
             # If a person has not been seen for 30 iterations
-            if self.iterations >=30:
+            if self.iterations >=15:
                 self.stop_moving()
                 self.calibrate_follow_distance(max_width,min_width)
                 continue
@@ -2113,9 +2175,7 @@ class Task_module:
                 self.stopped_for_safety = True
 
     def callback_get_angles(self, msg):
-        self.angles = math.degrees(msg.angles[0])
-        
-            
+        self.angles = math.degrees(msg.angles[0])     
             
     def callback_get_labels_subscriber(self, msg):
         self.labels = {}

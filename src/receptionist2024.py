@@ -6,6 +6,7 @@ import time
 import random
 import threading
 import rospy
+import math
 import os
 from std_srvs.srv import SetBool
 
@@ -112,6 +113,40 @@ class RECEPTIONIST(object):
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
 
+        ##################### ROS CALLBACK VARIABLES #####################
+        self.labels = {}
+        ##################### GLOBAL VARIABLES #####################
+        self.person_description_thread = None
+        self.initial_place = "init_receptionist"
+        self.greeting_place = "house_door"
+        self.guests_place = "living_room"
+        self.sinfonia_url_img = "https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"
+        self.img_dimensions = [320, 240]
+        self.recognized_guests_counter = 0
+        self.all_guests = {
+            "Charlie": {
+                "name": "Charlie",
+                "age": self.categorize_age(21),
+                "drink": "Milk",
+                "gender": "Man",
+                "pronoun": "he",
+                "id": 0
+            }
+        }
+        self.id_counter = 1
+        self.introduced_guests = []
+        self.current_guest = {}
+        self.old_person = ""
+        self.failed_saving_face = False
+        self.angle_index = 0
+        self.chair_angles = [0, 20, -30]
+        self.checked_chair_angles = []
+        self.empty_chair_angles = []
+        self.is_first_guest = True
+        self.introducing_2nd_guest = False
+        self.first_guest = {}
+        self.host_name = "Charlie"
+
         # ROS Callbacks
 
         # ROS Services (PyToolkit)
@@ -183,39 +218,6 @@ class RECEPTIONIST(object):
             "/animations", animation_msg, queue_size=1
         )
 
-        ##################### ROS CALLBACK VARIABLES #####################
-        self.labels = {}
-        ##################### GLOBAL VARIABLES #####################
-
-        self.initial_place = "house_door"
-        self.guests_place = "dining_bedroom"
-        self.sinfonia_url_img = "https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"
-        self.img_dimensions = (320, 240)
-        self.recognized_guests_counter = 0
-        self.all_guests = {
-            "Charlie": {
-                "name": "Charlie",
-                "age": self.categorize_age(21),
-                "drink": "Milk",
-                "gender": "Man",
-                "pronoun": "he",
-                "id": 0
-            }
-        }
-        self.id_counter = 1
-        self.introduced_guests = []
-        self.current_guest = {}
-        self.old_person = ""
-        self.failed_saving_face = False
-        self.angle_index = 0
-        self.chair_angles = [140, 160, 220, 260]
-        self.checked_chair_angles = []
-        self.empty_chair_angles = []
-        self.is_first_guest = True
-        self.introducing_2nd_guest = False
-        self.first_guest = {}
-        self.host_name = "Charlie"
-
     def callback_get_labels(self, data):
         labels = data.labels
         x_coordinates = data.x_coordinates
@@ -258,15 +260,17 @@ class RECEPTIONIST(object):
     def on_enter_INIT(self):
         print(self.consoleFormatter.format("INIT", "HEADER"))
         self.tm.initialize_pepper()
-        self.tm.turn_camera("front_camera", "custom", 2, 15)
+        self.tm.turn_camera("front_camera", "custom",1, 15)
+        self.tm.turn_camera("depth_camera","custom",1,15)
+        self.tm.toggle_filter_by_distance(True,2,["person"])
+        self.tm.set_current_place(self.initial_place)
         self.tm.talk("I am going to do the  " + self.task_name + " task", "English")
-        self.tm.set_current_place("house_door")  # Establece la posición inicial del robot
         print(
             self.consoleFormatter.format(
                 "Inicializacion del task: " + self.task_name, "HEADER"
             )
         )
-        self.tm.go_to_place(self.initial_place)
+        self.tm.go_to_place(self.greeting_place)
         self.beggining()
 
     def on_enter_WAIT4GUEST(self):
@@ -284,7 +288,8 @@ class RECEPTIONIST(object):
         # clothes_color = self.tm.get_clothes_color()
         # self.current_guest["clothes_color"] = clothes_color
         self.move_head_srv("up")
-        self.tm.talk("Hello, when you are going to talk to me, please wait until my eyes turn blue.")
+        self.tm.talk("Hello, when you are going to talk to me, please wait until my eyes turn blue.",wait=False)
+        rospy.sleep(4)
         name = self.tm.q_a("name")
         drink = self.tm.q_a("drink")
         self.current_guest = {"name": name, "drink": drink}
@@ -304,47 +309,14 @@ class RECEPTIONIST(object):
                 ),
                 "English",
             )
-        success = self.tm.save_face(self.current_guest["name"], 5)
-        attributes = self.tm.get_person_description()
-        print("attributes: ", attributes)
-        # attributes = {"age":25,"gender":"Man","race":"White"}
+        success = self.tm.save_face(self.current_guest["name"], 3)
+        self.person_description_thread = threading.Thread(target=self.tm.get_person_description)
+        self.person_description_thread.start()
+        rospy.sleep(0.5)
+        self.tm.talk("Thank you, I already took your pictures.")        
+
         print("success ", success)
-        if success and attributes != {}:
-            self.current_guest["age"] = self.categorize_age(attributes["age"])
-            self.current_guest["gender"] = attributes["gender"]
-            self.current_guest["race"] = attributes["race"]
-            self.current_guest["pronoun"] = (
-                "he" if attributes["gender"] == "Man" else "she"
-            )
-            self.current_guest["has_glasses"] = attributes["has_glasses"]
-            self.current_guest["has_beard"] = attributes["has_beard"]
-            self.current_guest["has_hat"] = attributes["has_hat"]
-            self.current_guest["id"] = self.id_counter
-            self.all_guests[self.current_guest["name"]] = self.current_guest
-            if len(self.all_guests) == 3:
-                self.introducing_2nd_guest = True
-            self.move_head_srv("default")
-            self.failed_saving_face = False
-            self.show_image_srv(self.sinfonia_url_img)
-            if self.is_first_guest:
-                gpt_vision_prompt = "What color is the person in the photo wearing? Answer only with the color's name"
-                answer = self.tm.img_description(gpt_vision_prompt)["message"]
-                print(answer)
-                self.is_first_guest = False
-                self.first_guest["name"] = self.current_guest["name"]
-                self.first_guest["drink"] = self.current_guest["drink"]
-                self.first_guest["age"] = self.categorize_age(attributes["age"])
-                self.first_guest["gender"] = attributes["gender"]
-                self.first_guest["race"] = attributes["race"]
-                self.first_guest["pronoun"] = (
-                    "he" if attributes["gender"] == "Man" else "she"
-                )
-                self.first_guest["has_glasses"] = attributes["has_glasses"]
-                self.first_guest["has_beard"] = attributes["has_beard"]
-                self.first_guest["has_hat"] = attributes["has_hat"]
-                self.first_guest["color"] = answer
-                self.first_guest["id"] = self.id_counter
-            self.id_counter += 1
+        if success:
             self.save_face_succeded()
         else:
             self.failed_saving_face = True
@@ -369,6 +341,43 @@ class RECEPTIONIST(object):
         self.arrived_to_point()
 
     def on_enter_INTRODUCE_NEW(self):
+        self.person_description_thread.join()
+        attributes = self.tm.person_attributes
+        print("attributes: ", attributes)
+        self.current_guest["age"] = self.categorize_age(attributes["age"])
+        self.current_guest["gender"] = attributes["gender"]
+        self.current_guest["pronoun"] = (
+            "he" if attributes["gender"] == "Man" else "she"
+        )
+        self.current_guest["has_beard"] = attributes["has_beard"]
+        self.current_guest["has_hat"] = attributes["has_hat"]
+        self.current_guest["id"] = self.id_counter
+        self.all_guests[self.current_guest["name"]] = self.current_guest
+        
+        if len(self.all_guests) == 3:
+            self.introducing_2nd_guest = True
+        self.move_head_srv("default")
+        self.failed_saving_face = False
+        self.tm.show_words_proxy()
+        if self.is_first_guest:
+            gpt_vision_prompt = "What color is the person in the photo wearing? Answer only with the color's name"
+            answer = self.tm.img_description(gpt_vision_prompt)["message"]
+            print(answer)
+            self.is_first_guest = False
+            self.first_guest["name"] = self.current_guest["name"]
+            self.first_guest["drink"] = self.current_guest["drink"]
+            self.first_guest["age"] = self.categorize_age(attributes["age"])
+            self.first_guest["gender"] = attributes["gender"]
+            self.first_guest["pronoun"] = (
+                "he" if attributes["gender"] == "Man" else "she"
+            )
+            self.first_guest["has_beard"] = attributes["has_beard"]
+            self.first_guest["has_hat"] = attributes["has_hat"]
+            self.first_guest["color"] = answer
+            self.first_guest["id"] = self.id_counter
+        self.id_counter += 1
+        self.saving_face = False
+        
         self.move_head_srv("up")
         print(self.consoleFormatter.format("INTRODUCE_NEW", "HEADER"))
         self.tm.talk(
@@ -428,7 +437,7 @@ class RECEPTIONIST(object):
         # El robot busca una persona
         else:
             self.move_head_srv("default")
-            self.tm.go_to_defined_angle_srv(self.chair_angles[self.angle_index])
+            self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(self.chair_angles[self.angle_index]), -0.3],0.1)
             self.checked_chair_angles.append(self.chair_angles[self.angle_index])
             self.angle_index += 1
             t1 = time.time()
@@ -485,13 +494,13 @@ class RECEPTIONIST(object):
 
     def on_enter_LOOK4CHAIR(self):
         print(self.consoleFormatter.format("LOOK4CHAIR", "HEADER"))
-        self.show_image_srv(self.sinfonia_url_img)
+        self.tm.show_words_proxy()
         if len(self.empty_chair_angles) != 0:
             chair_angle = random.choice(self.empty_chair_angles)
             print("chair_angle ", chair_angle)
         else:
-            chair_angle = 180
-        self.tm.go_to_defined_angle_srv(chair_angle)
+            chair_angle = 0
+        self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(chair_angle), -0.3],0.1)
         self.chair_found()
 
     def on_enter_SIGNAL_SOMETHING(self):
@@ -506,7 +515,7 @@ class RECEPTIONIST(object):
     def on_enter_GO2DOOR(self):
         print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
         self.tm.talk("Waiting for other guests to come", "English", wait=False)
-        self.tm.go_to_place(self.initial_place)
+        self.tm.go_to_place(self.greeting_place)
         self.wait_new_guest()
 
     def check_rospy(self):
