@@ -17,17 +17,7 @@ from robot_toolkit_msgs.msg import animation_msg
 
 class RECEPTIONIST(object):
     def __init__(self):
-
-        # TODO
-        """
-        - Revisar si se meten los servicios de interface o del pytoolkit directamente (ojala nodo de interface)
-        - Falta meter todos los servicios del pytoolkit al modulo para que se puedan llamar facilmente desde la maquina de estados.
-        - Falta crear behaviours como el spin_until_object que es usado varias veces en varios tasks.
-        - Falta revisar todos los angulos de navegacion al hacer look_4_something y la velocidad de giro
-        """
-
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
-        # Definir los estados posibles del semáforo
         self.task_name = "receptionist"
         states = [
             "INIT",
@@ -50,7 +40,6 @@ class RECEPTIONIST(object):
             pytoolkit=True,
         )
         self.tm.initialize_node(self.task_name)
-        # Definir las transiciones permitidas entre los estados
         transitions = [
             {"trigger": "start", "source": "RECEPTIONIST", "dest": "INIT"},
             {"trigger": "beggining", "source": "INIT", "dest": "WAIT4GUEST"},
@@ -117,11 +106,15 @@ class RECEPTIONIST(object):
         self.labels = {}
         ##################### GLOBAL VARIABLES #####################
         self.person_description_thread = None
+        self.get_clothes_color_thread = None
+        self.clothes_color = ""
         self.initial_place = "init_receptionist"
         self.greeting_place = "house_door"
         self.guests_place = "living_room"
-        self.sinfonia_url_img = "https://media.discordapp.net/attachments/876543237270163498/1123649957791010939/logo_sinfonia_2.png"
-        self.img_dimensions = [320, 240]
+        self.img_dimensions = [
+            self.tm.perception.frame_width,
+            self.tm.perception.frame_height,
+        ]
         self.recognized_guests_counter = 0
         self.all_guests = {
             "Charlie": {
@@ -130,10 +123,8 @@ class RECEPTIONIST(object):
                 "drink": "Milk",
                 "gender": "Man",
                 "pronoun": "he",
-                "id": 0
             }
         }
-        self.id_counter = 1
         self.introduced_guests = []
         self.current_guest = {}
         self.old_person = ""
@@ -146,8 +137,6 @@ class RECEPTIONIST(object):
         self.introducing_2nd_guest = False
         self.first_guest = {}
         self.host_name = "Charlie"
-
-        # ROS Callbacks
 
         # ROS Services (PyToolkit)
         print(
@@ -177,7 +166,7 @@ class RECEPTIONIST(object):
         )
         rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
         self.show_image_srv = rospy.ServiceProxy(
-            "/pytoolkit/ALTabletService/show_image_srv", tablet_service_srv
+            "/pytoolkit/ALTabletService/show_image_srv", tablet_service_srvrecogni
         )
 
         print(
@@ -219,26 +208,7 @@ class RECEPTIONIST(object):
         )
 
     def callback_get_labels(self, data):
-        labels = data.labels
-        x_coordinates = data.x_coordinates
-        y_coordinates = data.y_coordinates
-        widths = data.widths
-        heights = data.heights
-        ids = data.ids
-        for i in range(len(labels)):
-            if (
-                int(self.img_dimensions[0] * 0.2)
-                < x_coordinates[i]
-                < int(self.img_dimensions[0] * 0.8)
-                and widths[i] > 130
-            ):
-                self.labels[labels[i]] = {
-                    "x": x_coordinates[i],
-                    "y": y_coordinates[i],
-                    "w": widths[i],
-                    "h": heights[i],
-                    "id": ids[i],
-                }
+        self.labels = data.labels
 
     def categorize_age(self, age):
         if age < 18:
@@ -254,15 +224,22 @@ class RECEPTIONIST(object):
         else:
             category = "an elder"
         return category
+    
+    def get_clothes_color(self):
+        self.consoleFormatter.format("get_clothes_color called", "WARNING")
+        gpt_vision_prompt = "What color is the person centered in the photo wearing? Answer only with the color's name"
+        answer = self.tm.img_description(gpt_vision_prompt)["message"]
+        self.consoleFormatter.format("get_clothes_color executed", "OKGREEN")
+        return answer
 
     ############## TASK STATES ##############
 
     def on_enter_INIT(self):
         print(self.consoleFormatter.format("INIT", "HEADER"))
         self.tm.initialize_pepper()
-        self.tm.turn_camera("front_camera", "custom",1, 15)
-        self.tm.turn_camera("depth_camera","custom",1,15)
-        self.tm.toggle_filter_by_distance(True,2,["person"])
+        self.tm.turn_camera("front_camera", "custom", 1, 20)
+        self.tm.turn_camera("depth_camera", "custom", 1, 20)
+        self.tm.toggle_filter_by_distance(True, 2, ["person"])
         self.tm.set_current_place(self.initial_place)
         self.tm.talk("I am going to do the  " + self.task_name + " task", "English")
         print(
@@ -288,7 +265,10 @@ class RECEPTIONIST(object):
         # clothes_color = self.tm.get_clothes_color()
         # self.current_guest["clothes_color"] = clothes_color
         self.move_head_srv("up")
-        self.tm.talk("Hello, when you are going to talk to me, please wait until my eyes turn blue.",wait=False)
+        self.tm.talk(
+            "Hello, when you are going to talk to me, please wait until my eyes turn blue.",
+            wait=False,
+        )
         rospy.sleep(4)
         name = self.tm.q_a("name")
         drink = self.tm.q_a("drink")
@@ -310,12 +290,15 @@ class RECEPTIONIST(object):
                 "English",
             )
         success = self.tm.save_face(self.current_guest["name"], 3)
-        self.person_description_thread = threading.Thread(target=self.tm.get_person_description)
+        self.person_description_thread = threading.Thread(
+            target=self.tm.get_person_description
+        )
         self.person_description_thread.start()
-        rospy.sleep(0.5)
-        self.tm.talk("Thank you, I already took your pictures.")        
+        if self.is_first_guest:
+            self.get_clothes_color_thread = threading.Thread(target=self.get_clothes_color)
+        self.tm.talk("Thank you, I already took your pictures.")
 
-        print("success ", success)
+        print("success: ", success)
         if success:
             self.save_face_succeded()
         else:
@@ -346,23 +329,14 @@ class RECEPTIONIST(object):
         print("attributes: ", attributes)
         self.current_guest["age"] = self.categorize_age(attributes["age"])
         self.current_guest["gender"] = attributes["gender"]
-        self.current_guest["pronoun"] = (
-            "he" if attributes["gender"] == "Man" else "she"
-        )
+        self.current_guest["pronoun"] = "he" if attributes["gender"] == "Man" else "she"
         self.current_guest["has_beard"] = attributes["has_beard"]
         self.current_guest["has_hat"] = attributes["has_hat"]
-        self.current_guest["id"] = self.id_counter
+        self.current_guest["color"] = self.clothes_color
         self.all_guests[self.current_guest["name"]] = self.current_guest
-        
-        if len(self.all_guests) == 3:
-            self.introducing_2nd_guest = True
-        self.move_head_srv("default")
-        self.failed_saving_face = False
-        self.tm.show_words_proxy()
         if self.is_first_guest:
-            gpt_vision_prompt = "What color is the person in the photo wearing? Answer only with the color's name"
-            answer = self.tm.img_description(gpt_vision_prompt)["message"]
-            print(answer)
+            self.get_clothes_color_thread.join()
+            print("1st guest is wearing ", self.clothes_color)
             self.is_first_guest = False
             self.first_guest["name"] = self.current_guest["name"]
             self.first_guest["drink"] = self.current_guest["drink"]
@@ -373,11 +347,16 @@ class RECEPTIONIST(object):
             )
             self.first_guest["has_beard"] = attributes["has_beard"]
             self.first_guest["has_hat"] = attributes["has_hat"]
-            self.first_guest["color"] = answer
+            self.first_guest["color"] = self.clothes_color
             self.first_guest["id"] = self.id_counter
-        self.id_counter += 1
+
+        if len(self.all_guests) == 3:
+            self.introducing_2nd_guest = True
+        self.move_head_srv("default")
+        self.failed_saving_face = False
+        self.tm.show_words_proxy()
         self.saving_face = False
-        
+
         self.move_head_srv("up")
         print(self.consoleFormatter.format("INTRODUCE_NEW", "HEADER"))
         self.tm.talk(
@@ -399,7 +378,8 @@ class RECEPTIONIST(object):
         # )
         self.tm.talk(
             f'Hello everyone, this is {self.current_guest["name"]}, {self.current_guest["pronoun"]} is a {self.current_guest["gender"]}.  {self.current_guest["pronoun"]} is {self.current_guest["age"]}, and {self.current_guest["pronoun"]} likes to drink {self.current_guest["drink"]}.',
-            "English", animated=True
+            "English",
+            animated=True,
         )
         # Turns on recognition and looks for  person
         self.tm.start_recognition("front_camera")
@@ -415,7 +395,7 @@ class RECEPTIONIST(object):
     def on_enter_LOOK4PERSON(self):
         print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
         # El robot ya fue a todas las posiciones de personas o introdujo a todas las personas
-        if (len(self.checked_chair_angles) == len(self.chair_angles)):
+        if len(self.checked_chair_angles) == len(self.chair_angles):
             if len(self.introduced_guests) == len(self.all_guests):
                 print(self.consoleFormatter.format("INTRODUCED_EVERYONE", "OKGREEN"))
                 self.introduced_everyone()
@@ -437,7 +417,11 @@ class RECEPTIONIST(object):
         # El robot busca una persona
         else:
             self.move_head_srv("default")
-            self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(self.chair_angles[self.angle_index]), -0.3],0.1)
+            self.tm.set_angles_srv(
+                ["HeadYaw", "HeadPitch"],
+                [math.radians(self.chair_angles[self.angle_index]), -0.3],
+                0.1,
+            )
             self.checked_chair_angles.append(self.chair_angles[self.angle_index])
             self.angle_index += 1
             t1 = time.time()
@@ -482,7 +466,8 @@ class RECEPTIONIST(object):
                     else "does not wear a hat"
                 )
                 self.tm.talk(
-                    f' {self.current_guest["name"]}, I introduce to you {guest_name} is a {guest_being_introduced["gender"]}. {guest_being_introduced["pronoun"]} is {guest_being_introduced["age"]}, and {guest_being_introduced["pronoun"]} likes to drink {guest_being_introduced["drink"]}. {guest_being_introduced["pronoun"]} {clothes_color_str}, {has_beard_str}, and {has_hat_str}',
+                    f' {self.current_guest["name"]}, I introduce to you {guest_name} is a {guest_being_introduced["gender"]}. {guest_being_introduced["pronoun"]} is {guest_being_introduced["age"]}, and {guest_being_introduced["pronoun"]} likes to drink {guest_being_introduced["drink"]}. 
+                    {guest_being_introduced["pronoun"]} {clothes_color_str}, {has_beard_str}, and {has_hat_str}',
                     "English",
                 )
             else:
@@ -500,7 +485,9 @@ class RECEPTIONIST(object):
             print("chair_angle ", chair_angle)
         else:
             chair_angle = 0
-        self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(chair_angle), -0.3],0.1)
+        self.tm.set_angles_srv(
+            ["HeadYaw", "HeadPitch"], [math.radians(chair_angle), -0.3], 0.1
+        )
         self.chair_found()
 
     def on_enter_SIGNAL_SOMETHING(self):

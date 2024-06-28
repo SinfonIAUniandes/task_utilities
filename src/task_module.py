@@ -875,6 +875,7 @@ class Task_module:
         Returns a dict with the description of the person
         """
         attributes = {}
+        self.consoleFormatter.format("get_person_description called", "WARNING")
         if self.perception:
             try:
                 response = self.get_person_description_proxy()
@@ -885,6 +886,7 @@ class Task_module:
                     "has_hat": response.has_hat
                 }
                 self.person_attributes = attributes
+                self.consoleFormatter.format("get_person_description executed", "OKGREEN")
                 return attributes
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
