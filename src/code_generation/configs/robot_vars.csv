@@ -1,4 +1,4 @@
-place_names:house,living,kitchen,room,dining
+place_names:entrance,living_room,kitchen,bedroom,dining
 languages:English,Spanish
 question_tags:age,name,drink,gender
 objects:person,bench,cleanser,backpack,biscuits,handbag,suitcase,bottle,cup,bowl
