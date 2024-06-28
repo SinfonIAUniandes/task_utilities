@@ -55,12 +55,12 @@ class ServeBreakfast(object):
         self.scan_items = ["bowl", "cereal_box", "milk_carton"]
 
         # CAMBIAR en ROBOCUP: Angulos en grados donde Nova escanea y encuentra los items
-        self.bowl_angle = 50
+        self.bowl_angle = 90
         self.cereal_angle = 90
-        self.milk_angle = 130
+        self.milk_angle = 90
         
-        # CAMBIAR en ROBOCUP: Grados de inclinación de NOVA para recoger y dejar los objetos sobre la mesa
-        self.bowl_angle = 50
+        # CAMBIAR en ROBOCUP: Grados de inclinación de NOVA para dejar los objetos sobre la mesa
+        self.bowl_angle = 10
         
         # Instrucciones para agarrar los objetos
         self.grab_items_poses = {
@@ -70,10 +70,9 @@ class ServeBreakfast(object):
         }
         
         # Posiciones finales relativas para dejar los objetos
-        # TODO Ajustar posiciones relativas
         self.drop_and_serve_position = {
             "bowl": -0.8,  # Posición para dejar el bowl
-            "milk_carton": 0.6,  # Posición para dejar el cartón de leche
+            "milk_carton": -0.2,  # Posición para dejar el cartón de leche
             "cereal_box": -1.0  # Posición para dejar la caja de cereal
         }
         
@@ -85,8 +84,8 @@ class ServeBreakfast(object):
         }
         
         self.serve_items_poses = {
-            "milk_carton": [], # TODO Terminar poses para tomar, servir y soltar (en ese orden)
-            "cereal_box": [] # TODO Terminar poses para tomar, servir y soltar (en ese orden)
+            "milk_carton": ["close_arms_milk", "open_both_hands", "both_arms_milk", "close_arms_milk" ], # TODO Terminar poses para tomar, servir y soltar (en ese orden)
+            "cereal_box": ["close_arms_cereal", "open_both_hands","both_arms_cereal", "close_arms_cereal", "serve_cereal_0", "serve_cereal_1", "serve_cereal_2"] # TODO Terminar poses para tomar, servir y soltar (en ese orden)
         }
         
         self.item_counter=0
@@ -115,13 +114,11 @@ class ServeBreakfast(object):
     def on_enter_INIT(self):
         """Acciones al entrar en el estado INIT."""
         self.task_module.go_to_pose("standard", self.slow_movement)
-        self.set_orthogonal_security_srv(0.3)
-        self.set_tangential_security_srv(0.05)
         print(self.consoleFormatter.format("INIT", "HEADER"))
+        self.task_module.talk("Hi! Today I would serve you a cereal", "English", wait=False)  # Mensaje de saludo
         self.task_module.set_current_place("entrance")  # Establece la posición inicial del robot
         self.task_module.go_to_pose("standard", self.fast_movement)  # Pone al robot en la posición estándar
         self.task_module.initialize_pepper()  # Inicializa los módulos necesarios
-        self.task_module.talk("Good morning! Today I would like to help you with the preparation of a delicious breakfast", "English", wait=False)  # Mensaje de saludo
         self.start()  # Transición de INIT a GO_TO_CUPBOARD
 
 
@@ -129,7 +126,9 @@ class ServeBreakfast(object):
     def on_enter_GO_TO_CUPBOARD(self):
         """Acciones al entrar en el estado GO_TO_CUPBOARD."""
         print(self.consoleFormatter.format("GO_TO_CUPBOARD", "HEADER"))
-        self.task_module.talk("I will navigate to the kitchen door to look for the ingredients.", "English", wait=False)  # Mensaje informativo
+        self.task_module.talk("Now I will go to the Kitchen", "English", wait=False)  # Mensaje informativo
+        self.set_orthogonal_security_srv(0.3)
+        self.set_tangential_security_srv(0.05)
         self.task_module.go_to_place("kitchen", lower_arms=False)  # Dirige al robot a la cocina
         self.scan_for_objects()  # Transición de GO_TO_CUPBOARD a SCAN_FOR_OBJECTS
 
@@ -141,7 +140,7 @@ class ServeBreakfast(object):
 
         current_scanning_object = self.scan_items[0]
 
-        self.task_module.talk("I will look for the " + current_scanning_object + " in this moment, please give me a second.", "English", wait=False)
+        self.task_module.talk("I will look for the " + current_scanning_object + ".", "English", wait=False)
 
         if current_scanning_object == "bowl":
 
@@ -153,14 +152,12 @@ class ServeBreakfast(object):
                 self.task_module.go_to_pose('open_right_hand', 0.1)
                 self.task_module.talk("Oh, I see the bowl is right there!", "English", wait=False)
                 self.task_module.talk(response["message"], language="English", wait=False)
-                self.task_module.talk("May you please follow my instructions to help me grab it? I will tell you what to do", "English", wait=False)
 
             elif response["message"] == "":
                 self.task_module.go_to_relative_point(0,0,self.bowl_angle)
                 self.task_module.go_to_pose('point_there_right', 0.1)
                 self.task_module.go_to_pose('open_right_hand', 0.1)
                 self.task_module.talk("Oh, I see the bowl is right there!", "English", wait=False)
-                self.task_module.talk("May you please follow my instructions to help me grab it? I will tell you what to do", "English", wait=False)
 
             self.scan_items.remove(current_scanning_object)
 
@@ -174,14 +171,12 @@ class ServeBreakfast(object):
                 self.task_module.go_to_pose('open_right_hand', 0.1)
                 self.task_module.talk("Oh, I see the cereal box is right there!", "English", wait=False)
                 self.task_module.talk(response["message"], language="English", wait=False)
-                self.task_module.talk("May you please follow my instructions to help me grab it? I will tell you what to do", "English", wait=False)
                 
             elif response["message"]:
                 self.task_module.go_to_pose('point_there_right', 0.1)
                 self.task_module.go_to_pose('open_right_hand', 0.1)
                 
                 self.task_module.talk("Oh, I see the cereal box is right there!", language="English", wait=False)
-                self.task_module.talk("May you please follow my instructions to help me grab it? I will tell you what to do", "English", wait=False)
             
             self.scan_items.remove(current_scanning_object)
 
@@ -197,13 +192,10 @@ class ServeBreakfast(object):
                 
                 self.task_module.talk(response["message"], language="English", wait=False)
 
-                self.task_module.talk("May you please follow my instructions to help me grab it? I will tell you what to do", "English", wait=False)
-
             elif response["message"] == "":
                 self.task_module.go_to_pose('point_there_right', 0.1)
                 self.task_module.go_to_pose('open_right_hand', 0.1)
                 self.task_module.talk("Oh, I see the milk carton is right there!", "English", wait=False)
-                self.task_module.talk("May you please follow my instructions to help me grab it? I will tell you what to do", "English", wait=False)
 
             self.scan_items.remove(current_scanning_object)
 
@@ -234,7 +226,7 @@ class ServeBreakfast(object):
 
         for action in actions:  # Ejecuta las acciones para recoger el objeto
             if action == "mid_arms_bowl" :
-                self.task_module.talk("Now please place the bowl in my hands just like the image in my tablet shows, so I can take it to the table safely! I will tell you when to stop holding it", wait=False)
+                self.task_module.talk("Now please place the bowl in my hands just like the image in my tablet shows", wait=False)
 
             if action == "both_arms_cereal" or action == "both_arms_milk":
                 self.task_module.show_image(f"http://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/grab_{self.actual_item}.jpeg")
@@ -268,6 +260,7 @@ class ServeBreakfast(object):
     def on_enter_DROP(self):
         """Acciones al entrar en el estado DROP_OBJECT."""
         print(self.consoleFormatter.format("DROP", "HEADER"))
+        self.task_module.set_security_distance(False)
         if self.actual_item == "bowl":
             self.task_module.talk("Now, I will leave the bowl and the spoon on the table", "English", wait=False)  # Informa que dejará el bowl y la cuchara
         else:
@@ -293,6 +286,9 @@ class ServeBreakfast(object):
             self.serve()
         
         elif self.actual_item == "bowl":
+            self.task_module.set_security_distance(True)
+            self.set_orthogonal_security_srv(0.3)
+            self.set_tangential_security_srv(0.05)
             self.again()
 
             
@@ -303,8 +299,9 @@ class ServeBreakfast(object):
         actions = self.serve_items_poses[self.actual_item]  # Obtiene las acciones para dejar el objeto
         for action in actions:  # Ejecuta las acciones para dejar el objeto
             self.task_module.go_to_pose(action, self.slow_movement)  # Ejecuta la pose
-            rospy.sleep(1)  # Espera 2 segundos
-        
+            if action == "serve_cereal_3":
+                self.shake_cereal()
+            rospy.sleep(2)  # Espera 2 segundos
         if len(self.items_collected) == len(self.items):  # Verifica si todos los objetos han sido recogidos
             self.end()  # Transición a END
         
@@ -349,7 +346,11 @@ class ServeBreakfast(object):
         self.set_angle_srv(joint_name, angle_rads, 0.1)
         self.console_formatter.format(f"Tilting {joint_name} to {angle} degrees", "INFO")
         
-
+    def shake_cereal(self):
+        shake_poses = ["shake_cereal_1", "shake_cereal_2"] #TODO HACER POSES SHAKE
+        for _ in range(10):
+            for pose in shake_poses:
+                self.task_module.go_to_pose(pose, self.fast_movement)
 
     def run(self):
         """Ejecuta la máquina de estados."""
