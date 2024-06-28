@@ -892,8 +892,6 @@ class Task_module:
                 attributes = {
                     "gender": response.gender,
                     "age": int(response.age),
-                    "has_beard": response.has_beard,
-                    "has_hat": response.has_hat
                 }
                 self.person_attributes = attributes
                 self.consoleFormatter.format("get_person_description executed", "OKGREEN")
