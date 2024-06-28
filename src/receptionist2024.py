@@ -111,10 +111,6 @@ class RECEPTIONIST(object):
         self.initial_place = "init_receptionist"
         self.greeting_place = "house_door"
         self.guests_place = "living_room"
-        self.img_dimensions = [
-            self.tm.frame_width,
-            self.tm.frame_height,
-        ]
         self.recognized_guests_counter = 0
         self.all_guests = {
             "Charlie": {

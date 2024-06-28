@@ -49,6 +49,15 @@ class Task_module:
         ################### GLOBAL VARIABLES ###################
         self.follow_you_active = False
         self.person_attributes = {}
+        self.frame_width = 0
+        self.frame_height = 0
+        self.resolutions_dict = {
+            0: (160, 120),
+            1: (320, 240),
+            2: (640, 480),
+            3: (1280, 960),
+            4: (2560, 1920)
+        }
         self.angles = 0
         self.navigating = False
         self.stopped_for_safety = False
@@ -573,6 +582,7 @@ class Task_module:
         Turns on/off camera_name, if command is custom, it sets the resolution and fps
         """
         if self.perception:
+            self.frame_width, self.frame_height = self.resolutions_dict[resolution]
             try:
                 approved = self.turn_camera_proxy(camera_name, command, resolution, fps)
                 if approved == "approved":
