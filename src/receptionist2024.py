@@ -226,9 +226,9 @@ class RECEPTIONIST(object):
         self.consoleFormatter.format("get_clothes_and_hair_color called", "WARNING")
         gpt_vision_prompt = "Answer about the person centered in the image: What color is the person weating? What is the hair color of the person? Answer only with the color's names separated by a comma as follows: 'blue, black'"
         answer = self.tm.img_description(gpt_vision_prompt)["message"].split(", ")
-        self.consoleFormatter.format("get_clothes_color executed", "OKGREEN")
         self.clothes_color = answer[0]
         self.hair_color = answer[1]
+        self.consoleFormatter.format("get_clothes_color executed", "OKGREEN")
         return answer
 
     ############## TASK STATES ##############
@@ -332,6 +332,7 @@ class RECEPTIONIST(object):
         if self.is_first_guest:
             self.get_clothes_and_hair_color_thread.join()
             print("1st guest is wearing ", self.clothes_color)
+            print("1st guest has ", self.hair_color, " hair")
             self.is_first_guest = False
             self.first_guest["name"] = self.current_guest["name"]
             self.first_guest["drink"] = self.current_guest["drink"]
