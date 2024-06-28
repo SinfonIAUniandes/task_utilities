@@ -26,10 +26,10 @@ class RECEPTIONIST:
         self.get_clothes_and_hair_color_thread = None
         self.clothes_color = ""
         self.hair_color = ""
-        # TODO update the places before the task
-        self.initial_place = "init_receptionist"
-        self.greeting_place = "house_door"
         self.first_guest_name = ""
+        # TODO update the places before the task
+        self.initial_place = "kitchen"
+        self.greeting_place = "house_door"
         self.living_room = "living_room"
         # TODO hard code the host's attributes before the task
         self.all_guests_dict = {
@@ -203,17 +203,17 @@ class RECEPTIONIST:
 
     # Callbacks
     def callback_get_labels(self, msg):
-        for i in len(msg.labels):
+        for i in range(len(msg.labels)):
             detections_of_label = self.labels_info_dict.get(msg.labels[i], [])
             detections_of_label.append(
-                {
-                    "label": msg.labels[i],
-                    "x": msg.x[i],
-                    "y": msg.y[i],
-                    "w": msg.w[i],
-                    "h": msg.h[i],
-                    "id" : msg.id[i]
-                }
+                (
+                    msg.labels[i],
+                    msg.x_coordinates[i],
+                    msg.y_coordinates[i],
+                    msg.widths[i],
+                    msg.heights[i],
+                    msg.ids[i]
+                )
             )
             self.labels_info_dict[msg.labels[i]] = detections_of_label
 
@@ -298,7 +298,7 @@ class RECEPTIONIST:
         # make eye contact
         self.move_head_srv("up")
         self.tm.talk(
-            "Hello, when you are going to talk to me, please wait until my eyes turn the color blue.",
+            "Hello, when you are going to talk to me, please wait until my eyes turn blue.",
             wait=False,
         )
         # turns off object recognition when it is not needed
@@ -325,7 +325,7 @@ class RECEPTIONIST:
         self.tm.publish_filtered_image("face", "front_camera")
         self.show_topic_srv("/perception_utilities/filtered_image")
         self.tm.talk(
-            f"Hey {self.current_guest['name']}, I will take some pictures of your face to recognize you in future occasions, please place your face inside the green circle."
+            f"Hey {self.current_guest['name']}, I will take some pictures of your face to recognize you in future occasions, please place your face inside the green circle.",
             "English",
             wait=True
         )
@@ -357,7 +357,7 @@ class RECEPTIONIST:
     def on_enter_GO2LIVING(self):
         print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
         self.tm.talk(
-            f"Please {self.current_guest["name"]}, follow me to the living room.",
+            f"Please {self.current_guest['name']}, follow me to the living room.",
             "English",
             wait=False,
         )
@@ -469,7 +469,7 @@ class RECEPTIONIST:
                     self.introduce_old_guest(guest_name)
                 else:
                     print(self.consoleFormatter.format("Guest not recognized", "FAIL"))
-            else:
+            elif guest_name in self.not_introduced_guests_list:
                 # If the robot introduced one guest, the other guest not introduced is the only guest left
                 print("Introducing the other guest...")
                 guest_name = self.not_introduced_guests_list[0]
@@ -502,7 +502,7 @@ class RECEPTIONIST:
         print(self.consoleFormatter.format("ACCOMODATE_GUEST", "HEADER"))
         self.tm.go_to_pose("point_there")
         self.tm.talk(
-            f"Please, take a seat {self.current_guest["name"]}", "English", wait=True
+            f"Please, take a seat {self.current_guest['name']}", "English", wait=True
         )
         self.person_accomodated()
         
