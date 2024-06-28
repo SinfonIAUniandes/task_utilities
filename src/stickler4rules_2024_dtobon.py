@@ -61,9 +61,9 @@ class STICKLER_RULES(object):
         self.breakers_found = 0
         #TODO Poner el cuarto que sea forbidden
         #self.list_places = ["bedroom","kitchen","office","living_room","bathroom", "forbidden"] # Ya hay una lista de lugares y forbidden se puede usar como una variable
-        self.list_places = ["living_room","hallway_kitchen","between_doors_bedroom","dinning_stickler"]
-        self.places_names = ["living_room","kitchen","bedroom","dinning"]
-        self.forbidden = "dinning"
+        self.list_places = ["living_room","hallway_kitchen","between_doors_bedroom","dining_stickler"]
+        self.places_names = ["living_room","kitchen","bedroom","dining"]
+        self.forbidden = "dining_stickler"
         self.checked_places = []
         
         #Varibales globales para los chequeos con threading.
@@ -150,7 +150,7 @@ class STICKLER_RULES(object):
 
     def check_forbidden(self):
         self.tm.robot_stop_srv()
-        if self.confirm_comppliance_forbidden and self.forbidden in self.last_place:
+        if self.confirm_comppliance_forbidden and self.last_place == self.forbidden:
             self.tm.talk("You should not be here, because this room is forbidden.","English", wait=True)
             self.move_head_srv("default")
             return True
@@ -209,13 +209,12 @@ class STICKLER_RULES(object):
 
     def check_rules(self):
         is_in_forbidden = self.check_forbidden()
-        if not is_in_forbidden:
-            shoes_check_thread = threading.Thread(target=self.check_shoes)
-            shoes_check_thread.start()
-            drink_check_thread = threading.Thread(target=self.check_drink)
-            drink_check_thread.start()
-            while self.has_drink==2 and self.has_shoes==2:
-                rospy.sleep(0.1)
+        shoes_check_thread = threading.Thread(target=self.check_shoes)
+        shoes_check_thread.start()
+        drink_check_thread = threading.Thread(target=self.check_drink)
+        drink_check_thread.start()
+        while self.has_drink==2 and self.has_shoes==2:
+            rospy.sleep(0.1)
         if self.has_drink==0:
             self.ASK4DRINK()
         if self.has_shoes==1:

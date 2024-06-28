@@ -112,8 +112,8 @@ class RECEPTIONIST(object):
         self.greeting_place = "house_door"
         self.guests_place = "living_room"
         self.img_dimensions = [
-            self.tm.perception.frame_width,
-            self.tm.perception.frame_height,
+            self.tm.frame_width,
+            self.tm.frame_height,
         ]
         self.recognized_guests_counter = 0
         self.all_guests = {
@@ -166,7 +166,7 @@ class RECEPTIONIST(object):
         )
         rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
         self.show_image_srv = rospy.ServiceProxy(
-            "/pytoolkit/ALTabletService/show_image_srv", tablet_service_srvrecogni
+            "/pytoolkit/ALTabletService/show_image_srv", tablet_service_srv
         )
 
         print(
@@ -466,8 +466,7 @@ class RECEPTIONIST(object):
                     else "does not wear a hat"
                 )
                 self.tm.talk(
-                    f' {self.current_guest["name"]}, I introduce to you {guest_name} is a {guest_being_introduced["gender"]}. {guest_being_introduced["pronoun"]} is {guest_being_introduced["age"]}, and {guest_being_introduced["pronoun"]} likes to drink {guest_being_introduced["drink"]}. 
-                    {guest_being_introduced["pronoun"]} {clothes_color_str}, {has_beard_str}, and {has_hat_str}',
+                    f'{self.current_guest["name"]}, I introduce to you {guest_name} is a {guest_being_introduced["gender"]}. {guest_being_introduced["pronoun"]} is {guest_being_introduced["age"]}, and {guest_being_introduced["pronoun"]} likes to drink {guest_being_introduced["drink"]}. {guest_being_introduced["pronoun"]} {clothes_color_str}, {has_beard_str}, and {has_hat_str}.',
                     "English",
                 )
             else:
