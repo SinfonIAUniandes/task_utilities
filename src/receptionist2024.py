@@ -268,6 +268,7 @@ class RECEPTIONIST(object):
         )
         if self.is_first_guest:
             self.get_clothes_and_hair_color_thread = threading.Thread(target=self.get_clothes_and_hair_color)
+            self.get_clothes_and_hair_color_thread.start()
         rospy.sleep(4)
         name = self.tm.q_a("name")
         drink = self.tm.q_a("drink")
