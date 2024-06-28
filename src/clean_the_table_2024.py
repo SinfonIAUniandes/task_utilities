@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import os
 import ast
-import time
 import rospy
 import threading
 import ConsoleFormatter
@@ -75,7 +74,7 @@ class CLEAN_THE_TABLE(object):
         # In Dishwasher
         self.turn_around_2_dishwasher = 180
         self.relative_dishwasher_approach = 0.4
-        self.crouch_4_dishwasher = -1.174 # 10 grados hacia adelante
+        self.crouch_4_dishwasher = -1.5 # 10 grados hacia adelante
         
         self.place_items_poses = {
         "dish": ["grab_plate_vertically", "prepare_2_grab"],
@@ -95,11 +94,11 @@ class CLEAN_THE_TABLE(object):
 
     def on_enter_INIT(self): 
         print(self.consoleFormatter.format("INIT", "HEADER"))
+        self.tm.go_to_pose("standard", self.fast_movement)
+        self.tm.go_to_pose("default_head", self.fast_movement)
         self.tm.set_current_place("kitchen")
         self.tm.set_security_distance(False)
         self.tm.talk("Hi, I am going to clean the table.", "English", wait=False)
-        self.tm.go_to_pose("standard", self.fast_movement)
-        self.tm.go_to_pose("default_head", self.fast_movement)
         self.tm.initialize_pepper()
         self.start()
 
@@ -107,6 +106,7 @@ class CLEAN_THE_TABLE(object):
         print(self.consoleFormatter.format("LOOK_2_TABLE", "HEADER"))
         self.tm.go_to_relative_point(0.0,0.0,self.relative_table_rotation)
         rospy.sleep(1)
+        self.tm.go_to_pose("down_head", self.fast_movement)
         self.tm.go_to_relative_point(self.relative_table_approach,0.0, 0.0)
         response = self.tm.img_description("You are observing a table set for a meal through a camera. On the table, there are various items which may include a cup, bowl, dish, spoon, and fork. Your task is to list exactly and only the objects you see from these options. Please respond by typing out the response directly as a Python list, including the square brackets and using quotes for each item. The format should look like this: ['object1', 'object2', ...]. For example, if you see a spoon, fork, and cup on the table, your response should be exactly: ['spoon', 'fork', 'cup']. Ensure your response is structured strictly as a list for direct use in a Python program.", "front_camera")
         try:
@@ -116,7 +116,7 @@ class CLEAN_THE_TABLE(object):
         except (SyntaxError, ValueError) as e:
             print(f"Error: {e}")
             self.items = ["bowl","spoon", "dish"]
-        self.items = ["bowl","spoon", "dish", "fork", "cup"]
+        self.items = ["bowl","spoon", "dish", "fork", "cup"] # TODO Esto está quemado
         if self.items != []:
             self.tm.talk("I saw over the table the next items", "English", wait=False)
             for item in self.items:
@@ -128,6 +128,7 @@ class CLEAN_THE_TABLE(object):
         
     def on_enter_GRAB_OBJECT(self):
         print(self.consoleFormatter.format("GRAB_OBJECT", "HEADER"))
+        self.tm.go_to_pose("default_head", self.fast_movement)
         self.actual_item = self.items[0]
         self.tm.show_image(f"http://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/grab_{self.actual_item}.jpeg")
         grab_poses = self.grab_items_poses[self.actual_item]
@@ -154,7 +155,6 @@ class CLEAN_THE_TABLE(object):
         rospy.sleep(4)
         self.tm.talk(f"I just dropped the {self.actual_item} on the dishwasher", "English", wait=False)
         self.items.pop(0)
-        # self.set_angle_srv(["HipPitch"], [-(self.crouch_4_dishwasher)], self.normal_movement)
         self.tm.go_to_pose("standard", self.normal_movement)
         if len(self.items) == 0:
             self.finish()
