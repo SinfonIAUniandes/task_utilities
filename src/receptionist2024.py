@@ -223,12 +223,10 @@ class RECEPTIONIST(object):
         return category
     
     def get_clothes_and_hair_color(self):
-        self.consoleFormatter.format("get_clothes_and_hair_color called", "WARNING")
         gpt_vision_prompt = "Answer about the person centered in the image: What color is the person weating? What is the hair color of the person? Answer only with the color's names separated by a comma as follows: 'blue, black'"
         answer = self.tm.img_description(gpt_vision_prompt)["message"].split(", ")
         self.clothes_color = answer[0]
         self.hair_color = answer[1]
-        self.consoleFormatter.format("get_clothes_color executed", "OKGREEN")
         return answer
 
     ############## TASK STATES ##############
@@ -342,7 +340,6 @@ class RECEPTIONIST(object):
                 "he" if attributes["gender"] == "Man" else "she"
             )
             self.first_guest["color"] = self.clothes_color
-            self.first_guest["id"] = self.id_counter
 
         if len(self.all_guests) == 3:
             self.introducing_2nd_guest = True
@@ -417,11 +414,11 @@ class RECEPTIONIST(object):
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
         guest_name = ""
-        while guest_name == "" and self.recognized_guests_counter < 3:
+        recongize_guest_tries = 0
+        while recongize_guest_tries < 2 and guest_name == "":
             guest_name = self.tm.recognize_face(3)
             print("saw: " + guest_name)
-            self.recognized_guests_counter += 1
-            self.recognized_guests_counter = 0
+            recongize_guest_tries += 1
         if guest_name not in self.introduced_guests and guest_name in self.all_guests:
             self.empty_chair_angles.remove(self.checked_chair_angles[-1])
             guest_being_introduced = self.all_guests[guest_name]
