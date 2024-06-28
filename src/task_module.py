@@ -1504,7 +1504,7 @@ class Task_module:
                     rospy.sleep(0.03)
         self.talk("Perfect. Try to keep at that distance", "English", True, False)
         self.iterations=0
-          
+
     def center_head_with_label(self, label_info) -> None:   
         """
         Input:
