@@ -127,7 +127,7 @@ class RECEPTIONIST(object):
         self.old_person = ""
         self.failed_saving_face = False
         self.angle_index = 0
-        self.chair_angles = [0, 20, -30]
+        self.chair_angles = [0, -30, 90]
         self.checked_chair_angles = []
         self.empty_chair_angles = []
         self.is_first_guest = True
