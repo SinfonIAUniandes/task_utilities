@@ -1,23 +1,19 @@
 #!/usr/bin/env python3
 from transitions import Machine
 from task_module import Task_module as tm
-from std_msgs.msg import Bool
-from sensor_msgs.msg import Range
 import ConsoleFormatter
 import time
-import random
-import threading
-import sys
+from threading import Thread
 import rospy
-import math
 import os
 import numpy as np
-from std_srvs.srv import SetBool
 
 from navigation_msgs.srv import constant_spin_srv
 from navigation_msgs.msg import simple_feedback_msg
-from robot_toolkit_msgs.srv import tablet_service_srv
+from robot_toolkit_msgs.srv import set_security_distance_srv, tablet_service_srv
 from robot_toolkit_msgs.msg import animation_msg, touch_msg
+from std_msgs.msg import Bool
+from std_srvs.srv import SetBool
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion
 
@@ -36,82 +32,95 @@ class ROBOT_INSPECTION(object):
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         self.initial_place = "init_robot_inspection"
         self.inspector_place = "living"
-        self.exit = "bedroom"
+        self.exit_place = "bedroom"
+        self.head_touched = True
         
         self.task_name = "robot inspection"
-        states = ['INIT', 'GO2INSPECTION', 'TOUCHING', 'GO2EXIT']
-        self.tm = tm(perception = False, speech=True,manipulation=False, navigation=True)
+        states = ['INIT', 'GO2INSPECTION', 'WAIT4TOUCH', 'GO2EXIT']
+        self.tm = tm(perception=True, speech=True, manipulation=False, navigation=True)
         self.tm.initialize_node("robot_inspection")
         # Definir las transiciones permitidas entre los estados
         transitions = [
             {'trigger': 'start', 'source': 'ROBOT_INSPECTION', 'dest': 'INIT'},
             {'trigger': 'beggining', 'source': 'INIT', 'dest': 'GO2INSPECTION'},
-            {'trigger': 'waiting', 'source': 'GO2INSPECTION', 'dest': 'TOUCHING'},
-            {'trigger': 'endings', 'source': 'TOUCHING', 'dest': 'GO2EXIT'}
+            {'trigger': 'waiting', 'source': 'GO2INSPECTION', 'dest': 'WAIT4TOUCH'},
+            {'trigger': 'touched', 'source': 'WAIT4TOUCH', 'dest': 'GO2EXIT'}
         ]
         
         # Crear la máquina de estados
         self.machine = Machine(model=self, states=states, transitions=transitions, initial='ROBOT_INSPECTION')
 
-        rospy_check = threading.Thread(target=self.check_rospy)
+        rospy_check = Thread(target=self.check_rospy)
         rospy_check.start()
 
         # ROS Callbacks
         print(self.consoleFormatter.format("Waiting for /touch", "WARNING"))
         subscriber_touch= rospy.Subscriber("/touch", touch_msg, self.callback_touch)
-        subscriber_sonar= rospy.Subscriber("/sonar/front", Range, self.callback_sonar)
+
+        print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_orthogonal_security_distance_srv...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv")
+        self.set_orthogonal_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv",set_security_distance_srv)
+
+        print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_tangential_security_distance_srv...", "WARNING"))
+        rospy.wait_for_service("/pytoolkit/ALMotion/set_tangential_security_distance_srv")
+        self.set_tangential_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_tangential_security_distance_srv",set_security_distance_srv)
 
         ##################### ROS CALLBACK VARIABLES #####################
-        self.touch = 0
-        self.sonar = False
-
-        ##################### GLOBAL VARIABLES #####################
-
+        self.head_touched = False
+    
     def callback_touch(self,data):
         if(data.name == "head_front" and data.state == True):
-            self.touch = 1
+            self.head_touched = True
         else:
-            self.touch = 0
-
-    def callback_sonar(self,data):
-        if(data.range > 0.5):
-            self.sonar = True
-        else:
-            self.sonar = False
+            self.head_touched = False
+            
+    def reminder_to_touch_head(self):
+        while not self.head_touched:
+            self.tm.talk("Please touch my head","English",wait=False)
+            time.sleep(20)
+        return
+    
+    def ask_for_robot_path_clearance(self):
+        while "person" in self.tm.labels:
+            self.tm.talk("Encountered a person, my path has been blocked.","English", wait=True)
+            self.tm.talk("Could you please clear my path?","English", wait=True)
+            time.sleep(10)
+        return
                 
     def on_enter_INIT(self):
+        self.tm.initialize_pepper()
         self.tm.talk("I am going to perform the "+ self.task_name,"English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.set_current_place(self.initial_place)
-        # Sonar front
-        # while not self.sonar:
-        #     print("Waiting for door to open ",self.sonar )
-        #     time.sleep(0.2)
-        # self.tm.talk("The door has been opened","English")
+        self.tm.toggle_filter_by_distance(True,1.5,["person"])
 
         self.beggining()
                 
     def on_enter_GO2INSPECTION(self):
         print(self.consoleFormatter.format("GO2INSPECTION", "HEADER"))
         self.tm.talk("I am going to the inspection position","English",wait=False)
-        self.tm.go_to_place("study")
+        self.tm.go_to_place(self.inspector_place)
         self.tm.talk("I'm in the inspection position","English",wait=False)
         self.waiting()
     
-    def on_enter_TOUCHING(self):
-        self.tm.talk("Touch my head please","English",wait=False)
-        while self.touch < 1:
+    def on_enter_WAIT4TOUCH(self):
+        self.tm.talk("Please touch my head","English",wait=False)
+        reminder_to_touch_head_thread = Thread(target=self.reminder_to_touch_head)
+        reminder_to_touch_head_thread.start()
+        while not self.head_touched:
             print("Head not touched")
 
         self.tm.talk("My head has been touched","English",wait=False)
-        self.endings()
+        self.touched()
 
     def on_enter_GO2EXIT(self):
         print(self.consoleFormatter.format("GO2EXIT", "HEADER"))
         self.tm.talk("I am going to the exit position","English",wait=False)
-        self.tm.go_to_place("init_study")
+        ask_for_robot_path_clearance_thread = Thread(target=self.ask_for_robot_path_clearance)
+        ask_for_robot_path_clearance_thread.start()
+        self.tm.go_to_place(self.exit_place)
         self.tm.talk("Robot inspection completed","English", wait=False)
-        os._exit(os.EX_OK)     
+        os._exit(os.EX_OK)
         
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo
