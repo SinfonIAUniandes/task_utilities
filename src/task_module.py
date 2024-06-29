@@ -460,6 +460,11 @@ class Task_module:
                 navigate_to_srv
             )
             
+            self.enable_security_proxy = rospy.ServiceProxy(
+                "/pytoolkit/ALMotion/enable_security_srv",
+                battery_service_srv
+            )
+            
             self.setDistance_srv = rospy.ServiceProxy(
                 "/pytoolkit/ALMotion/set_security_distance_srv",
                 set_security_distance_srv
@@ -559,6 +564,7 @@ class Task_module:
         else:
             print("perception as false")
         if self.pytoolkit:
+            self.enable_security_proxy()
             self.show_words_proxy()
             self.setRPosture_srv("stand")
             self.set_orthogonal_security_srv(0.3)
@@ -1569,6 +1575,7 @@ class Task_module:
         # Number of iterations with no person in sight
         self.iterations=0
         close = False
+        backing_up = False
         navigation_attempts = 0
         iterations_no_safety_stop = 0
         calculated_vel = self.linear_vel
@@ -1629,16 +1636,17 @@ class Task_module:
                         # Stop rotating but keeping moving forward
                         self.start_moving(self.linear_vel, 0, 0)
                 if avoid_obstacles:
-                    if self.stopped_for_safety:
-                        if navigation_attempts<2:
-                            print(navigation_attempts)
+                    if self.stopped_for_safety and not backing_up:
+                        if navigation_attempts<1:
                             navigation_attempts+=1
                             iterations_no_safety_stop = 0
+                            backing_up = True
                             self.stop_moving()
                             rospy.sleep(1.5)
                             self.start_moving(-0.2, 0, 0)
-                            rospy.sleep(2)
+                            rospy.sleep(1)
                             self.stop_moving()
+                            backing_up = False
                             self.stopped_for_safety = False
                             # Try to run over the obstacle again
                             self.start_moving(self.linear_vel/3, 0, angular_vel)
@@ -1646,19 +1654,20 @@ class Task_module:
                             # Stop rotating but keeping moving forward
                             self.start_moving(self.linear_vel, 0, 0)
                         else:
+                            backing_up = True
                             self.stop_moving()
                             rospy.sleep(1.5)
                             self.start_moving(-0.2, 0, 0)
                             rospy.sleep(2)
                             self.stop_moving()
+                            backing_up = False
                             navigation_attempts=0
                             self.avoiding_obstacle = True
                             self.talk("I found an obstacle in my path, i will attempt to go around it, if i fail, please help me remove it", wait=False, animated=False)
-                            if awareness:
-                                self.start_yolo_awareness(False)
-                            current_x = self.get_absolute_position_proxy().x
-                            current_y = self.get_absolute_position_proxy().y
-                            current_angle = self.get_absolute_position_proxy().theta
+                            current_position = self.get_absolute_position_proxy()
+                            current_x = current_position.x
+                            current_y = current_position.y
+                            current_angle = current_position.theta
                             theta_radians = math.radians(current_angle)
 
                             # Calcular las nuevas coordenadas
@@ -1667,18 +1676,13 @@ class Task_module:
                             
                             self.add_place("start_avoid")
                             self.add_place("end_avoid",with_coordinates=True,x=x_new,y=y_new,theta=current_angle, edges=["start_avoid"])
-                            print("set current")
                             self.set_current_place("start_avoid")
-                            print("seteado")
                             self.go_to_place("end_avoid",lower_arms=False)
-                            print("ended avoiding obstacle")
                             self.avoiding_obstacle = False
-                            if awareness:
-                                self.start_yolo_awareness(True)
                             self.talk("I'm done avoiding the obstacle, i will continue following you", wait=False, animated=False) 
                     else:
                         iterations_no_safety_stop += 1
-                        if iterations_no_safety_stop >15:
+                        if iterations_no_safety_stop >7:
                             navigation_attempts=0
 
             # If a person has not been seen for 30 iterations
