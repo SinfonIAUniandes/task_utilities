@@ -55,7 +55,7 @@ class ROBOT_INSPECTION(object):
 
         # ROS Callbacks
         print(self.consoleFormatter.format("Waiting for /touch", "WARNING"))
-        subscriber_touch= rospy.Subscriber("/touch", touch_msg, self.callback_touch)
+        subscriber_touch = rospy.Subscriber("/touch", touch_msg, self.callback_touch)
 
         print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_orthogonal_security_distance_srv...", "WARNING"))
         rospy.wait_for_service("/pytoolkit/ALMotion/set_orthogonal_security_distance_srv")
