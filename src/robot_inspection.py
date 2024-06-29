@@ -34,7 +34,10 @@ class ROBOT_INSPECTION(object):
         """
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
-        # Definir los estados posibles del semáforo
+        self.initial_place = "init_robot_inspection"
+        self.inspector_place = "living"
+        self.exit = "bedroom"
+        
         self.task_name = "robot inspection"
         states = ['INIT', 'GO2INSPECTION', 'TOUCHING', 'GO2EXIT']
         self.tm = tm(perception = False, speech=True,manipulation=False, navigation=True)
@@ -77,15 +80,14 @@ class ROBOT_INSPECTION(object):
             self.sonar = False
                 
     def on_enter_INIT(self):
-        self.tm.talk("I am going to do the  "+ self.task_name+" task","English")
+        self.tm.talk("I am going to perform the "+ self.task_name,"English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        self.tm.talk("Please open the door to begin the task","English")
-        self.tm.set_current_place("init_living_room")
+        self.tm.set_current_place(self.initial_place)
         # Sonar front
-        while not self.sonar:
-            print("Waiting for door to open ",self.sonar )
-            time.sleep(0.2)
-        self.tm.talk("The door has been opened","English")
+        # while not self.sonar:
+        #     print("Waiting for door to open ",self.sonar )
+        #     time.sleep(0.2)
+        # self.tm.talk("The door has been opened","English")
 
         self.beggining()
                 
