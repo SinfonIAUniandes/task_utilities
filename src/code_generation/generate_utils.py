@@ -63,10 +63,10 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
         clientGPT = AzureOpenAI(
             azure_endpoint= "https://sinfonia.openai.azure.com/",
             api_key= os.getenv("GPT_API"),
-            api_version="2023-05-15",
+            api_version="2024-02-01",
         )
         prediction = clientGPT.chat.completions.create(
-            model="GPSR-Test", 
+            model="GPT-4o", 
             messages=messages, 
             temperature=temperature
         )

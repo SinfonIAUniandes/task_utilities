@@ -117,7 +117,7 @@ class CARRY_MY_LUGGAGE(object):
         # --------------- Variables Absolutas ---------------
         self.bag_place = "none"
         self.is_ready = False
-        self.save_places = False
+        self.following = False
         self.place_counter = 0
         self.pose = ""
         self.isTouched = False
@@ -141,9 +141,9 @@ class CARRY_MY_LUGGAGE(object):
         #self.set_orthogonal_security_srv(0.3)
         #self.set_tangential_security_srv(0.05)
         # Maybe unsafe
-        #self.set_orthogonal_security_srv(0.1)
-        #self.set_tangential_security_srv(0.01)
-        self.tm.setDistance_srv(0)
+        self.set_orthogonal_security_srv(0.1)
+        self.set_tangential_security_srv(0.01)
+        #self.tm.setDistance_srv(0)
         self.tm.pose_srv("front_camera", True)
         self.tm.set_current_place("arena_outside")
         rospy.sleep(1)
@@ -199,7 +199,7 @@ class CARRY_MY_LUGGAGE(object):
 
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
-        self.tm.follow_you(True, speed=0.5)
+        self.tm.follow_you(True, speed=0.5,avoid_obstacles=True)
         self.tm.talk("If i can't see you anymore please come back!", "English", wait=False)
         self.tm.setMoveHead_srv("up")
         print("Follow you activated!")
@@ -215,13 +215,13 @@ class CARRY_MY_LUGGAGE(object):
                 self.tm.talk("Remember to touch my head when we arrive","English",wait=False)
                 last_talk_time = rospy.get_time()
         self.tm.follow_you(False)
-        self.save_places = False
         self.following = False
         if self.bag_place=="right":
             self.tm.go_to_pose("open_left_hand")
         else:
             self.tm.go_to_pose("open_right_hand")
         self.tm.talk("We have arrived! Could you pick up your bag?", "English")
+        self.tm.robot_stop_srv()
         rospy.sleep(5)
         self.tm.talk("Thank you for using my services, have a nice day!",wait=False)
         self.setMoveArms_srv.call(True, True)
@@ -231,21 +231,36 @@ class CARRY_MY_LUGGAGE(object):
         print(self.consoleFormatter.format("GO_BACK", "HEADER"))
         self.tm.setRPosture_srv("stand")
         self.tm.talk("I am going back to my initial position",wait=False)
-        self.tm.go_to_place("place0")
+        self.tm.add_place(
+                    "place" + str(self.place_counter),
+                    edges=["place" + str(self.place_counter - 1)],
+                )
+        self.tm.robot_stop_srv()
+        self.tm.set_current_place("place" + str(self.place_counter))
+        self.tm.robot_stop_srv()
+        approved = self.tm.go_to_place("place0")
         self.tm.talk("carry my luggage task completed succesfully",wait=False)
         os._exit(os.EX_OK)
 
     def save_place(self):
-        self.save_places = True
         # anadir el lugar donde esta parado, junto con el anterior nodo
-        while self.save_places:
-            self.tm.add_place(
-                "place" + str(self.place_counter),
-                edges=["place" + str(self.place_counter - 1)],
-            )
-            self.place_counter += 1
-            # Guardar cada 3 segundos
-            rospy.sleep(5)
+        while self.following:
+            if not self.tm.avoiding_obstacle:
+                current_position = self.tm.get_absolute_position_proxy()
+                current_x = current_position.x
+                current_y = current_position.y
+                current_angle = current_position.theta
+                self.tm.add_place(
+                    "place" + str(self.place_counter),
+                    edges=["place" + str(self.place_counter - 1)],
+                    with_coordinates=True,
+                    x=current_x,
+                    y=current_y,
+                    theta=current_angle
+                )
+                self.place_counter += 1
+                # Guardar cada 3 segundos
+                rospy.sleep(3)
 
     def posePublisherCallback(self, msg):
         if self.choosing:
