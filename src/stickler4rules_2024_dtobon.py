@@ -25,7 +25,7 @@ class STICKLER_RULES(object):
         # Definir las transiciones permitidas entre los estados
         transitions = [
             {'trigger': 'start', 'source': 'STICKLER_RULES', 'dest': 'INIT'},
-            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'GO2NEXT'},
+            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'LOOK4PERSON'},
             {'trigger': 'rules_checked', 'source': 'LOOK4PERSON', 'dest': 'GO2NEXT'},
             {'trigger': 'arrive_next', 'source': 'GO2NEXT', 'dest': 'LOOK4PERSON'},
         ]
@@ -49,10 +49,11 @@ class STICKLER_RULES(object):
         self.confirm_comppliance = False
         self.confirm_comppliance_forbidden = True
         # El robot empieza en 0 y luego se mueve hacia estos angulos
-        self.angles_to_check = [0,-70,70]
+        self.angles_to_check = [-40,40]
         # Donde se encuentran ubicados los otros invitados, es para forbidden room
-        self.party_place = "living_room"
-        self.last_place = "entrance"
+        self.party_place = "dining"
+        self.initial_place = "bedroom"
+        self.last_place = self.initial_place
         #TODO poner numero de guests totales que hay
         self.number_guests = 5
         #TODO poner numero de personas rompiendo las reglas totales
@@ -61,9 +62,10 @@ class STICKLER_RULES(object):
         self.breakers_found = 0
         #TODO Poner el cuarto que sea forbidden
         #self.list_places = ["bedroom","kitchen","office","living_room","bathroom", "forbidden"] # Ya hay una lista de lugares y forbidden se puede usar como una variable
-        self.list_places = ["living_room","hallway_kitchen","between_doors_bedroom","dining_stickler"]
-        self.places_names = ["living_room","kitchen","bedroom","dining"]
-        self.forbidden = "dining_stickler"
+        self.list_places = ["dining_stickler","main_room","kitchen","living_room"]
+        self.places_names = ["dining","living_room","main_room","kitchen"]
+        #TODO preguntar Luccas
+        self.forbidden = "living_room"
         self.checked_places = []
         
         #Varibales globales para los chequeos con threading.
@@ -83,13 +85,13 @@ class STICKLER_RULES(object):
         toggle_msg.angle = []
         toggle_msg.speed = 0
         self.tm.toggle_get_angles_topic_srv(toggle_msg)
-        self.tm.set_current_place("entrance")
+        self.tm.set_current_place(self.initial_place)
+        self.checked_places.append(self.initial_place)
+        self.last_place = self.initial_place
         self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.tm.callback_get_labels_subscriber)
         person_thread = threading.Thread(target=self.tm.get_closer_person)
         person_thread.start()
         self.tm.talk("I am going to do the "+self.task_name+" task","English", wait=False)
-        print("Current Place: " + self.last_place)
-        print("Next Place: " + self.forbidden)
         self.beggining()
 
     # ============================== LOOK4 STATES ==============================

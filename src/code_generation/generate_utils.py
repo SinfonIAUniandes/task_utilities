@@ -31,7 +31,9 @@ def load_task_config()->dict:
             for line in places_file:
                 splitted_line = line.split(",")
                 place = splitted_line[0].strip()
-                places.append(place)
+                last_field = splitted_line[4].strip()
+                if last_field != "False":
+                    places.append(place)
             config["place_names"] = places
         
         with open(LABELS_PATH,"r") as labels_file:

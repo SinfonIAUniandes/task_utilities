@@ -69,10 +69,13 @@ class LongStringGenerator:
         - If the robot is asked to find a person in a place and then find the same person in another place, ALWAYS go to both places and try to find them, even if the person was found in the first place. For example if the user says "Meet Charlie at the armchair then look for them in the bedroom", the robot should use the `go_to_place` service to meet charlie at the armchair, and then the `go_to_place` service again, to find them in the bedroom
         - If the robot is following a person, the robot should trust the person to take them to the appropiate place, and should NOT use the `go_to_place` service afterwards.
         - When asked to lead a person, the robot should NEVER use follow_you, instead the robot should use go_to_place.
-        - If the robot is asked to find and grasp or bring an object, the robot should NEVER search for it with the 'find_object' service, instead just use the 'ask_for_object' service to ask for help to get the object, and then use the 'give_object' service to ask for help in delivering the object.
-        - If the robot has to grasp an object, that object can be anything, even objects not available: {self.objects}
+        - If the robot is asked to find and grasp or take or bring an object, the robot should NEVER search for it with the 'find_object' service, instead just use the 'ask_for_object' service to ask for help to get the object, and then use the 'give_object' service to ask for help in delivering the object.
+        - If the robot has to grasp or take or bring an object, that object can be anything, even objects not available: {self.objects}
         - If the robot has to count occurrences of an object, that object can be anything, even objects not available: {self.objects}
-        - If the user wants the answer for himself for any given question, the robot should ALWAYS use the 'go_back' service before the 'talk' service, in order for the user to get the answer, otherwise the user will not get the desired answer
+        - If the user wants the answer for himself for any given question, the robot MUST ALWAYS use the 'go_back' service before the 'talk' service, in order for the user to get the answer, otherwise the user will not get the desired answer
+        - If the user asked the robot to tell them the answer DO NOT use the 'go_back' service after you've already said the answer, YOU MUST use 'go_back' before saying the answer to the main user
+        - If the user wants the robot to answer something using the 'find_item_with_characteristic', the robot MUST ALWAYS use the 'go_back' service before the 'talk' service 
+        - If the task is to take a person from a place to another, DO NOT use the 'ask_for_object' service, instead find the person in the desired room and ask them to follow the robot and then use the 'go_to_place' service to get there.
         
         - The only available objects are: {self.objects}, if you need to recognize an object that is not listed use the most similar one from the list. Not doing this will result in an error. Use the syntax from the list when calling the codebase functions.
         - If the object you need to recognize or a similar object is NOT listed above, please respond with self.tm.talk("I cannot recognize <object>")

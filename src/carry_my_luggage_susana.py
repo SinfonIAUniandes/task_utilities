@@ -231,6 +231,9 @@ class CARRY_MY_LUGGAGE(object):
         print(self.consoleFormatter.format("GO_BACK", "HEADER"))
         self.tm.setRPosture_srv("stand")
         self.tm.talk("I am going back to my initial position",wait=False)
+        # Super safe parameters
+        self.set_orthogonal_security_srv(0.3)
+        self.set_tangential_security_srv(0.05)
         self.tm.add_place(
                     "place" + str(self.place_counter),
                     edges=["place" + str(self.place_counter - 1)],
@@ -259,8 +262,8 @@ class CARRY_MY_LUGGAGE(object):
                     theta=current_angle
                 )
                 self.place_counter += 1
-                # Guardar cada 3 segundos
-                rospy.sleep(3)
+                # Guardar cada 2 segundos
+                rospy.sleep(2)
 
     def posePublisherCallback(self, msg):
         if self.choosing:
