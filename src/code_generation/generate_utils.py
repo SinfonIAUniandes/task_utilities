@@ -11,6 +11,8 @@ import requests
 codebase = """"""
 
 CONFIG_PATH = os.path.join("src/task_utilities/src/code_generation/configs/robot_vars.csv")
+PlACES_PATH = os.path.join("src/navigation_utilities/resources/places.txt")
+LABELS_PATH = os.path.join("src/perception_utilities/src/yolov7/coco.yaml")
 TASK_VARS = None
 
 def load_task_config()->dict:
@@ -23,6 +25,23 @@ def load_task_config()->dict:
                 key = splitted_line[0]
                 value = splitted_line[1].strip().split(",")
                 config[key] = value
+        
+        with open(PlACES_PATH,"r") as places_file:
+            places = []
+            for line in places_file:
+                splitted_line = line.split(",")
+                place = splitted_line[0].strip()
+                places.append(place)
+            config["place_names"] = places
+        
+        with open(LABELS_PATH,"r") as labels_file:
+            nombres = []
+            for line in labels_file:
+                linea = line.strip()
+                if linea.startswith('- name:'):
+                    nombre = linea.split(':', 1)[1].strip()
+                    nombres.append(nombre)
+            config["objects"] = nombres
         TASK_VARS = config
     return TASK_VARS
 

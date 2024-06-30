@@ -76,6 +76,8 @@ class Task_module:
         self.iterationssTouched = False
         self.navigation_status = 0
         self.perception = perception
+        self.waiting_touch = False
+        self.head_touched = False
         if perception:
             print(
                 self.consoleFormatter.format(
@@ -543,6 +545,8 @@ class Task_module:
             self.move_publisher = rospy.Publisher('/pytoolkit/ALMotion/move', Twist, queue_size=10)
             
             self.subscriber_angles = rospy.Subscriber("/pytoolkit/ALMotion/get_angles",set_angles_msg,self.callback_get_angles)
+            
+            self.headSensorSubscriber = rospy.Subscriber("/touch", touch_msg, self.callback_head_sensor_subscriber)
 
             print(self.consoleFormatter.format("PYTOOLKIT services enabled", "OKGREEN"))
 
@@ -556,7 +560,7 @@ class Task_module:
 
     def initialize_pepper(self):
         """
-        Initializes the pepper robot with default parameteres
+        Initializes the pep robot with default parameteres
         """
         if self.perception:
             self.turn_camera("front_camera","custom",1,20)
@@ -707,7 +711,7 @@ class Task_module:
             print("perception as false")
             return "error"
 
-    def search_for_specific_person(self, class_type: str, specific_characteristic: str, timeout = 72) -> bool:
+    def search_for_specific_person(self, class_type: str, specific_characteristic: str, timeout = 24, true_check=False) -> bool:
         """
         Input:
         class_type: The characteristic to search for (name, pointing, raised_hands or breaking rules or TODO colors)
@@ -730,23 +734,26 @@ class Task_module:
                 while not specific_person_found and (time.time()-start_time) < timeout:
                     self.wait_for_object(24)
                     self.robot_stop_srv()
-                    if class_type=="name":
-                        name = self.q_a("name")
-                        specific_characteristic = specific_characteristic.lower().replace(".","").replace("!","").replace("?","")
-                        if specific_characteristic in name:
-                            specific_person_found = True 
-                    elif class_type=="pointing":
-                        if self.pointing == specific_characteristic:
-                            specific_person_found = True 
-                    elif class_type=="raised_hand":
-                        if self.hand_up == specific_characteristic:
-                            specific_person_found = True
-                    elif class_type=="breaking_rule":
-                        if specific_characteristic == "drink":
-                            gpt_vision_prompt = f"Is there a person without a drink in this picture? Answer only with True or False"
-                            answer = self.img_description(gpt_vision_prompt)["message"]
-                            if "True" in answer:
+                    if not true_check:
+                        if class_type=="name":
+                            name = self.q_a("name")
+                            specific_characteristic = specific_characteristic.lower().replace(".","").replace("!","").replace("?","")
+                            if specific_characteristic in name:
+                                specific_person_found = True 
+                        elif class_type=="pointing":
+                            if self.pointing == specific_characteristic:
+                                specific_person_found = True 
+                        elif class_type=="raised_hand":
+                            if self.hand_up == specific_characteristic:
                                 specific_person_found = True
+                        elif class_type=="breaking_rule":
+                            if specific_characteristic == "drink":
+                                gpt_vision_prompt = f"Is there a person without a drink in this picture? Answer only with True or False"
+                                answer = self.img_description(gpt_vision_prompt)["message"]
+                                if "True" in answer:
+                                    specific_person_found = True
+                    else:
+                        specific_person_found = True
                     rospy.sleep(1)
                     self.constant_spin_srv(15)
                 self.robot_stop_srv()
@@ -1433,41 +1440,70 @@ class Task_module:
             print("pytoolkit as false")
             return False
 
-    def follow_you(self, command: bool, speed=None, awareness=True, avoid_obstacles=False) -> bool:
+    def follow_you(self, speed=None, awareness=True, avoid_obstacles=False, rotate=True) -> bool:
         """
         Input: 
         command: Whether to start following whoever is closests or not.
         speed: The speed with which the robot will move forward or backward -> [0.0,0.5]
+        avoid_obstacles: If the robot should try to avoid obstacles or not.
+        awareness: If the robot should use its head to follow the target or not.
+        rotate: If the robot should ask the person to go in front of the robot to follow them or not.
         Output: True if the service was called correctly, False if not
         ----------
         Starts following the closest person to the robot
         """
         self.subscriber_yolo = rospy.Subscriber("/pytoolkit/ALMotion/failed",speech_recognition_status_msg,self.callback_move_failed)
-        if self.pytoolkit:
+        if self.pytoolkit and self.navigation and self.perception and self.speech:
             try:
-                if command:
-                    self.start_yolo_awareness(awareness)
-                    self.follow_you_active = command
-                    self.head_thread = command
-                    self.set_move_arms_enabled(False)
-                    follow_thread = Thread(target=self.follow_you_srv_thread,args=([speed,awareness,avoid_obstacles]))
-                    follow_thread.start()
-                    person_thread = Thread(target=self.get_closer_person)
-                    person_thread.start()
-                    print("Started following")
-                else:
+                self.start_yolo_awareness(awareness)
+                self.follow_you_active = True
+                self.head_thread = True
+                self.set_move_arms_enabled(False)
+                if rotate:
                     self.start_yolo_awareness(False)
-                    self.set_move_arms_enabled(True)
-                    self.follow_you_active = command
-                    self.head_thread = command
-                    self.stop_moving()
-                    print("Finished following")
-                    return True
+                    self.setRPosture_srv("stand")
+                    self.talk("I will start rotating, please stand in the direction you want me to follow you and wait until i look at you and touch my head!",language="English",wait=False)
+                    self.constant_spin_srv(15)
+                    self.head_touched = False
+                    self.waiting_touch = True
+                    last_talk_time = rospy.get_time()
+                    start_time = rospy.get_time()
+                    while (not self.head_touched) and rospy.get_time() - start_time < 15:
+                        if rospy.get_time()-last_talk_time > 5:
+                            self.talk("Touch my head to get going!","English",wait=False)
+                            last_talk_time = rospy.get_time()
+                    self.robot_stop_srv()
+                    self.waiting_touch = False
+                    self.start_yolo_awareness(True)
+                self.talk("I will follow you now! Please touch my head when we arrive. If i can't see you anymore please come back!", "English",wait=False)
+                follow_thread = Thread(target=self.follow_you_srv_thread,args=([speed,awareness,avoid_obstacles]))
+                follow_thread.start()
+                person_thread = Thread(target=self.get_closer_person)
+                person_thread.start()
+                self.head_touched = False
+                self.waiting_touch = True
+                last_talk_time = rospy.get_time()
+                start_time = rospy.get_time()
+                print("Started following")
+                while (not self.head_touched) and rospy.get_time() - start_time < 15:
+                    if rospy.get_time()-last_talk_time > 5:
+                        self.talk("Remember to touch my head when we arrive","English",wait=False)
+                        last_talk_time = rospy.get_time()
+                self.waiting_touch = False
+                self.start_yolo_awareness(False)
+                self.set_move_arms_enabled(True)
+                self.follow_you_active = False
+                self.head_thread = False
+                self.stop_moving()
+                print("Finished following")
+                return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return False
         else:
-            print("pytoolkit as false")
+            for tool in [self.pytoolkit,self.navigation,self.perception,self.speech]:
+                if not tool:
+                    print(f"{tool} as false")
             return False
         
     def calibrate_follow_distance(self,max_width,min_width):
@@ -1635,9 +1671,16 @@ class Task_module:
                         rospy.sleep(0.2)
                         # Stop rotating but keeping moving forward
                         self.start_moving(self.linear_vel, 0, 0)
+                if self.stopped_for_safety:
+                    self.stopped_for_safety = False
+                    # Try to run over the obstacle again
+                    self.start_moving(self.linear_vel/3, 0, angular_vel)
+                    rospy.sleep(0.2)
+                    # Stop rotating but keeping moving forward
+                    self.start_moving(self.linear_vel, 0, 0)
                 if avoid_obstacles:
                     if self.stopped_for_safety and not backing_up:
-                        if navigation_attempts<1:
+                        if navigation_attempts<2:
                             navigation_attempts+=1
                             iterations_no_safety_stop = 0
                             backing_up = True
@@ -2016,10 +2059,12 @@ class Task_module:
         if self.manipulation and self.speech:
             try:
                 self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=False)
-                self.go_to_pose(object_name)
+                self.go_to_pose("generic_pose")
+                self.go_to_pose("almost_closed_both_hands")
                 self.set_move_arms_enabled(False)
                 # Sleep for the robot not to leave before taking the item
-                rospy.sleep(7)
+                rospy.sleep(5)
+                self.talk("Thank you!","English",wait=False)  
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -2037,10 +2082,12 @@ class Task_module:
         """
         if self.manipulation and self.speech:
             try:
-                self.talk("Please pick up the "+object_name,"English",wait=True)
-                rospy.sleep(7)
+                self.go_to_pose("open_both_hands")
+                self.talk("Please pick up the "+object_name,"English",wait=False)
+                rospy.sleep(5)
                 self.set_move_arms_enabled(True)
-                self.setRPosture_srv("stand")      
+                self.setRPosture_srv("stand") 
+                self.talk("Thank you!","English",wait=False)     
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -2202,9 +2249,14 @@ class Task_module:
     def callback_simple_feedback_subscriber(self, msg):
         self.navigation_status = msg.navigation_status
 
-    def callback_head_sensor_subscriber(self, msg):
+    def callback_head_sensor_subscriber(self, msg: touch_msg):
         if "head" in msg.name:
-            self.iterationssTouched = msg.state
+            if self.waiting_touch:
+                if msg.state:
+                    self.head_touched = msg.state
+            else:
+                self.head_touched = msg.state
+                
 
     def callback_move_failed(self, msg):
         if not self.avoiding_obstacle:

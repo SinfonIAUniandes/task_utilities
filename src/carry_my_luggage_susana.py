@@ -111,16 +111,13 @@ class CARRY_MY_LUGGAGE(object):
         self.posePublisherSubscriber = rospy.Subscriber(
             "perception_utilities/pose_publisher", String, self.posePublisherCallback
         )
-        self.headSensorSubscriber = rospy.Subscriber(
-            "/touch", touch_msg, self.callback_head_sensor_subscriber
-        )
         # --------------- Variables Absolutas ---------------
         self.bag_place = "none"
-        self.is_ready = False
+        self.tm.waiting_touch = False
         self.following = False
         self.place_counter = 0
         self.pose = ""
-        self.isTouched = False
+        self.tm.head_touched = False
         self.closest_person = {
             "id": None,
             "width": None,
@@ -145,6 +142,9 @@ class CARRY_MY_LUGGAGE(object):
         self.set_tangential_security_srv(0.01)
         #self.tm.setDistance_srv(0)
         self.tm.pose_srv("front_camera", True)
+        current_position = self.tm.get_absolute_position_proxy()
+        current_angle = current_position.theta
+        self.tm.add_place("arena_outside",with_coordinates=True,x=20,y=20,theta=current_angle)
         self.tm.set_current_place("arena_outside")
         rospy.sleep(1)
         self.tm.add_place("place" + str(self.place_counter))
@@ -170,10 +170,11 @@ class CARRY_MY_LUGGAGE(object):
         self.tm.talk(f"I found your bag to your {self.bag_place}",wait=False)
         # La pose es relativa al robot, por lo tanto se usa el brazo contrario
         if self.bag_place=="right":
-            self.pose = "small_object_left_high"
+            self.pose = "small_object_left_high_2"
+            self.tm.go_to_pose("small_object_left_hand", 0.1)
         else:
-            self.pose = "small_object_right_high"
-        self.tm.go_to_pose(self.pose, 0.1)
+            self.pose = "small_object_right_high_2"
+            self.tm.go_to_pose("small_object_right_hand", 0.1)
         self.grab_bag()
 
     def on_enter_GRAB_BAG(self):
@@ -182,46 +183,45 @@ class CARRY_MY_LUGGAGE(object):
         self.tm.talk("Please place the bag in my hand, when you have finished please touch my head!","English",wait=False)
         start_time = rospy.get_time()
         last_talk_time = rospy.get_time()
-        while (not self.isTouched) and rospy.get_time() - start_time < 15:
+        self.tm.head_touched = False
+        self.tm.waiting_touch = True
+        while (not self.tm.head_touched) and rospy.get_time() - start_time < 15:
             rospy.sleep(0.1)
             if rospy.get_time()-last_talk_time > 5:
                 self.tm.talk("Touch my head to get going!","English",wait=False)
                 last_talk_time = rospy.get_time()
         # La pose es relativa al robot, por lo tanto se usa el brazo contrario
+        self.tm.waiting_touch = False
         print("close hand:",self.bag_place )
         if self.bag_place=="right":
             self.tm.go_to_pose("close_left_hand")
+            self.tm.go_to_pose("small_object_left_high_2")
         else:
             self.tm.go_to_pose("close_right_hand")
+            self.tm.go_to_pose("small_object_right_high_2")
         self.tm.show_topic("/perception_utilities/yolo_publisher")
-        self.tm.talk("Thank you. I will follow you now! Please touch my head when we arrive", "English",wait=False)
+        self.tm.talk("Thank you!", "English",wait=False)
         self.follow_you()
 
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
-        self.tm.follow_you(True, speed=0.5,avoid_obstacles=True)
-        self.tm.talk("If i can't see you anymore please come back!", "English", wait=False)
-        self.tm.setMoveHead_srv("up")
         print("Follow you activated!")
         self.following = True
         carry_thread = threading.Thread(target=self.carry_thread,args=[self.pose])
         carry_thread.start()
         save_place_thread = threading.Thread(target=self.save_place)
         save_place_thread.start()
-        last_talk_time = rospy.get_time()
-        while (not self.isTouched):
-            rospy.sleep(0.1)
-            if rospy.get_time()-last_talk_time >10:
-                self.tm.talk("Remember to touch my head when we arrive","English",wait=False)
-                last_talk_time = rospy.get_time()
-        self.tm.follow_you(False)
+        # Estanca la ejecucion
+        self.tm.follow_you(speed=0.5,rotate=True)
         self.following = False
-        if self.bag_place=="right":
-            self.tm.go_to_pose("open_left_hand")
-        else:
-            self.tm.go_to_pose("open_right_hand")
         self.tm.talk("We have arrived! Could you pick up your bag?", "English")
         self.tm.robot_stop_srv()
+        if self.bag_place=="right":
+            self.pose = "small_object_left_hand"
+            self.tm.go_to_pose("open_left_hand")
+        else:
+            self.pose = "small_object_right_hand"
+            self.tm.go_to_pose("open_right_hand")
         rospy.sleep(5)
         self.tm.talk("Thank you for using my services, have a nice day!",wait=False)
         self.setMoveArms_srv.call(True, True)
@@ -272,10 +272,6 @@ class CARRY_MY_LUGGAGE(object):
     def run(self):
         while not rospy.is_shutdown():
             self.zero()
-
-    def callback_head_sensor_subscriber(self, msg: touch_msg):
-        if "head" in msg.name:
-            self.isTouched = msg.state
 
     def check_rospy(self):
         while not rospy.is_shutdown():

@@ -14,24 +14,23 @@ class LongStringGenerator:
         Perception functions:
         self.tm.find_object(object_name)->bool: Returns True if the object was found, False if not, the only possible objects with their exact syntax are: {self.objects}.
         self.tm.count_objects(object_name)->int: Returns the number of objects found, the only possible objects with their exact syntax are: {self.objects}
-        self.tm.search_for_specific_person(class_type,specific_characteristic)->bool: The robot spins in place until it finds a person with a specific characteristic. The options for class_type are: "pointing", "name", "raised_hand". The options for specific_characteristic depend on class_type. If class_type is "name", options are human names like "Paris","Robin","Jaine". If class_type is "pointing" or "raised_hand" options are "right", "left", "center". Returns True if such a person was found, False if not.
-        self.tm.find_item_with_characteristic(class_type,characteristic,place)->str: Allows the robot to find the item which has the given "characteristic", the options for class_type are: "color", "size", "weight", "position", "description". the options for characteristic depend on class_type: Color ("red","blue","black with white dots"). Size ("smallest", "largest", "thinnest", "big one", "small one"). Weight ("lightest", "heaviest"). Position ("left", "right"). Description("fragile","container","pourable","two-handed"). "place" Indicates the furniture or item on top of which the robot needs to search for the object.Returns a String with the name of the object with the needed characteristics or "None" if it wasn't found.
+        self.tm.search_for_specific_person(class_type,specific_characteristic)->bool: The robot spins in place until it finds a person with a specific characteristic. The options for class_type are: "pointing", "name", "raised_hand". The options for specific_characteristic depend on class_type. If class_type is "name", options are human names like "Paris","Robin","Jaine". If class_type is "pointing" or "raised_hand" options are "right", "left", "center". Returns True if such a person was found, False if not
+        self.tm.find_item_with_characteristic(class_type,characteristic,place)->str: Allows the robot to find the item which has the given "characteristic", the options for class_type are: "color", "size", "weight", "position", "description". the options for characteristic depend on class_type: Color ("red","blue","black with white dots"). Size ("smallest", "largest", "thinnest", "big one", "small one"). Weight ("lightest", "heaviest"). Position ("left", "right"). Description("fragile","container","pourable","two-handed"). "place" Indicates the furniture or item on top of which the robot needs to search for the object.Returns a String with the name of the object with the needed characteristics or "None" if it wasn't found
 
         Speech functions:
-        self.tm.talk(text): Allows the robot to say the input of the service. If you call the q_a function it calls this function to make the robot say the question.
+        self.tm.talk(text): Allows the robot to say the input of the service
         self.tm.speech2text_srv()->str: Allows the robot to listen to the user and returns the text that the robot heard
-        self.tm.q_a(tag)->str: Makes the robot AKS a question and returns the answer of the user, the list of possible questions with exact syntax is: {self.question_tags}. Use this every time you can instead of speech2text_srv to ask questions. This function calls talk to ask the question, so you don't have to call talk to ask the question yourself.
+        self.tm.q_a(tag)->str: Makes the robot ASK a question and returns the answer of the user (filtering unnecesary content), the list of possible questions with exact syntax is: {self.question_tags}
         self.tm.answer_question(question)->bool: Returns a string with an answer to the question
 
         Navigation functions:
         self.tm.go_to_place(place_name): Allows the robot to go to a place, the only possible places with their exact syntax are: {self.place_names}
-        self.tm.follow_you(command): Allows the robot to follow the user and make him stop by saying "stop", if the command is True the robot follows the user, if it's False it stops following. The robot must tell the user that they can stop the robot by saying "stop".
+        self.tm.follow_you(): Allows the robot to follow the user and stop when the head of the robot is touched.
         self.tm.robot_stop_srv(): Makes the robot to stop
-        self.tm.add_place(place_name): Allows the robot to add a place to the map
 
         Manipulation functions:
-        self.tm.ask_for_object(object_name): Allows the robot to grasp an object, the only possible objects with their exact syntax are: {self.objects}
-        self.tm.give_object(object_name): Allows the robot to leave an object, the only possible objects with their exact syntax are: {self.objects}
+        self.tm.ask_for_object(object_name): Allows the robot to ask a person to place the object in its hands and then thank them
+        self.tm.give_object(object_name): Allows the robot to ask a person to receive the object in their hands and then thank them
         """
 
     def generate_exec(self, task:str)-> str:
@@ -65,7 +64,6 @@ class LongStringGenerator:
 
         - The only available default questions are: {self.question_tags}
         - If you need to ask a question that is not listed just use the `talk` method to say the question and the `speech2text_srv` followed to save the answer. Use the syntax from the list when calling the codebase functions.
-        - If you need to ask a question that is listed don't use the `talk` method to say the question, the q_a function already does it for you.
 
         # Output Format:
         - Your output needs to be formatted in markdown as a python code snippet, do not add anything else to the output (don't add any exec calls or "Here's your code" statements), just the code.

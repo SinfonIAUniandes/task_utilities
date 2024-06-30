@@ -118,8 +118,6 @@ class GPSR(object):
         while not rospy.is_shutdown():
             self.start()
         
-
-
     def posePublisherCallback(self, msg):
         if msg.data == "Pointing to the left":
             self.tm.pointing = "left"
