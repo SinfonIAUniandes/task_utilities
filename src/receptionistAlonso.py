@@ -37,7 +37,7 @@ class RECEPTIONIST(object):
             perception=True,
             speech=True,
             manipulation=True,
-            navigation=True,
+            navigation=False,
             pytoolkit=True,
         )
         self.tm.initialize_node(self.task_name)
@@ -117,7 +117,7 @@ class RECEPTIONIST(object):
         self.get_clothes_and_hair_color_thread = None
         self.clothes_color = ""
         self.hair_color = ""
-        self.initial_place = "living_room"
+        self.initial_place = "init_receptionist"
         self.greeting_place = "house_door"
         self.guests_place = "living_room"
         self.recognized_guests_counter = 0
@@ -269,12 +269,10 @@ class RECEPTIONIST(object):
         time.sleep(0.2)
         self.tm.talk("Waiting for guests", "English")
         person_detected = False
+        self.tm.look_for_object("person")
         while not person_detected:
-            person_detected = self.tm.look_for_object("person", False)
-            rospy.sleep(4)
-            self.tm.talk("I can't see a guest propertly, please come a little bit closer", "English")
-        self.tm.wait_for_object(-1)
-        self.tm.look_for_object("", True)
+            self.tm.talk("I can't see a guest properly, please come a little bit closer", "English")
+            person_detected = self.tm.wait_for_object(4)
         self.person_arrived()
 
     def on_enter_QA(self):
@@ -291,7 +289,6 @@ class RECEPTIONIST(object):
         name = self.tm.q_a("name")
         drink = self.tm.q_a("drink")
         self.current_guest = {"name": name, "drink": drink}
-        self.tm.start_recognition("")
         self.person_met()
 
     def on_enter_SAVE_FACE(self):
@@ -394,8 +391,6 @@ class RECEPTIONIST(object):
             "English",
             animated=True,
         )
-        # Turns on recognition and looks for  person
-        self.tm.start_recognition("front_camera")
         # Reiniciar las variables de presentacion de personas y sillas
         self.introduced_guests = []
         self.introduced_guests.append(self.current_guest["name"])

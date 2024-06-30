@@ -109,7 +109,7 @@ class RECEPTIONIST(object):
         self.get_clothes_and_hair_color_thread = None
         self.clothes_color = ""
         self.hair_color = ""
-        self.initial_place = "living_room"
+        self.initial_place = "init_receptionist"
         self.greeting_place = "house_door"
         self.guests_place = "living_room"
         self.recognized_guests_counter = 0
