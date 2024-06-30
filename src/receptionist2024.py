@@ -223,7 +223,7 @@ class RECEPTIONIST(object):
         return category
     
     def get_clothes_and_hair_color(self):
-        gpt_vision_prompt = "Answer about the person centered in the image: What color is the person weating? What is the hair color of the person? Answer only with the color's names separated by a comma as follows: 'blue, black'"
+        gpt_vision_prompt = "Please answer about the person centered in the image: What main color of clothes is the person wearing? What is the hair color of the person? Answer only with the 2 color's names separated by a comma as follows: 'blue, black'"
         answer = self.tm.img_description(gpt_vision_prompt)["message"].split(", ")
         self.clothes_color = answer[0]
         self.hair_color = answer[1]
@@ -294,7 +294,7 @@ class RECEPTIONIST(object):
             target=self.tm.get_person_description
         )
         self.person_description_thread.start()
-        self.tm.talk("Thank you, I already took your pictures.")
+        self.tm.talk("Thank you, I already took some recognizing pictures.")
 
         print("success: ", success)
         if success:
