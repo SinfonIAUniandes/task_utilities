@@ -39,7 +39,7 @@ class GPSR(object):
         # Definir las transiciones permitidas entre los estados
         transitions = [
             {'trigger': 'start', 'source': 'GPSR', 'dest': 'INIT'},
-            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'GO2GPSR'},
+            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'WAIT4GUEST'},
             {'trigger': 'go_to_gpsr', 'source': 'GO2GPSR', 'dest': 'WAIT4GUEST'},
             {'trigger': 'person_arrived', 'source': 'WAIT4GUEST', 'dest': 'GPSR'},
             {'trigger': 'GPSR_done', 'source': 'GPSR', 'dest': 'GO2GPSR'}
@@ -59,7 +59,7 @@ class GPSR(object):
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.initialize_pepper()
         self.tm.turn_camera("bottom_camera","custom",1,15)
-        subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
+        self.tm.set_current_place(self.location)
         self.tm.pose_srv("front_camera", True)
         self.tm.hot_word(words=["stop", "nova"],thresholds=[0.5, 0.4])
         self.tm.talk("I am going to do the  "+ self.task_name + " task","English")
@@ -69,7 +69,7 @@ class GPSR(object):
         print(self.consoleFormatter.format("GPSR", "HEADER"))
         self.tm.look_for_object("")
         self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. You can talk to me when my eyes are blue: ","English", wait=False)
-        rospy.sleep(4)
+        rospy.sleep(3)
         task = self.tm.speech2text_srv(0)
         print(f"Task: {task}")
         if task!="":
@@ -78,6 +78,8 @@ class GPSR(object):
             contador = 0
             while contador<3:
                 code = self.gen.generate_code(task, Model.GPT4).replace("`","").replace("python","")
+                pattern = r'self\.tm\.go_to_place\((.*?)\)'
+                code = re.sub(pattern, r'self.tm.go_to_place(\1, lower_arms=False)', code)
                 print(code)
                 if not "I am sorry but I cannot complete this task" in code:
                     print("\nIt is possible to execute the request")
@@ -90,8 +92,6 @@ class GPSR(object):
         self.GPSR_done()
 
     def on_enter_GO2GPSR(self):
-        while self.tm.follow_you_active: 
-            rospy.sleep(0.1)
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
         self.tm.talk("I am going to the GPSR location","English")
         self.tm.go_to_place(self.location)
@@ -132,12 +132,6 @@ class GPSR(object):
         else:
             self.tm.pointing = "none"
             self.tm.hand_up = "none"
-
-    def callback_hot_word(self,data):
-        word = data.status
-        print(word)
-        if word == "stop":
-            self.tm.follow_you(False)
     
     def is_valid_syntax(self, code):
         try:

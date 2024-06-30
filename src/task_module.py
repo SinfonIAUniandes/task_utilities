@@ -703,10 +703,12 @@ class Task_module:
                     gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is positioned {characteristic}most. Answer only with one word, either the item name or None"
                 elif class_type == "description":
                     gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is {characteristic}. Answer only with one word, either the item name or None"
-                return self.img_description(gpt_vision_prompt,camera_name="bottom_camera")["message"]
+                answer = self.img_description(gpt_vision_prompt,camera_name="bottom_camera")["message"]
+                print(answer)
+                return answer
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
-                return "none"
+                return "None"
         else:
             print("perception as false")
             return "error"
@@ -734,7 +736,7 @@ class Task_module:
                 while not specific_person_found and (time.time()-start_time) < timeout:
                     self.wait_for_object(24)
                     self.robot_stop_srv()
-                    if not true_check:
+                    if true_check:
                         if class_type=="name":
                             name = self.q_a("name")
                             specific_characteristic = specific_characteristic.lower().replace(".","").replace("!","").replace("?","")
@@ -840,8 +842,8 @@ class Task_module:
                 gpt_vision_prompt = f"How many {object_name} are there in the picture? Answer only with an Integer number of occurrrences"
                 counter = 0
                 for angle in angles_to_check:
-                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
-                    rospy.sleep(10)
+                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.2)
+                    rospy.sleep(5)
                     answer = self.img_description(gpt_vision_prompt, camera_name="both")["message"]
                     if answer.isdigit():
                         counter+= int(answer)
@@ -1486,7 +1488,7 @@ class Task_module:
                 last_talk_time = rospy.get_time()
                 start_time = rospy.get_time()
                 print("Started following")
-                while (not self.head_touched) and rospy.get_time() - start_time < 15:
+                while (not self.head_touched):
                     if rospy.get_time()-last_talk_time > 5:
                         self.talk("Remember to touch my head when we arrive","English",wait=False)
                         last_talk_time = rospy.get_time()
@@ -2063,8 +2065,8 @@ class Task_module:
         if self.manipulation and self.speech:
             try:
                 self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=False)
-                self.go_to_pose("generic_pose")
-                self.go_to_pose("almost_closed_both_hands")
+                self.go_to_pose("generic_grasp")
+                self.go_to_pose("open_both_hands")
                 self.set_move_arms_enabled(False)
                 # Sleep for the robot not to leave before taking the item
                 rospy.sleep(5)
@@ -2086,7 +2088,6 @@ class Task_module:
         """
         if self.manipulation and self.speech:
             try:
-                self.go_to_pose("open_both_hands")
                 self.talk("Please pick up the "+object_name,"English",wait=False)
                 rospy.sleep(5)
                 self.set_move_arms_enabled(True)

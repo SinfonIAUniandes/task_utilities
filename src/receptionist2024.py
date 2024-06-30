@@ -109,8 +109,8 @@ class RECEPTIONIST(object):
         self.get_clothes_and_hair_color_thread = None
         self.clothes_color = ""
         self.hair_color = ""
-        self.initial_place = "init_ri"
-        self.greeting_place = "receptionist_door"
+        self.initial_place = "house_door"
+        self.greeting_place = "house_door"
         self.guests_place = "living_room"
         self.recognized_guests_counter = 0
         self.all_guests = {
@@ -127,7 +127,7 @@ class RECEPTIONIST(object):
         self.old_person = ""
         self.failed_saving_face = False
         self.angle_index = 0
-        self.chair_angles = [-10, 10, -70]
+        self.chair_angles = [-20, 20]
         self.checked_chair_angles = []
         self.empty_chair_angles = []
         self.is_first_guest = True
@@ -253,12 +253,10 @@ class RECEPTIONIST(object):
         time.sleep(0.2)
         self.tm.talk("Waiting for guests", "English")
         person_detected = False
+        self.tm.look_for_object("person")
         while not person_detected:
-            person_detected = self.tm.look_for_object("person", False)
-            rospy.sleep(4)
-            self.tm.talk("I can't see a guest propertly, please come a little bit closer", "English")
-        self.tm.wait_for_object(-1)
-        self.tm.look_for_object("", True)
+            self.tm.talk("I can't see a guest properly, please come a little bit closer", "English")
+            person_detected = self.tm.wait_for_object(4)
         self.person_arrived()
 
     def on_enter_QA(self):
@@ -281,7 +279,7 @@ class RECEPTIONIST(object):
     def on_enter_SAVE_FACE(self):
 
         print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
-        self.tm.go_to_pose("up_head")
+        self.tm.set_angles_srv(["HeadPitch"],[-0.6],0.1,)
         if not self.failed_saving_face:
             self.tm.publish_filtered_image("face", "front_camera")
             self.show_topic_srv("/perception_utilities/filtered_image")
@@ -402,14 +400,15 @@ class RECEPTIONIST(object):
             self.move_head_srv("default")
             self.tm.set_angles_srv(
                 ["HeadYaw", "HeadPitch"],
-                [math.radians(self.chair_angles[self.angle_index]), -0.3],
+                [math.radians(self.chair_angles[self.angle_index]), 0],
                 0.1,
             )
+            rospy.sleep(4)
             self.checked_chair_angles.append(self.chair_angles[self.angle_index])
             self.angle_index += 1
-            t1 = time.time()
+            start_time = time.time()
             self.labels = {}
-            while time.time() - t1 < 1:
+            while time.time() - start_time < 2:
                 if "person" in self.labels:
                     self.tm.talk("Recognizing person", "English")
                     self.person_found()
