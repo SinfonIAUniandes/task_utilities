@@ -38,9 +38,9 @@ class ServeBreakfast(object):
         self.items = ["bowl", "cereal_box", "milk_carton"] 
         
         self.relative_item_angle = {
-            "bowl": 90,
-            "cereal_box": 90,
-            "milk_carton": 90
+            "bowl": 0,
+            "cereal_box": 0,
+            "milk_carton": 0
         }
                 
         self.grab_items_poses = {
@@ -50,9 +50,9 @@ class ServeBreakfast(object):
         }
         
         self.drop_and_serve_position = {
-            "bowl": -0.8,
-            "milk_carton": -0.2,
-            "cereal_box": -1.0 
+            "bowl": 0.8,
+            "milk_carton": 0.2,
+            "cereal_box": 1.0 
         }
         
         self.drop_items_poses = {
@@ -68,9 +68,9 @@ class ServeBreakfast(object):
                 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         
-        self.relative_drop_position=0.1
+        self.relative_drop_position=0.2
         
-        self.crouch_4_drop = -0.5
+        self.crouch_4_drop = -0.4
         
         # ---------------------------------------------------------------------------
         #                       SERVICES

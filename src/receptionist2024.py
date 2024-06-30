@@ -127,7 +127,7 @@ class RECEPTIONIST(object):
         self.old_person = ""
         self.failed_saving_face = False
         self.angle_index = 0
-        self.chair_angles = [0, 20, -30]
+        self.chair_angles = [-10, 10, -70]
         self.checked_chair_angles = []
         self.empty_chair_angles = []
         self.is_first_guest = True
@@ -252,7 +252,11 @@ class RECEPTIONIST(object):
         self.show_topic_srv("/perception_utilities/yolo_publisher")
         time.sleep(0.2)
         self.tm.talk("Waiting for guests", "English")
-        self.tm.look_for_object("person", False)
+        person_detected = False
+        while not person_detected:
+            person_detected = self.tm.look_for_object("person", False)
+            rospy.sleep(4)
+            self.tm.talk("I can't see a guest propertly, please come a little bit closer", "English")
         self.tm.wait_for_object(-1)
         self.tm.look_for_object("", True)
         self.person_arrived()
@@ -277,7 +281,7 @@ class RECEPTIONIST(object):
     def on_enter_SAVE_FACE(self):
 
         print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
-        # self.move_head_srv("up")
+        self.tm.go_to_pose("up_head")
         if not self.failed_saving_face:
             self.tm.publish_filtered_image("face", "front_camera")
             self.show_topic_srv("/perception_utilities/filtered_image")
@@ -320,6 +324,7 @@ class RECEPTIONIST(object):
         self.arrived_to_point()
 
     def on_enter_INTRODUCE_NEW(self):
+        self.tm.go_to_pose("default_head")
         self.person_description_thread.join()
         attributes = self.tm.person_attributes
         print("attributes: ", attributes)
