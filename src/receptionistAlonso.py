@@ -31,6 +31,7 @@ class RECEPTIONIST(object):
             "LOOK4PERSON",
             "LOOK4CHAIR",
             "SIGNAL_SOMETHING",
+            "ASK_4_HOST",
         ]
         self.tm = tm(
             perception=True,
@@ -46,15 +47,22 @@ class RECEPTIONIST(object):
             {"trigger": "person_arrived", "source": "WAIT4GUEST", "dest": "QA"},
             {"trigger": "person_met", "source": "QA", "dest": "SAVE_FACE"},
             {"trigger": "save_face_failed", "source": "SAVE_FACE", "dest": "SAVE_FACE"},
+            {"trigger": "remember_face", "source": "ASK_4_HOST", "dest": "SAVE_FACE"},
+            {"trigger": "remember_face", "source": "ASK_4_HOST", "dest": "INTRODUCE_NEW"},
             {
                 "trigger": "save_face_succeded",
                 "source": "SAVE_FACE",
                 "dest": "GO2LIVING",
             },
             {
+                "trigger": "save_host_face_succeded",
+                "source": "SAVE_FACE",
+                "dest": "INTRODUCE_NEW",
+            },
+            {
                 "trigger": "arrived_to_point",
                 "source": "GO2LIVING",
-                "dest": "INTRODUCE_NEW",
+                "dest": "ASK_4_HOST",
             },
             {
                 "trigger": "introduced_new_guest",
@@ -122,6 +130,13 @@ class RECEPTIONIST(object):
                 "pronoun": "he",
             }
         }
+        self.host = {
+            "name": "Charlie",
+            "age": self.categorize_age(21),
+            "drink": "Milk",
+            "gender": "Man",
+            "pronoun": "he",
+        }
         self.introduced_guests = []
         self.current_guest = {}
         self.old_person = ""
@@ -134,6 +149,7 @@ class RECEPTIONIST(object):
         self.introducing_2nd_guest = False
         self.first_guest = {}
         self.host_name = "Charlie"
+        self.ask_host = False
 
         # ROS Services (PyToolkit)
         print(
@@ -282,16 +298,20 @@ class RECEPTIONIST(object):
 
         print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
         self.tm.go_to_pose("up_head")
+        if self.ask_host == True:
+            person = self.host_name
+        else:
+            person = self.current_guest
         if not self.failed_saving_face:
             self.tm.publish_filtered_image("face", "front_camera")
             self.show_topic_srv("/perception_utilities/filtered_image")
             self.tm.talk(
                 "Hey {}, I will take some pictures of your face to recognize you in future occasions, please place your face inside the green circle.".format(
-                    self.current_guest["name"]
+                    person["name"]
                 ),
                 "English",
             )
-        success = self.tm.save_face(self.current_guest["name"], 3)
+        success = self.tm.save_face(person["name"], 3)
         self.person_description_thread = threading.Thread(
             target=self.tm.get_person_description
         )
@@ -300,12 +320,15 @@ class RECEPTIONIST(object):
 
         print("success: ", success)
         if success:
-            self.save_face_succeded()
+            if self.ask_host == True:
+                self.save_host_face_succed()
+            else:
+                self.save_face_succeded()
         else:
             self.failed_saving_face = True
             self.tm.talk(
                 "I am sorry {}, I was not able to save your face, can you please see my tablet and fit your face".format(
-                    self.current_guest["name"]
+                    person["name"]
                 ),
                 "English",
             )
@@ -322,6 +345,14 @@ class RECEPTIONIST(object):
         )
         self.tm.go_to_place(self.guests_place)
         self.arrived_to_point()
+    
+    def on_enter_ASK_4_HOST(self):
+        if self.is_first_guest:
+            self.tm.talk(f"Hey, i don't seem to remember you, please come closer so i can take a couple of pictures.","English",False)
+            self.ask_host = True
+            self.remember_face()
+        else:
+            self.contine()
 
     def on_enter_INTRODUCE_NEW(self):
         self.tm.go_to_pose("default_head")
