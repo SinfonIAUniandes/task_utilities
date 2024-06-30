@@ -252,7 +252,11 @@ class RECEPTIONIST(object):
         self.show_topic_srv("/perception_utilities/yolo_publisher")
         time.sleep(0.2)
         self.tm.talk("Waiting for guests", "English")
-        self.tm.look_for_object("person", False)
+        person_detected = False
+        while not person_detected:
+            person_detected = self.tm.look_for_object("person", False)
+            rospy.sleep(4)
+            self.tm.talk("I can't see a guest propertly, please come a little bit closer", "English")
         self.tm.wait_for_object(-1)
         self.tm.look_for_object("", True)
         self.person_arrived()
@@ -320,6 +324,7 @@ class RECEPTIONIST(object):
         self.arrived_to_point()
 
     def on_enter_INTRODUCE_NEW(self):
+        self.tm.go_to_pose("default_head")
         self.person_description_thread.join()
         attributes = self.tm.person_attributes
         print("attributes: ", attributes)
