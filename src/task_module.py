@@ -833,17 +833,18 @@ class Task_module:
         ----------
         Spins 360 degrees and then returns the number of objects of <object_name> seen
         """
-        if self.perception and self.navigation and self.manipulation:
+        if self.perception and self.navigation and self.manipulation and self.pytoolkit:
             try:
+                self.setRPosture_srv("stand")
+                angles_to_check = [0,-60,60]
+                gpt_vision_prompt = f"How many {object_name} are there in the picture? Answer only with an Integer number of occurrrences"
                 counter = 0
-                self.go_to_pose("default_head")
-                self.look_for_object(object_name, ignore_already_seen=True)
-                self.constant_spin_srv(15)
-                t1 = time.time()
-                while time.time() - t1 < 22:
-                    if self.object_found:
-                        counter += 1
-                self.robot_stop_srv()
+                for angle in angles_to_check:
+                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
+                    rospy.sleep(10)
+                    answer = self.img_description(gpt_vision_prompt, camera_name="both")["message"]
+                    if answer.isdigit():
+                        counter+= int(answer)
                 return counter
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -1547,6 +1548,9 @@ class Task_module:
                     rospy.sleep(0.03)
         self.talk("Perfect. Try to keep at that distance", "English", True, False)
         self.iterations=0
+
+    def go_back(self) -> None:
+        self.go_to_place(place_name="house_door")
 
     def center_head_with_label(self, label_info) -> None:   
         """

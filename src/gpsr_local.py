@@ -35,7 +35,7 @@ class GPSR(object):
         self.task_name = "GPSR"
         states = ['INIT', 'WAIT4GUEST', 'GPSR', 'GO2GPSR']
         self.tm = tm(perception = False,speech=False,manipulation=False, navigation=False, pytoolkit=False)
-        self.tm.initialize_node(self.task_name)
+        #self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
             {'trigger': 'start', 'source': 'GPSR', 'dest': 'INIT'},
@@ -70,12 +70,12 @@ class GPSR(object):
                 code = self.gen.generate_code(task,Model.GPT4).replace("`","").replace("python","")
                 print(code)
                 if not "I am sorry but I cannot complete this task" in code:
-                    print("es posible la task")
+                    print("\nIt is possible to execute the request")
                     if self.is_valid_syntax(code):
                         contador = 5
                 contador += 1
             if contador==4:
-                print("no es posible")
+                print("\nIt is NOT possible to execute the request!")
         self.GPSR_done()
 
     def on_enter_GO2GPSR(self):

@@ -11,7 +11,7 @@ import requests
 codebase = """"""
 
 CONFIG_PATH = os.path.join("src/task_utilities/src/code_generation/configs/robot_vars.csv")
-PlACES_PATH = os.path.join("src/navigation_utilities/resources/places.txt")
+PlACES_PATH = os.path.join("src/navigation_utilities/resources/places_colivri.txt")
 LABELS_PATH = os.path.join("src/perception_utilities/src/yolov7/coco.yaml")
 TASK_VARS = None
 
@@ -84,11 +84,14 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
             api_key= os.getenv("GPT_API"),
             api_version="2024-02-01",
         )
-        prediction = clientGPT.chat.completions.create(
-            model="GPT-4o", 
-            messages=messages, 
-            temperature=temperature
-        )
+        try:
+            prediction = clientGPT.chat.completions.create(
+                model="GPT-4o", 
+                messages=messages, 
+                temperature=temperature
+            )
+        except:
+            return "self.tm.talk('I am sorry but I cannot complete this task')"
     if model_type != Model.LLAMA2:
         answer = prediction.choices[0].message.content
     if is_code:

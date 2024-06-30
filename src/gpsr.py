@@ -62,7 +62,7 @@ class GPSR(object):
         subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
         self.tm.pose_srv("front_camera", True)
         self.tm.hot_word(words=["stop", "nova"],thresholds=[0.5, 0.4])
-        self.tm.talk("I am going to do the  "+self.task_name+" task","English")
+        self.tm.talk("I am going to do the  "+ self.task_name + " task","English")
         self.beggining()
 
     def on_enter_GPSR(self):
@@ -77,16 +77,16 @@ class GPSR(object):
             generate_utils.load_code_gen_config() 
             contador = 0
             while contador<3:
-                code = self.gen.generate_code(task,Model.GPT4).replace("`","").replace("python","")
+                code = self.gen.generate_code(task, Model.GPT4).replace("`","").replace("python","")
                 print(code)
                 if not "I am sorry but I cannot complete this task" in code:
-                    print("es posible la task")
+                    print("\nIt is possible to execute the request")
                     if self.is_valid_syntax(code):
                         exec(code)
                         contador = 5
                 contador += 1
             if contador==4:
-                self.tm.talk("I cannot do this task: "+task,"English")
+                self.tm.talk("I cannot the following task: " + task,"English")
         self.GPSR_done()
 
     def on_enter_GO2GPSR(self):
