@@ -127,7 +127,7 @@ class RECEPTIONIST(object):
         self.old_person = ""
         self.failed_saving_face = False
         self.angle_index = 0
-        self.chair_angles = [0, -30, 90]
+        self.chair_angles = [-10, 10, -70]
         self.checked_chair_angles = []
         self.empty_chair_angles = []
         self.is_first_guest = True
@@ -277,7 +277,7 @@ class RECEPTIONIST(object):
     def on_enter_SAVE_FACE(self):
 
         print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
-        # self.move_head_srv("up")
+        self.tm.go_to_pose("up_head")
         if not self.failed_saving_face:
             self.tm.publish_filtered_image("face", "front_camera")
             self.show_topic_srv("/perception_utilities/filtered_image")
