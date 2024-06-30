@@ -51,9 +51,9 @@ class ServeBreakfast(object):
         }
         
         self.drop_and_serve_position = {
-            "bowl": 0.7,
-            "milk_carton": 0.3,
-            "cereal_box": 1.0
+            "bowl": 0.1,
+            "milk_carton": -0.2,
+            "cereal_box": 0.3
         }
         
         self.drop_items_poses = {
@@ -69,9 +69,9 @@ class ServeBreakfast(object):
                 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         
-        self.relative_drop_position=0.7
+        self.relative_drop_position=0.62
         
-        self.crouch_4_drop = -0.4
+        self.crouch_4_drop = -0.2
         
         # ---------------------------------------------------------------------------
         #                       SERVICES
@@ -97,16 +97,16 @@ class ServeBreakfast(object):
     def on_enter_INIT(self):
         self.tm.go_to_pose("standard", self.normal_movement)
         print(self.consoleFormatter.format("INIT", "HEADER"))
-        self.tm.talk("Hi! Today I would serve you a cereal", "English", wait=False)
-        self.tm.set_current_place("mid_kitchen")
+        self.tm.set_current_place("house_door")
         self.tm.initialize_pepper()
+        self.tm.talk("Hi! Today I would serve you a cereal", "English", wait=False)
         self.start()
 
 
 
     def on_enter_GO_TO_CUPBOARD(self):
         print(self.consoleFormatter.format("GO_TO_CUPBOARD", "HEADER"))
-        self.tm.set_security_distance(True)
+        self.tm.enable_security_proxy()
         self.tm.go_to_pose("standard", self.normal_movement)
         self.tm.talk("Now I will go to the Kitchen", "English", wait=False)
         self.set_orthogonal_security_srv(0.3)
@@ -119,6 +119,7 @@ class ServeBreakfast(object):
     def on_enter_LOOK_4_ITEM(self):
         print(self.consoleFormatter.format("LOOK_4_ITEM", "HEADER"))
         self.actual_item=self.items[0]
+        self.tm.go_to_pose("down_head")
         self.tm.talk(f"I will look for the {self.actual_item}.", "English", wait=False)
         actual_relative_angle = self.relative_item_angle[self.actual_item]
         self.tm.go_to_relative_point(0.0,0.0,actual_relative_angle)
@@ -129,6 +130,7 @@ class ServeBreakfast(object):
                 "If you don't see a {object_name}, answer just with an empty string and don't say sorry or anything more.",
                 "front_camera")
         res = response["message"]
+        self.tm.go_to_pose("default_head")
         if response["message"] != "":
             self.tm.talk(f"{res}. Just right there", "English", wait=False)
         else:
@@ -144,7 +146,7 @@ class ServeBreakfast(object):
         self.tm.set_security_distance(False)
         actions = self.grab_items_poses[self.actual_item]
         self.tm.show_image(f"http://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/grab_{self.actual_item}.jpeg")
-        self.tm.go_to_pose("prepare_2_grab_big")
+        self.tm.go_to_pose("open_both_hands")
         
         if self.actual_item == "bowl":
             self.tm.talk("Could you please put the spoon in the bowl?", "English", wait=False)     
@@ -153,19 +155,23 @@ class ServeBreakfast(object):
         
         for action in actions:
             if action == "prepare_2_bowl" :
+                self.tm.go_to_pose(action, self.slow_movement)
                 self.tm.talk("Please place the bowl in my hands just like the image in my tablet shows", wait=False)
                 rospy.sleep(5)
+                self.tm.talk("Thank you again!", "English", wait=False) 
 
             if action == "prepare_2_grab_mid" or action == "prepare_2_grab_big": 
+                self.tm.go_to_pose(action, self.slow_movement)
                 self.tm.talk(f"Please hold the {self.actual_item} in middle of my hands like the image in my tablet shows! I will tell you when to stop holding it.", "English", wait=False)   
                 rospy.sleep(5)
-            self.tm.go_to_pose(action, self.slow_movement)
-            rospy.sleep(2)
+                self.tm.talk("Thank you!", "English", wait=False) 
             
             if action  == "grab_mid_up" or action  == "grab_big_up" or action  == "grab_bowl_up":
                 self.carry_to_serve = True
                 carry_thread = threading.Thread(target=self.carry_thread,args=[action])
                 carry_thread.start()
+                
+            rospy.sleep(2)
 
         self.tm.show_words_proxy()
         self.go_to_drop_place()
@@ -174,7 +180,7 @@ class ServeBreakfast(object):
 
     def on_enter_GO_TO_DROP_PLACE(self):
         print(self.consoleFormatter.format("GO_TO_DROP_PLACE", "HEADER"))
-        self.tm.set_security_distance(True)
+        self.tm.enable_security_proxy()
         self.set_orthogonal_security_srv(0.3)
         self.set_tangential_security_srv(0.05)
         self.tm.talk("On my way to the dining room", "English", wait=False)
