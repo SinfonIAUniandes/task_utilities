@@ -19,7 +19,7 @@ from robot_toolkit_msgs.msg import touch_msg, speech_recognition_status_msg, set
 
 from manipulation_msgs.srv import go_to_pose, move_head
 
-from speech_msgs.srv import q_a_srv, talk_srv, speech2text_srv , talk_srvRequest, speech2text_srvRequest, answer_srv, calibrate_srv, hot_word_srv
+from speech_msgs.srv import q_a_srv, talk_srv, speech2text_srv , talk_srvRequest, speech2text_srvRequest, answer_srv, hot_word_srv
 
 from perception_msgs.srv import img_description_with_gpt_vision_srv, get_first_clothes_color_srv, get_clothes_color_srv, start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest, filter_labels_by_distance_srv, filter_labels_by_distance_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv, get_person_description_srv, add_recognition_model_srv, add_recognition_model_srvRequest, remove_recognition_model_srv, remove_recognition_model_srvRequest
 
@@ -256,10 +256,6 @@ class Task_module:
             print(self.consoleFormatter.format("Waiting for /speech_utilities/q_a_srv...", "WARNING"))
             rospy.wait_for_service('/speech_utilities/q_a_srv')
             self.q_a_proxy = rospy.ServiceProxy('/speech_utilities/q_a_srv', q_a_srv)
-
-            print(self.consoleFormatter.format("Waiting for /speech_utilities/calibrate_srv...", "WARNING"))
-            rospy.wait_for_service('/speech_utilities/calibrate_srv')
-            self.calibrate_proxy = rospy.ServiceProxy('/speech_utilities/calibrate_srv', calibrate_srv)
 
             print(self.consoleFormatter.format("Waiting for speech_utilities/answer...", "WARNING"))
             rospy.wait_for_service('/speech_utilities/answers_srv')
@@ -838,7 +834,7 @@ class Task_module:
         if self.perception and self.navigation and self.manipulation and self.pytoolkit:
             try:
                 self.setRPosture_srv("stand")
-                angles_to_check = [0,-60,60]
+                angles_to_check = [0]
                 gpt_vision_prompt = f"How many {object_name} are there in the picture? Answer only with an Integer number of occurrrences"
                 counter = 0
                 for angle in angles_to_check:
@@ -1217,27 +1213,6 @@ class Task_module:
             print("speech as false")
             return False
 
-    def calibrate_srv(self, duration = 5)->bool:
-        """
-        Input: duration in seconds
-        Output: True if the service was called correctly, False if not
-        ----------
-        Calibrates the robot's microphone for <duration> seconds
-        """
-        if self.speech:
-            try:
-                threshold = self.calibrate_proxy(duration)
-                if threshold:
-                    return True
-                else:
-                    return False
-            except rospy.ServiceException as e:
-                print("Service call failed: %s" % e)
-                return False
-        else:
-            print("speech as false")
-            return False
-
     def speech2text_srv(
         self, seconds=0, lang="eng"
     ) -> str:
@@ -1443,7 +1418,7 @@ class Task_module:
             print("pytoolkit as false")
             return False
 
-    def follow_you(self, speed=None, awareness=True, avoid_obstacles=False, rotate=True) -> bool:
+    def follow_you(self, speed=None, awareness=True, avoid_obstacles=False, rotate=False) -> bool:
         """
         Input: 
         command: Whether to start following whoever is closests or not.
@@ -1478,11 +1453,11 @@ class Task_module:
                     self.robot_stop_srv()
                     self.waiting_touch = False
                     self.start_yolo_awareness(True)
-                self.talk("I will follow you now! Please touch my head when we arrive. If i can't see you anymore please come back!", "English",wait=False)
                 follow_thread = Thread(target=self.follow_you_srv_thread,args=([speed,awareness,avoid_obstacles]))
                 follow_thread.start()
                 person_thread = Thread(target=self.get_closer_person)
                 person_thread.start()
+                self.talk("I will follow you now! Please touch my head when we arrive. If i can't see you anymore please come back!", "English",wait=False)
                 self.head_touched = False
                 self.waiting_touch = True
                 last_talk_time = rospy.get_time()
@@ -1544,7 +1519,7 @@ class Task_module:
                     continue
             else:
                 self.iterations+=1
-            if self.iterations >= 30:
+            if self.iterations >= 15:
                 self.talk("I have lost you! Please come back", "English", True, False)
                 while not ("person" in self.labels):
                     rospy.sleep(0.03)
@@ -1680,6 +1655,9 @@ class Task_module:
                 if self.stopped_for_safety:
                     self.stopped_for_safety = False
                     # Try to run over the obstacle again
+                    self.stop_moving()
+                    rospy.sleep(1.5)
+                    self.talk("Please wait!", wait=False, animated=False)
                     self.start_moving(self.linear_vel/3, 0, angular_vel)
                     rospy.sleep(0.2)
                     # Stop rotating but keeping moving forward
@@ -1733,9 +1711,11 @@ class Task_module:
                         iterations_no_safety_stop += 1
                         if iterations_no_safety_stop >7:
                             navigation_attempts=0
+            else:
+                self.iterations+=1
 
             # If a person has not been seen for 30 iterations
-            if self.iterations >=15:
+            if self.iterations >=20:
                 self.stop_moving()
                 self.calibrate_follow_distance(max_width,min_width)
                 continue

@@ -60,7 +60,7 @@ class GPSR(object):
         self.tm.turn_camera("depth_camera","custom",1,15)
         self.tm.toggle_filter_by_distance(True,2,["person"])
         self.tm.talk("I am going to do the  "+ self.task_name + " task","English", wait=False)
-        self.tm.talk("I am going to the GPSR location","English", wait=False)
+        self.tm.talk("I am going to the EGPSR location","English", wait=False)
         self.tm.go_to_place("gpsr_location")
         self.beggining()
 
@@ -85,14 +85,14 @@ class GPSR(object):
                     if self.is_valid_syntax(code):
                         exec(code)
                         contador = 5
-                contador += 1
+                contador += 1   
             if contador==1:
                 self.tm.talk("I cannot the following task: " + task,"English")
         self.GPSR_done()
 
     def on_enter_GO2GPSR(self):
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
-        self.tm.talk("I am going to the GPSR location","English", wait=False)
+        self.tm.talk("I am going to the EGPSR location","English", wait=False)
         self.tm.go_to_place("gpsr_location")
         self.go_to_gpsr()
 

@@ -212,17 +212,18 @@ class CARRY_MY_LUGGAGE(object):
         save_place_thread = threading.Thread(target=self.save_place)
         save_place_thread.start()
         # Estanca la ejecucion
-        self.tm.follow_you(speed=0.5,rotate=False)
+        self.tm.follow_you(rotate=False)
         self.following = False
         self.tm.talk("We have arrived! Could you pick up your bag?", "English")
         self.tm.robot_stop_srv()
         if self.bag_place=="right":
-            self.tm.go_to_pose("open_left_hand")
             self.tm.go_to_pose("small_object_left_hand")
+            rospy.sleep(5)
+            self.tm.go_to_pose("open_left_hand")
         else:
-            self.tm.go_to_pose("open_right_hand")
             self.tm.go_to_pose("small_object_right_hand")
-        rospy.sleep(5)
+            rospy.sleep(5)
+            self.tm.go_to_pose("open_right_hand")
         self.tm.talk("Thank you for using my services, have a nice day!",wait=False)
         self.setMoveArms_srv.call(True, True)
         self.go_back()

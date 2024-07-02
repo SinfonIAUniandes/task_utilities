@@ -65,7 +65,7 @@ class FOLLOW_YOU(object):
 
     def on_enter_FOLLOW_YOU(self):
         print(self.consoleFormatter.format("FOLLOW_YOU", "HEADER"))
-        self.tm.follow_you(True,speed=0.5,avoid_obstacles=True)
+        self.tm.follow_you(rotate=False)
         print("Follow you activated!")
         while self.isTouched == False:
             time.sleep(0.1)

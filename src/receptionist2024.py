@@ -294,7 +294,6 @@ class RECEPTIONIST(object):
             target=self.tm.get_person_description
         )
         self.person_description_thread.start()
-        self.tm.talk("Thank you, I already took some recognizing pictures.")
 
         print("success: ", success)
         if success:

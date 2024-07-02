@@ -34,7 +34,7 @@ html = """
                     </form>
 
                     <form action="/action" method="post">
-                        <button type="submit" name="action" value="heynova" class="option-button" style="background-color: #FFD700;">Hey nova</button>
+                        <button type="submit" name="action" value="hey nova" class="option-button" style="background-color: #FFD700;">Hey nova</button>
                     </form>
 
                     <form action="/action" method="post">

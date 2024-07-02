@@ -37,7 +37,7 @@ class RECEPTIONIST(object):
             perception=True,
             speech=True,
             manipulation=True,
-            navigation=False,
+            navigation=True,
             pytoolkit=True,
         )
         self.tm.initialize_node(self.task_name)
@@ -294,18 +294,16 @@ class RECEPTIONIST(object):
     def on_enter_SAVE_FACE(self):
 
         print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
-        self.tm.go_to_pose("up_head")
+        self.tm.set_angles_srv(["HeadPitch"],[-0.6],0.1,)
         if self.ask_host == True:
-            person = self.host_name
+            person = self.host
         else:
             person = self.current_guest
         if not self.failed_saving_face:
             self.tm.publish_filtered_image("face", "front_camera")
             self.show_topic_srv("/perception_utilities/filtered_image")
             self.tm.talk(
-                "Hey {}, I will take some pictures of your face to recognize you in future occasions, please place your face inside the green circle.".format(
-                    person["name"]
-                ),
+                "Hey {}, I will take some pictures of your face to recognize you in future occasions, please place your face inside the green circle.".format(person["name"]),
                 "English",
             )
         success = self.tm.save_face(person["name"], 3)
@@ -313,12 +311,11 @@ class RECEPTIONIST(object):
             target=self.tm.get_person_description
         )
         self.person_description_thread.start()
-        self.tm.talk("Thank you, I already took your pictures.")
 
         print("success: ", success)
         if success:
             if self.ask_host == True:
-                self.save_host_face_succed()
+                self.save_host_face_succeded()
             else:
                 self.save_face_succeded()
         else:
@@ -345,7 +342,7 @@ class RECEPTIONIST(object):
     
     def on_enter_ASK_4_HOST(self):
         if self.is_first_guest:
-            self.tm.talk(f"Hey, i don't seem to remember you, please come closer so i can take a couple of pictures.","English",False)
+            self.tm.talk(f"Hey, charlie, i don't seem to remember you, please come closer so i can take a couple of pictures.","English",False)
             self.ask_host = True
             self.remember_face()
         else:
@@ -427,14 +424,15 @@ class RECEPTIONIST(object):
             self.tm.go_to_pose("default_head")
             self.tm.set_angles_srv(
                 ["HeadYaw", "HeadPitch"],
-                [math.radians(self.chair_angles[self.angle_index]), -0.3],
+                [math.radians(self.chair_angles[self.angle_index]), 0],
                 0.1,
             )
+            rospy.sleep(4)
             self.checked_chair_angles.append(self.chair_angles[self.angle_index])
             self.angle_index += 1
-            t1 = time.time()
+            start_time = time.time()
             self.labels = {}
-            while time.time() - t1 < 1:
+            while time.time() - start_time < 1:
                 if "person" in self.labels:
                     self.tm.talk("Recognizing person", "English")
                     self.person_found()
