@@ -49,7 +49,7 @@ class STICKLER_RULES(object):
         self.confirm_comppliance = False
         self.confirm_comppliance_forbidden = True
         # El robot empieza en 0 y luego se mueve hacia estos angulos
-        self.angles_to_check = [-40,40]
+        self.angles_to_check = [0,-60,60]
         # Donde se encuentran ubicados los otros invitados, es para forbidden room
         self.party_place = "dining"
         self.initial_place = "bedroom"
@@ -102,7 +102,12 @@ class STICKLER_RULES(object):
         for angle in self.angles_to_check:
             print("angulo actual:",angle)
             self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
-            rospy.sleep(10)
+            if angle=="0":
+                rospy.sleep(0)
+            elif angle=="-60":
+                rospy.sleep(3)
+            elif angle=="60":
+                        rospy.sleep(5)
             persons = self.tm.labels.get("person", [])
             for person in persons:
                 print("centrando persona:",person)

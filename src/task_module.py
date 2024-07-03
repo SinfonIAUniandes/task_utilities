@@ -709,11 +709,11 @@ class Task_module:
             print("perception as false")
             return "error"
 
-    def search_for_specific_person(self, class_type: str, specific_characteristic: str, timeout = 24, true_check=False) -> bool:
+    def search_for_specific_person(self, class_type: str, specific_characteristic: str,true_check=False) -> bool:
         """
         Input:
-        class_type: The characteristic to search for (name, pointing, raised_hands or breaking rules or TODO colors)
-        specific_characteristic: The specific thing to search for (example: David, Right hand up, Pointing right, shoes, drink, forbidden, garbage, blue (shirt,coat,etc))
+        class_type: The characteristic to search for (name, pointing, raised_hands or colors)
+        specific_characteristic: The specific thing to search for (example: David, Right hand up, Pointing right, blue (shirt,coat,etc))
         timeout: Timeout in seconds || -1 for infinite
         Output: True if person was found
         ----------
@@ -721,40 +721,50 @@ class Task_module:
         """
         if self.perception and self.manipulation:
             try:
-                self.go_to_pose("head_up")
-                self.constant_spin_srv(15)
+                angles_to_check = [0,-60,60]
+                self.setRPosture_srv("stand")
                 self.look_for_object("person", ignore_already_seen=True)
                 specific_person_found = False
-                start_time = time.time()
-                self.head_thread = True
-                head_thread = Thread(target=self.head_srv_thread, args=(["up"]))
-                head_thread.start()
-                while not specific_person_found and (time.time()-start_time) < timeout:
-                    self.wait_for_object(24)
-                    self.robot_stop_srv()
-                    if true_check:
-                        if class_type=="name":
-                            name = self.q_a("name")
-                            specific_characteristic = specific_characteristic.lower().replace(".","").replace("!","").replace("?","")
-                            if specific_characteristic in name:
-                                specific_person_found = True 
-                        elif class_type=="pointing":
-                            if self.pointing == specific_characteristic:
-                                specific_person_found = True 
-                        elif class_type=="raised_hand":
-                            if self.hand_up == specific_characteristic:
-                                specific_person_found = True
-                        elif class_type=="breaking_rule":
-                            if specific_characteristic == "drink":
-                                gpt_vision_prompt = f"Is there a person without a drink in this picture? Answer only with True or False"
+                for angle in angles_to_check:
+                    print("angulo actual:",angle)
+                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
+                    if angle=="0":
+                        rospy.sleep(0)
+                    elif angle=="-60":
+                        rospy.sleep(3)
+                    elif angle=="60":
+                        rospy.sleep(5)
+                    persons = self.labels.get("person", [])
+                    for person in persons:
+                        self.center_head_with_label(person)
+                        if true_check:
+                            if class_type=="name":
+                                name = self.q_a("name")
+                                specific_characteristic = specific_characteristic.lower().replace(".","").replace("!","").replace("?","")
+                                if specific_characteristic in name:
+                                    specific_person_found = True 
+                                    break
+                            elif class_type=="pointing":
+                                if self.pointing == specific_characteristic:
+                                    specific_person_found = True 
+                                    break
+                            elif class_type=="raised_hand":
+                                if self.hand_up == specific_characteristic:
+                                    specific_person_found = True
+                                    break
+                            elif class_type=="colors":
+                                gpt_vision_prompt = f"Answer about the person centered in the image: Is the person wearing {specific_characteristic}? Answer only with True or False"
                                 answer = self.img_description(gpt_vision_prompt)["message"]
                                 if "True" in answer:
                                     specific_person_found = True
-                    else:
-                        specific_person_found = True
-                    rospy.sleep(1)
-                    self.constant_spin_srv(15)
-                self.robot_stop_srv()
+                                    break
+                        else:
+                            specific_person_found = True
+                            break
+                        # Despues de centrar la cabeza, devolverla al punto inicial para centrar a otra persona
+                        self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
+                    if specific_person_found:
+                        break
                 return specific_person_found
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -812,11 +822,23 @@ class Task_module:
         # spins until the object is found or timeout
         if self.perception and self.navigation and self.manipulation:
             try:
-                self.go_to_pose("default_head")
+                angles_to_check = [0,-60,60]
+                self.setRPosture_srv("stand")
                 self.look_for_object(object_name, ignore_already_seen=ignore_already_seen)
-                self.constant_spin_srv(15)
-                found = self.wait_for_object(timeout)
-                self.robot_stop_srv()
+                found = False
+                for angle in angles_to_check:
+                    print("angulo actual:",angle)
+                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
+                    if angle=="0":
+                        rospy.sleep(0)
+                    elif angle=="-60":
+                        rospy.sleep(3)
+                    elif angle=="60":
+                        rospy.sleep(5)
+                    labels = self.labels.get(object_name, [])
+                    label_found = labels[0]
+                    self.center_head_with_label(label_found)
+                    found = True
                 return found
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -834,12 +856,17 @@ class Task_module:
         if self.perception and self.navigation and self.manipulation and self.pytoolkit:
             try:
                 self.setRPosture_srv("stand")
-                angles_to_check = [0]
+                angles_to_check = [0,-60,60]
                 gpt_vision_prompt = f"How many {object_name} are there in the picture? Answer only with an Integer number of occurrrences"
                 counter = 0
                 for angle in angles_to_check:
                     self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.2)
-                    rospy.sleep(5)
+                    if angle=="0":
+                        rospy.sleep(0)
+                    elif angle=="-60":
+                        rospy.sleep(3)
+                    elif angle=="60":
+                        rospy.sleep(5)
                     answer = self.img_description(gpt_vision_prompt, camera_name="both")["message"]
                     if answer.isdigit():
                         counter+= int(answer)
