@@ -141,15 +141,6 @@ class CARRY_MY_LUGGAGE(object):
         self.place_counter = 0
         self.pose = ""
         self.tm.head_touched = False
-        self.closest_person = {
-            "id": None,
-            "width": None,
-            "height": None,
-            "x": None,
-            "y": None,
-            "status": None,
-        }
-        self.rate = rospy.Rate(10)
         
         # --------------- ROSPY Check ---------------
         
@@ -168,17 +159,9 @@ class CARRY_MY_LUGGAGE(object):
         self.tm.initialize_pepper()
         
         # --------------- PARAMETERS ---------------
-
-        # Super safe parameters
-        
-        #self.set_orthogonal_security_srv(0.3)
-        #self.set_tangential_security_srv(0.05)
-        
-        # Maybe unsafe
         
         self.set_orthogonal_security_srv(0.1)
         self.set_tangential_security_srv(0.01)
-        #self.tm.setDistance_srv(0)
         
         # --------------- INIT STATE PROCCEDURE ---------------
         
