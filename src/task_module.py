@@ -883,8 +883,10 @@ class Task_module:
                     elif angle=="60":
                         rospy.sleep(5)
                     answer = self.img_description(gpt_vision_prompt, camera_name="both")["message"]
+                    print(answer)
                     if answer.isdigit():
                         counter+= int(answer)
+                    rospy.sleep(2)
                 return counter
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)

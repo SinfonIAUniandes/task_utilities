@@ -50,14 +50,15 @@ class GPSR(object):
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
         ############################# GLOBAL VARIABLES #############################
-        self.gpsr_location = "house_door"
-        self.init_place = "house_door"
+        self.gpsr_location = "house_door_gpsr"
+        self.init_place = "house_door_gpsr"
 
     def on_enter_INIT(self):
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.initialize_pepper()
         self.tm.turn_camera("bottom_camera","custom",1,15)
         self.tm.set_current_place(self.init_place)
+        print("initial position: ",self.init_place)
         self.tm.turn_camera("depth_camera","custom",1,15)
         self.tm.toggle_filter_by_distance(True,2,["person"])
         self.tm.talk("I am going to do the  "+ self.task_name + " task","English", wait=False)
