@@ -172,7 +172,7 @@ class Evento(object):
         anim_msg = self.gen_anim_msg("Waiting/Think_3")
         self.animationPublisher.publish(anim_msg)
         if not ("None" in text):
-            request = f"""La persona dijo: {text}. Si hay palabras en otro idioma en tu respuesta escribelas como se pronunicarian en español, por ejemplo si en tu respuesta esta Python, responde Paiton"""
+            request = f"""La persona dijo: {text}. Si hay palabras en otro idioma en tu respuesta escribelas como se pronunicarian en español porque en este momento solo puedes hablar español y ningun otro idioma, por ejemplo si en tu respuesta esta Python, responde Paiton. No añadas contenido complejo a tu respuesta como codigo, solo explica lo que sea necesario."""
             if "hoy" in text or "día" in text:
                 fecha_actual = datetime.now()
                 print(datetime.now())
@@ -185,14 +185,33 @@ class Evento(object):
                 hora = fecha_actual.hour
                 minuto = fecha_actual.minute
                 answer="Son las: {} y {} minutos".format(hora, minuto)
-            elif "baila" in text or "baile" in text or "bailar" in text:
+            else:
+                answer=self.tm.answer_question(request, save_conversation=True) 
+            self.tm.talk(answer,"Spanish",animated=True, wait=True)
+            if "beso" in text.lower():
+                word_msg = speech_recognition_status_msg()
+                word_msg.status = "beso"
+                self.callback_hot_word(word_msg)
+            elif "gracias" in text.lower():
+                word_msg = speech_recognition_status_msg()
+                word_msg.status = "gracias"
+                self.callback_hot_word(word_msg)
+            elif "baila" in text.lower() or "baile" in text.lower():
                 word_msg = speech_recognition_status_msg()
                 word_msg.status = "baile"
                 self.callback_hot_word(word_msg)
-                answer = "Esta bien! Me encanta bailar"
-            else:
-                answer=self.tm.answer_question(request, save_conversation=True) 
-            self.tm.talk(answer,"Spanish",animated=True)
+            elif "musculo" in text.lower():
+                word_msg = speech_recognition_status_msg()
+                word_msg.status = "musculos"
+                self.callback_hot_word(word_msg)
+            elif "zombi" in text.lower():
+                word_msg = speech_recognition_status_msg()
+                word_msg.status = "zombi"
+                self.callback_hot_word(word_msg)
+            elif "guitarra" in text.lower():
+                word_msg = speech_recognition_status_msg()
+                word_msg.status = "guitarra"
+                self.callback_hot_word(word_msg)
         else:
             self.tm.talk("Disculpa, no te entendi, puedes hablar cuando mis ojos esten azules. Por favor habla mas lento","Spanish",animated=True)
         self.set_hot_words()
@@ -200,7 +219,7 @@ class Evento(object):
     def set_hot_words(self):
         if self.hearing:
             #self.tm.hot_word(["chao","detente","hey nova","baile","asereje","pose","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro","gracias"],thresholds=[0.45, 0.4, 0.398, 0.43, 0.43, 0.39, 0.4, 0.4, 0.5, 0.4, 0.4, 0.4, 0.41, 0.4, 0.4, 0.43, 0.4])
-            self.tm.hot_word(["hey nova", "chao"],thresholds=[0.385, 0.47])
+            self.tm.hot_word(["hey nova", "chao"],thresholds=[0.375, 0.47])
             
 
     def gen_anim_msg(self, animation):
@@ -260,7 +279,7 @@ class Evento(object):
                 if not self.already_dance:
                     dance_thread = threading.Thread(target=self.dance_threadf,args=[1])
                     dance_thread.start()
-                    self.already_dance = True
+                    self.already_dance = False
             elif word == "asereje":
                 if not self.already_asereje:
                     dance_thread = threading.Thread(target=self.dance_threadf,args=[3])
@@ -298,7 +317,6 @@ class Evento(object):
             elif word == "gracias":
                 anim_msg = self.gen_anim_msg("Gestures/BowShort_3")
                 self.animationPublisher.publish(anim_msg)
-                self.tm.talk("Con mucho gusto","Spanish")
             self.haciendo_animacion = False
     
 # Crear una instancia de la maquina de estados

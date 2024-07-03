@@ -12,7 +12,7 @@ class ServeBreakfast(object):
         self.console_formatter = ConsoleFormatter.ConsoleFormatter()
         self.tm = tm(navigation=True, manipulation=True, speech=True, perception=True, pytoolkit=True)
         self.tm.initialize_node('SERVE_BREAKFAST')
-        self.states = ['INIT', 'GO_TO_CUPBOARD', 'LOOK_4_ITEM', 'GRAB_OBJECT', 'GO_TO_DROP_PLACE', 'DROP', 'MAKE_BREAKFAST', 'END']
+        self.states = ['INIT', 'GO_TO_CUPBOARD', 'LOOK_4_ITEM', 'GRAB_OBJECT', 'GO_TO_DROP_PLACE', 'DROP', 'SERVE', 'END']
         
         self.transitions = [
             {'trigger': 'zero', 'source': 'SERVE_BREAKFAST', 'dest': 'INIT'},
@@ -21,10 +21,10 @@ class ServeBreakfast(object):
             {'trigger': 'grab_ingredient', 'source': 'LOOK_4_ITEM', 'dest': 'GRAB_OBJECT'},
             {'trigger': 'go_to_drop_place', 'source': 'GRAB_OBJECT', 'dest': 'GO_TO_DROP_PLACE'},
             {'trigger': 'drop_object', 'source': 'GO_TO_DROP_PLACE', 'dest': 'DROP'},
-            {'trigger': 'serve', 'source': 'DROP', 'dest': 'MAKE_BREAKFAST'},
+            {'trigger': 'serve', 'source': 'DROP', 'dest': 'SERVE'},
+            {'trigger': 'drop', 'source': 'SERVE', 'dest': 'DROP'},
             {'trigger': 'again', 'source': 'DROP', 'dest': 'GO_TO_CUPBOARD'},
-            {'trigger': 'again2', 'source': 'MAKE_BREAKFAST', 'dest': 'GO_TO_CUPBOARD'},
-            {'trigger': 'end', 'source': 'MAKE_BREAKFAST', 'dest': 'END'}
+            {'trigger': 'end', 'source': 'SERVE', 'dest': 'END'}
         ]
         
         self.machine = Machine(model=self, states=self.states, transitions=self.transitions, initial='SERVE_BREAKFAST')
@@ -45,9 +45,9 @@ class ServeBreakfast(object):
         }
                 
         self.grab_items_poses = {
-            "bowl": ["open_both_hands", "prepare_2_bowl", "grab_bowl", "bowl_hands", "grab_bowl_up"],
-            "cereal_box": ["open_both_hands", "prepare_2_grab_mid", "grab_mid","close_both_hands" , "grab_mid_up"],
-            "milk_carton": ["open_both_hands", "prepare_2_grab_big", "grab_big", "close_both_hands" ,"grab_big_up"]
+            "bowl": ["open_both_hands", "prepare_2_bowl", "grab_bowl", "bowl_hands", "grab_bowl_up" ], # DONE
+            "cereal_box": ["open_both_hands", "prepare_2_grab_mid", "grab_mid","close_both_hands" , "grab_mid_up", "carry_cereal"], # DONE
+            "milk_carton": ["open_both_hands", "prepare_2_grab_big", "grab_big", "close_both_hands" ,"grab_big_up" "carry_milk"]
         }
         
         self.drop_and_serve_position = {
@@ -56,15 +56,16 @@ class ServeBreakfast(object):
             "cereal_box": 0.3
         }
         
-        self.drop_items_poses = {
-            "bowl": ["grab_bowl","open_both_hands", "prepare_2_grab_big"],
-            "milk_carton": ["grab_mid", "open_both_hands", "prepare_2_grab_mid"],
-            "cereal_box": ["grab_big", "open_both_hands", "prepare_2_grab_big"]
-        }
         
         self.serve_items_poses = {
-            "milk_carton": ["grab_mid", "grab_mid_up", "serve_milk", "grab_mid_up", "grab_mid", "prepare_2_grab_mid", "open_both_hands"],
-            "cereal_box": ["grab_big", "grab_big_up","serve_cereal", "grab_big_up", "grab_big", "prepare_2_grab_big", "open_both_hands"]
+            "milk_carton": ["grab_big_up", "grab_big", "serve_milk", "grab_big", "grab_big_up"], # DONE
+            "cereal_box": ["grab_mid", "grab_mid_up","serve_cereal", "grab_mid_up", "grab_mid"] # DONE
+        }
+        
+        self.drop_items_poses = {
+            "bowl": ["grab_bowl","open_both_hands", "prepare_2_grab_big"], #DONE
+            "milk_carton": ["grab_big", "open_both_hands", "drop"], # DONE
+            "cereal_box": ["grab_mid", "open_both_hands", "drop"] # DONE
         }
                 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
@@ -189,49 +190,45 @@ class ServeBreakfast(object):
         self.carry_to_serve = False
         self.drop_object()
         
+    def on_enter_SERVE(self):
+        print(self.consoleFormatter.format("SERVE", "HEADER"))
+        drop_relative_point = self.drop_and_serve_position[self.actual_item]
+        self.tm.go_to_relative_point(0.0, drop_relative_point, 0.0)
+        self.tm.set_security_distance(False)
+        self.tm.go_to_relative_point(self.relative_drop_position, 0.0, 0.0)
+        if self.actual_item == "cereal_box" or self.actual_item == "milk_carton":
+            self.tm.talk(f"I will serve the {self.actual_item}", "English", wait=False) 
+            actions = self.serve_items_poses[self.actual_item]
+            for action in actions:
+                self.tm.go_to_pose(action, self.slow_movement)
+                if action == "serve_cereal":
+                    rospy.sleep(2)
+                    self.shake_cereal()
+                rospy.sleep(1)
+        if self.items == []:
+            self.end()
+        else:
+            self.drop()
 
 
     def on_enter_DROP(self):
         print(self.consoleFormatter.format("DROP", "HEADER"))
-        self.tm.set_security_distance(False)
-        drop_relative_point = self.drop_and_serve_position[self.actual_item]
-        self.tm.go_to_relative_point(0.0, drop_relative_point, 0.0)
-        actions = self.drop_items_poses[self.actual_item] 
-        self.tm.go_to_relative_point(self.relative_drop_position, 0.0, 0.0)
+    
+        actions = self.drop_items_poses[self.actual_item]  
         self.set_angle_srv(["HipPitch"], [self.crouch_4_drop], self.normal_movement)
         
         for action in actions:
             self.tm.go_to_pose(action, self.slow_movement)
             rospy.sleep(2)
         
-        if self.actual_item == "cereal_box" or self.actual_item == "milk_carton":
-            self.serve()
-        
-        elif self.actual_item == "bowl":
-            self.tm.go_to_relative_point(-(self.relative_drop_position), 0.0, 0.0)
-            self.tm.set_security_distance(True)
-            self.set_orthogonal_security_srv(0.3)
-            self.set_tangential_security_srv(0.05)
-            self.again()
+        self.tm.set_security_distance(True)
+        self.set_orthogonal_security_srv(0.3)
+        self.set_tangential_security_srv(0.05)
+        self.tm.go_to_relative_point(-(self.relative_drop_position), 0.0, 0.0)
+        self.again()
 
             
-    def on_enter_MAKE_BREAKFAST(self):
-        print(self.consoleFormatter.format("MAKE_BREAKFAST", "HEADER"))
-        self.tm.set_security_distance(False)
-        self.tm.talk(f"I will serve the {self.actual_item}", "English", wait=False) 
-        actions = self.serve_items_poses[self.actual_item]
-        for action in actions:
-            self.tm.go_to_pose(action, self.slow_movement)
-            if action == "serve_cereal":
-                rospy.sleep(2)
-                self.shake_cereal()
-            rospy.sleep(1)
-        self.tm.go_to_relative_point(-(self.relative_drop_position), 0.0, 0.0)
-        if self.items == []:
-            self.end()
-        else:
-            
-            self.again2()
+    
 
     def on_enter_END(self):
         print(self.consoleFormatter.format("END", "HEADER"))
