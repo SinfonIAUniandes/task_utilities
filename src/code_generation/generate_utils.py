@@ -11,7 +11,7 @@ import requests
 codebase = """"""
 
 CONFIG_PATH = os.path.join("src/task_utilities/src/code_generation/configs/robot_vars.csv")
-PlACES_PATH = os.path.join("src/navigation_utilities/resources/places_colivri.txt")
+PlACES_PATH = os.path.join("src/navigation_utilities/resources/places.txt")
 LABELS_PATH = os.path.join("src/perception_utilities/src/yolov7/coco.yaml")
 TASK_VARS = None
 

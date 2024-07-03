@@ -16,7 +16,8 @@ class LongStringGenerator:
         self.tm.count_objects(object_name)->int: Returns the number of objects found. The object can be anything, even objects not available in other services.
         self.tm.search_for_specific_person(class_type,specific_characteristic)->bool: The robot spins in place in the current room until it finds a person with a specific characteristic. The options for class_type are: "pointing", "name", "raised_hand". The options for specific_characteristic depend on class_type. If class_type is "name", options are human names like "Paris","Robin","Jaine". If class_type is "pointing" or "raised_hand" options are "right", "left", "center". Returns True if such a person was found, False if not
         self.tm.find_item_with_characteristic(class_type,characteristic,place)->str: Allows the robot to find the item which has the given "characteristic", the options for class_type are: "color", "size", "weight", "position", "description". the options for characteristic depend on class_type: Color ("red","blue","black with white dots"). Size ("smallest", "largest", "thinnest", "big one", "small one"). Weight ("lightest", "heaviest"). Position ("left", "right"). Description("fragile","container","pourable","two-handed"). "place" Indicates the furniture or item on top of which the robot needs to search for the object.Returns a String with the name of the object with the needed characteristics or "None" if it wasn't found
-
+        self.tm.get_person_gesture()->str: Allows the robot to determine the gesture of the person the robot is looking. Returns a string with the gesture that the person is doing, if the robot couldn't tell the gesture, returns 'None'
+        
         Speech functions:
         self.tm.talk(text): Allows the robot to say the input of the service
         self.tm.speech2text_srv()->str: Allows the robot to listen to the user and returns the text that the robot heard
@@ -76,6 +77,8 @@ class LongStringGenerator:
         - If the user asked the robot to tell them the answer DO NOT use the 'go_back' service after you've already said the answer, YOU MUST use 'go_back' before saying the answer to the main user
         - If the user wants the robot to answer something using the 'find_item_with_characteristic', the robot MUST ALWAYS use the 'go_back' service before the 'talk' service 
         - If the task is to take a person from a place to another, DO NOT use the 'ask_for_object' service, instead find the person in the desired room and ask them to follow the robot and then use the 'go_to_place' service to get there.
+        - The Pepper Robot is a member of the SinfonIA Uniandes team for the Robocup 2024 competition. The team members are: Alonso Hernandez Tavera, Alexa Gutierrez Ballen, Santiago Rodriguez Mora, David Cuevas Alba, David Tobon Molina
+        - If the `q_a` service is used to ask a question NEVER use the `talk` service to ask the question, the `q_a` service already makes the robot ask the question
         
         - The only available objects are: {self.objects}, if you need to recognize an object that is not listed use the most similar one from the list. Not doing this will result in an error. Use the syntax from the list when calling the codebase functions.
         - If the object you need to recognize or a similar object is NOT listed above, please respond with self.tm.talk("I cannot recognize <object>")

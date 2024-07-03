@@ -709,12 +709,27 @@ class Task_module:
             print("perception as false")
             return "error"
 
+    def get_person_gesture(self)->str:
+        """
+        Input:
+        Output: True if person was found
+        ----------
+        Looks for a specific person. This person is pointing, raising a hand, has a specific name, is breaking a particular rule or TODO is wearing a color
+        """
+        if self.perception and self.manipulation:
+            self.setRPosture_srv("stand")
+            gpt_vision_prompt = f"Answer about the person centered in the image. What gesture is the person doing. Answer only with one word or 'None' if you couldn't determine the gesture"
+            answer = self.img_description(gpt_vision_prompt, camera_name="both")["message"]
+            return answer
+        else:
+            print("perception or manipulation as false")
+            return "None"
+
     def search_for_specific_person(self, class_type: str, specific_characteristic: str,true_check=False) -> bool:
         """
         Input:
         class_type: The characteristic to search for (name, pointing, raised_hands or colors)
         specific_characteristic: The specific thing to search for (example: David, Right hand up, Pointing right, blue (shirt,coat,etc))
-        timeout: Timeout in seconds || -1 for infinite
         Output: True if person was found
         ----------
         Looks for a specific person. This person is pointing, raising a hand, has a specific name, is breaking a particular rule or TODO is wearing a color

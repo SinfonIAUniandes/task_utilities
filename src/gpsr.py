@@ -50,25 +50,25 @@ class GPSR(object):
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
         ############################# GLOBAL VARIABLES #############################
-        self.location = "init_gpsr"
+        self.gpsr_location = "house_door"
+        self.init_place = "house_door"
 
     def on_enter_INIT(self):
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.initialize_pepper()
         self.tm.turn_camera("bottom_camera","custom",1,15)
-        self.tm.set_current_place(self.location)
+        self.tm.set_current_place(self.init_place)
         self.tm.turn_camera("depth_camera","custom",1,15)
         self.tm.toggle_filter_by_distance(True,2,["person"])
         self.tm.talk("I am going to do the  "+ self.task_name + " task","English", wait=False)
         self.tm.talk("I am going to the GPSR location","English", wait=False)
-        self.tm.go_to_place("gpsr_location")
+        #self.tm.go_to_place(self.gpsr_location)
         self.beggining()
 
     def on_enter_GPSR(self):
         print(self.consoleFormatter.format("GPSR", "HEADER"))
         self.tm.look_for_object("")
-        self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. You can talk to me when my eyes are blue: ","English", wait=False)
-        rospy.sleep(3)
+        self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. You can talk to me when my eyes are blue: ","English", wait=True)
         task = self.tm.speech2text_srv(0)
         print(f"Task: {task}")
         if task!="":
@@ -93,7 +93,7 @@ class GPSR(object):
     def on_enter_GO2GPSR(self):
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
         self.tm.talk("I am going to the GPSR location","English", wait=False)
-        self.tm.go_to_place("gpsr_location")
+        self.tm.go_to_place(self.gpsr_location)
         self.go_to_gpsr()
 
     def on_enter_WAIT4GUEST(self):
