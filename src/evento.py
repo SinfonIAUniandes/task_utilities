@@ -70,14 +70,13 @@ class Evento(object):
 
     def on_enter_TALK(self):
         print(self.consoleFormatter.format("TALK", "HEADER"))
-        self.tm.stop_tracker_proxy()
         anim_msg = self.gen_anim_msg("Gestures/BowShort_3")
         self.animationPublisher.publish(anim_msg)
         self.hearing = False
-        self.tm.talk("Bienvenido, soy Nova, es un gusto conocerte","Spanish")
-        rospy.sleep(0.9)
-        self.enable_tracker_service()
+        self.tm.talk("Bienvenido, soy Nova, es un gusto conocerte","Spanish",animated=False)
         self.tm.talk("Di Hey Nova cuando quieras decirme algo, y chao cuando no quieras seguir hablando","Spanish",animated=True)
+        rospy.sleep(0.9)
+        self.tm.start_tracker_proxy()
         self.hearing = True
         while not self.is_done:
             if self.hey_pepper:
@@ -89,12 +88,12 @@ class Evento(object):
         self.TALK_done()
 
     def on_enter_WAIT4GUEST(self):
-        self.tm.stop_tracker_proxy()
         self.tm.show_words_proxy()
         self.is_done=False
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
         self.tm.setRPosture_srv("stand")
         self.tm.setMoveHead_srv.call("up")
+        self.tm.stop_tracker_proxy()
         self.person_arrived()
 
     def check_rospy(self):
@@ -107,19 +106,6 @@ class Evento(object):
     def run(self):
         while not rospy.is_shutdown():
             self.start()
-    
-    def enable_tracker_service(self):
-        """
-        Enables face tracking from the toolkit of the robot.
-        """
-        print("Waiting for tracking service")
-        rospy.wait_for_service('/pytoolkit/ALTracker/start_tracker_srv')
-        try:
-            start_tracker_srv = rospy.ServiceProxy("/pytoolkit/ALTracker/start_tracker_srv", battery_service_srv)
-            start_tracker_srv()
-            print("tracking service connected!")
-        except rospy.ServiceException as e:
-            print("Service call failed")
     
     def enable_hot_word_service(self):
         """
@@ -186,9 +172,10 @@ class Evento(object):
         anim_msg = self.gen_anim_msg("Waiting/Think_3")
         self.animationPublisher.publish(anim_msg)
         if not ("None" in text):
-            request = f"""La persona dijo: {text}."""
+            request = f"""La persona dijo: {text}. Si hay palabras en otro idioma en tu respuesta escribelas como se pronunicarian en español porque en este momento solo puedes hablar español y ningun otro idioma, por ejemplo si en tu respuesta esta Python, responde Paiton. No añadas contenido complejo a tu respuesta como codigo, solo explica lo que sea necesario."""
             if "hoy" in text or "día" in text:
                 fecha_actual = datetime.now()
+                print(datetime.now())
                 dia = fecha_actual.day
                 mes = fecha_actual.month
                 m = ['nan','enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
@@ -198,13 +185,33 @@ class Evento(object):
                 hora = fecha_actual.hour
                 minuto = fecha_actual.minute
                 answer="Son las: {} y {} minutos".format(hora, minuto)
-            elif "baila" in text or "baile" in text or "bailar" in text:
-                word_msg = speech_recognition_status_msg()
-                word_msg.status = "baile"
-                self.callback_hot_word()
             else:
                 answer=self.tm.answer_question(request, save_conversation=True) 
-            self.tm.talk(answer,"Spanish",animated=True)
+            self.tm.talk(answer,"Spanish",animated=True, wait=True)
+            if "beso" in text.lower():
+                word_msg = speech_recognition_status_msg()
+                word_msg.status = "beso"
+                self.callback_hot_word(word_msg)
+            elif "gracias" in text.lower():
+                word_msg = speech_recognition_status_msg()
+                word_msg.status = "gracias"
+                self.callback_hot_word(word_msg)
+            elif "baila" in text.lower() or "baile" in text.lower():
+                word_msg = speech_recognition_status_msg()
+                word_msg.status = "baile"
+                self.callback_hot_word(word_msg)
+            elif "musculo" in text.lower():
+                word_msg = speech_recognition_status_msg()
+                word_msg.status = "musculos"
+                self.callback_hot_word(word_msg)
+            elif "zombi" in text.lower():
+                word_msg = speech_recognition_status_msg()
+                word_msg.status = "zombi"
+                self.callback_hot_word(word_msg)
+            elif "guitarra" in text.lower():
+                word_msg = speech_recognition_status_msg()
+                word_msg.status = "guitarra"
+                self.callback_hot_word(word_msg)
         else:
             self.tm.talk("Disculpa, no te entendi, puedes hablar cuando mis ojos esten azules. Por favor habla mas lento","Spanish",animated=True)
         self.set_hot_words()
@@ -212,7 +219,7 @@ class Evento(object):
     def set_hot_words(self):
         if self.hearing:
             #self.tm.hot_word(["chao","detente","hey nova","baile","asereje","pose","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro","gracias"],thresholds=[0.45, 0.4, 0.398, 0.43, 0.43, 0.39, 0.4, 0.4, 0.5, 0.4, 0.4, 0.4, 0.41, 0.4, 0.4, 0.43, 0.4])
-            self.tm.hot_word(["hey nova", "chao"],thresholds=[0.4, 0.45])
+            self.tm.hot_word(["hey nova", "chao"],thresholds=[0.375, 0.47])
             
 
     def gen_anim_msg(self, animation):
@@ -272,7 +279,7 @@ class Evento(object):
                 if not self.already_dance:
                     dance_thread = threading.Thread(target=self.dance_threadf,args=[1])
                     dance_thread.start()
-                    self.already_dance = True
+                    self.already_dance = False
             elif word == "asereje":
                 if not self.already_asereje:
                     dance_thread = threading.Thread(target=self.dance_threadf,args=[3])
@@ -310,7 +317,6 @@ class Evento(object):
             elif word == "gracias":
                 anim_msg = self.gen_anim_msg("Gestures/BowShort_3")
                 self.animationPublisher.publish(anim_msg)
-                self.tm.talk("Con mucho gusto","Spanish")
             self.haciendo_animacion = False
     
 # Crear una instancia de la maquina de estados
