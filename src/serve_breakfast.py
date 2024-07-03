@@ -20,8 +20,7 @@ class ServeBreakfast(object):
             {'trigger': 'scan_for_objects', 'source': 'GO_TO_CUPBOARD', 'dest': 'LOOK_4_ITEM'},
             {'trigger': 'grab_ingredient', 'source': 'LOOK_4_ITEM', 'dest': 'GRAB_OBJECT'},
             {'trigger': 'go_to_drop_place', 'source': 'GRAB_OBJECT', 'dest': 'GO_TO_DROP_PLACE'},
-            {'trigger': 'drop_object', 'source': 'GO_TO_DROP_PLACE', 'dest': 'DROP'},
-            {'trigger': 'serve', 'source': 'DROP', 'dest': 'SERVE'},
+            {'trigger': 'serve', 'source': 'GO_TO_DROP_PLACE', 'dest': 'SERVE'},
             {'trigger': 'drop', 'source': 'SERVE', 'dest': 'DROP'},
             {'trigger': 'again', 'source': 'DROP', 'dest': 'GO_TO_CUPBOARD'},
             {'trigger': 'end', 'source': 'SERVE', 'dest': 'END'}
@@ -47,7 +46,7 @@ class ServeBreakfast(object):
         self.grab_items_poses = {
             "bowl": ["open_both_hands", "prepare_2_bowl", "grab_bowl", "bowl_hands", "grab_bowl_up" ], # DONE
             "cereal_box": ["open_both_hands", "prepare_2_grab_mid", "grab_mid","close_both_hands" , "grab_mid_up", "carry_cereal"], # DONE
-            "milk_carton": ["open_both_hands", "prepare_2_grab_big", "grab_big", "close_both_hands" ,"grab_big_up" "carry_milk"]
+            "milk_carton": ["open_both_hands", "prepare_2_grab_big", "grab_big", "close_both_hands" ,"grab_big_up" "carry_milk"] # DONE
         }
         
         self.drop_and_serve_position = {
@@ -70,9 +69,9 @@ class ServeBreakfast(object):
                 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         
-        self.relative_drop_position=0.62
+        self.relative_drop_position=0.6
         
-        self.crouch_4_drop = -0.2
+        self.crouch_4_drop = -0.35
         
         # ---------------------------------------------------------------------------
         #                       SERVICES
@@ -98,7 +97,7 @@ class ServeBreakfast(object):
     def on_enter_INIT(self):
         self.tm.go_to_pose("standard", self.normal_movement)
         print(self.consoleFormatter.format("INIT", "HEADER"))
-        self.tm.set_current_place("house_door")
+        self.tm.set_current_place("hallway_door")
         self.tm.initialize_pepper()
         self.tm.talk("Hi! Today I would serve you a cereal", "English", wait=False)
         self.start()
@@ -155,6 +154,7 @@ class ServeBreakfast(object):
             self.tm.talk("Thank you!", "English", wait=False) 
         
         for action in actions:
+            print(action)
             if action == "prepare_2_bowl" :
                 self.tm.go_to_pose(action, self.slow_movement)
                 self.tm.talk("Please place the bowl in my hands just like the image in my tablet shows", wait=False)
@@ -167,10 +167,12 @@ class ServeBreakfast(object):
                 rospy.sleep(5)
                 self.tm.talk("Thank you!", "English", wait=False) 
             
-            if action  == "grab_mid_up" or action  == "grab_big_up" or action  == "grab_bowl_up":
+            if action  == "carry_cereal" or action  == "carry_milk" or action  == "grab_bowl_up":
                 self.carry_to_serve = True
                 carry_thread = threading.Thread(target=self.carry_thread,args=[action])
                 carry_thread.start()
+            
+            self.tm.go_to_pose(action, self.slow_movement)
                 
             rospy.sleep(2)
 
@@ -188,7 +190,7 @@ class ServeBreakfast(object):
         self.tm.set_move_arms_enabled(False)
         self.tm.go_to_place("dining", lower_arms=False)
         self.carry_to_serve = False
-        self.drop_object()
+        self.serve()
         
     def on_enter_SERVE(self):
         print(self.consoleFormatter.format("SERVE", "HEADER"))
@@ -200,6 +202,7 @@ class ServeBreakfast(object):
             self.tm.talk(f"I will serve the {self.actual_item}", "English", wait=False) 
             actions = self.serve_items_poses[self.actual_item]
             for action in actions:
+                print(action)
                 self.tm.go_to_pose(action, self.slow_movement)
                 if action == "serve_cereal":
                     rospy.sleep(2)
