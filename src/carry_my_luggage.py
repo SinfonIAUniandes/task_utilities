@@ -230,7 +230,8 @@ class CARRY_MY_LUGGAGE(object):
         print(self.consoleFormatter.format("GRAB_BAG", "HEADER"))
         
         self.setMoveArms_srv.call(False, False)
-        self.tm.talk("Please place the bag in my hand, when you have finished please touch my head!","English",wait=False)
+        self.tm.talk("Please place the bag in my hand just like you can see in my tablet, when you have finished please touch my head!","English",wait=False)
+        self.tm.show_image(f"https://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/carry_bag.jpeg")
         
         start_time = rospy.get_time()
         last_talk_time = rospy.get_time()
@@ -260,6 +261,7 @@ class CARRY_MY_LUGGAGE(object):
             self.tm.go_to_pose("small_object_right_high_2")
             
         # Thanking the user
+        self.tm.show_words_proxy()
         self.tm.show_topic("/perception_utilities/yolo_publisher")
         self.tm.talk("Thank you!", "English",wait=False)
         self.follow_you()

@@ -97,7 +97,7 @@ class ServeBreakfast(object):
     def on_enter_INIT(self):
         self.tm.go_to_pose("standard", self.normal_movement)
         print(self.consoleFormatter.format("INIT", "HEADER"))
-        self.tm.set_current_place("hallway_door")
+        self.tm.set_current_place("house_door")
         self.tm.initialize_pepper()
         self.tm.talk("Hi! Today I would serve you a cereal", "English", wait=False)
         self.start()
@@ -209,6 +209,7 @@ class ServeBreakfast(object):
                     self.shake_cereal()
                 rospy.sleep(1)
         if self.items == []:
+            self.tm.go_to_relative_point(-(self.relative_drop_position), 0.0, 0.0)
             self.end()
         else:
             self.drop()
@@ -235,6 +236,7 @@ class ServeBreakfast(object):
 
     def on_enter_END(self):
         print(self.consoleFormatter.format("END", "HEADER"))
+        self.tm.go_to_pose("standard", self.normal_movement)
         self.tm.talk("I finished serving breakfast, enjoy it", "English", wait=False)
         return
 
