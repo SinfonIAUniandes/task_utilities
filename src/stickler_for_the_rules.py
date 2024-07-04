@@ -12,9 +12,7 @@ import os
 import numpy as np
 
 # --------------------------- MESSAGES AND SERVICES IMPORTS ------------------------------
-from navigation_msgs.srv import get_absolute_position_srv
-from perception_msgs.msg import get_labels_msg
-from robot_toolkit_msgs.srv import move_head_srv, set_security_distance_srv, set_angle_srv, set_angle_srvRequest
+from robot_toolkit_msgs.srv import move_head_srv, set_angle_srvRequest
 
 # --------------------------- STICKLER FOR THE RULES TASK CLASS  ------------------------------
 class STICKLER_RULES(object):
@@ -37,7 +35,7 @@ class STICKLER_RULES(object):
         # Definition of the permitted transitions between states
         transitions = [
             {'trigger': 'start', 'source': 'STICKLER_RULES', 'dest': 'INIT'},
-            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'LOOK4PERSON'},
+            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'GO2NEXT'},
             {'trigger': 'rules_checked', 'source': 'LOOK4PERSON', 'dest': 'GO2NEXT'},
             {'trigger': 'arrive_next', 'source': 'GO2NEXT', 'dest': 'LOOK4PERSON'},
         ]
@@ -63,12 +61,14 @@ class STICKLER_RULES(object):
         self.confirm_comppliance = False
         self.confirm_comppliance_forbidden = True
         
+        self.someone_in_forbidden = False
+        
         # The robot starts at 0 and then moves to these angles
         self.angles_to_check = [0,-60,60]
         
         # Where the other guests are located, it is for the forbidden room
-        self.party_place = "dining"
-        self.initial_place = "bedroom"
+        self.party_place = "living_room"
+        self.initial_place = "house_door"
         self.last_place = self.initial_place
         
         # TODO Set total guests
@@ -81,11 +81,11 @@ class STICKLER_RULES(object):
         self.breakers_found = 0
         
         # TODO Set the forbidden room
-        self.forbidden = "living_room"
+        self.forbidden = "kitchen"
         
         # List of places to check
-        self.list_places = ["dining_stickler","main_room","kitchen","living_room"]
-        self.places_names = ["dining","living_room","main_room","kitchen"]
+        self.list_places = ["kitchen","living_room","intermed_door","dining","bedroom"]
+        self.places_names = ["kitchen","living_room","main room","dining","bedroom"]
         
         # List of checked places
         self.checked_places = []
@@ -101,7 +101,6 @@ class STICKLER_RULES(object):
     # --------------------------- FIRST STATE: INIT ------------------------------
     def on_enter_INIT(self):
         
-        print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         
         self.tm.initialize_pepper()
         
@@ -120,11 +119,7 @@ class STICKLER_RULES(object):
         self.checked_places.append(self.initial_place)
         self.last_place = self.initial_place
         
-        self.get_labels_publisher = rospy.Subscriber('/perception_utilities/get_labels_publisher', get_labels_msg, self.tm.callback_get_labels_subscriber)
-        
-        # Thread to get closer to the person
-        person_thread = threading.Thread(target=self.tm.get_closer_person)
-        person_thread.start()
+        print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         
         self.tm.talk("I am going to do the " + self.task_name + " task","English", wait=False)
         
@@ -137,6 +132,8 @@ class STICKLER_RULES(object):
         
         print(self.consoleFormatter.format("LOOK4PERSON", "WARNING"))
         
+        self.tm.look_for_object("person", ignore_already_seen=True)
+        
         self.tm.talk("I am going to check if the guests are breaking the rules!","English", wait=False)
         self.tm.setRPosture_srv("stand")
         
@@ -145,14 +142,15 @@ class STICKLER_RULES(object):
             print("angulo actual:",angle)
             self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
             
-            if angle=="0":
-                rospy.sleep(0)
+            if angle==0:
+                rospy.sleep(1)
                 
-            elif angle=="-60":
+            elif angle==-60:
                 rospy.sleep(3)
                 
-            elif angle=="60":
+            elif angle==60:
                 rospy.sleep(5)
+            rospy.sleep(2)
                 
             persons = self.tm.labels.get("person", [])
             
@@ -166,7 +164,12 @@ class STICKLER_RULES(object):
                 
                 print("reglas checkeadas")
                 self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
-                
+            
+        if self.confirm_comppliance_forbidden and self.someone_in_forbidden:
+            if self.last_place == self.forbidden:
+                # Moving to the ASK2FOLLOW state
+                self.ASK2FOLLOW()
+            
         self.tm.setRPosture_srv("stand")
         self.tm.talk("I'm done checkin this room'!","English", wait=False)
         
@@ -180,11 +183,11 @@ class STICKLER_RULES(object):
         
         self.tm.robot_stop_srv()
         
-        gpt_vision_prompt = f"Is the person in the center of the picture barefooted or in socks? Answer only with True or False. If you can't see their feet answer only with 'None'. If the person you see is behind a wall answer only with 'Wall' and don't check the other rules. If you are not at least 80% sure that a person is wearing shoes answer True"
+        gpt_vision_prompt = f"Is the person in the center of the picture barefooted or in socks? Answer only with True or False. If you can't see their feet answer only with 'None'. If the person you see is behind a wall answer only with 'Wall' and don't check the other rules. If you are not at least 70% sure that a person is wearing shoes answer True"
         
         answer = self.tm.img_description(prompt=gpt_vision_prompt,camera_name="both")["message"]
         
-        print("SHOES GPT ANSWER:"+answer)
+        print("Esta descalza:"+answer)
         
         if "True" in answer:
             # Esta descalso o con medias
@@ -208,7 +211,7 @@ class STICKLER_RULES(object):
         self.tm.robot_stop_srv()
         gpt_vision_prompt = f"Is the person in the center of the picture holding a bottle,a juice box, a cup, a can, or any kind of drink in their hand? Answer only with True or False. If the person you see is behind a wall answer only with 'Wall' and don't check the other rules"
         answer = self.tm.img_description(gpt_vision_prompt,camera_name="both")["message"]
-        print("DRINK GPT ANSWER:"+answer)
+        print("Tiene bebida:"+answer)
         if "True" in answer:
             # Tiene una bebida
             self.has_drink = 1
@@ -225,10 +228,12 @@ class STICKLER_RULES(object):
         
         self.tm.robot_stop_srv()
         
-        if self.confirm_comppliance_forbidden and self.last_place == self.forbidden:
+        if self.last_place == self.forbidden:
             
             self.tm.talk("You should not be here, because this room is forbidden.","English", wait=True)
+            rospy.sleep(1)
             self.move_head_srv("default")
+            self.someone_in_forbidden = True
             return True
         
         return False
@@ -268,20 +273,13 @@ class STICKLER_RULES(object):
         self.tm.talk("You must have a Drink in your hand. Please, go to the kitchen and grab a drink, you must keep it in your hand!","English", wait=False)
 
     # --------------------------- FIFTH STATE: ASK TO LEAVE ------------------------------
-    def ASK2LEAVE(self):
+    def ASK2FOLLOW(self):
         
         print(self.consoleFormatter.format("ASK4SHOES", "HEADER"))
-        
-        if self.confirm_comppliance_forbidden:
-            
-            self.tm.talk("Follow me to the other party guests please","English", wait=False)
-            self.tm.go_to_place(self.party_place)
-            self.tm.setRPosture_srv("stand")
-            self.move_head_srv("default")
-            self.tm.talk("Now, please stay here and do not come back to the forbidden room","English", wait=False)
-            
-        else:
-            self.tm.talk("This room is forbidden. Please, leave this room","English", wait=False)
+        self.tm.setRPosture_srv("stand")
+        self.tm.talk("Follow me to the other party guests please","English", wait=False)
+        self.tm.go_to_place(self.party_place)
+        self.tm.talk("Now, please stay here and do not come back to the forbidden room","English", wait=False)
             
             
     # --------------------------- SIXTH STATE: GO TO THE NEXT ROOM ------------------------------
@@ -301,7 +299,8 @@ class STICKLER_RULES(object):
             if place not in self.checked_places:
                 
                 self.tm.talk("I'm gonna check " + self.places_names[place_num],"English", wait=False)
-                self.tm.go_to_place(place)
+                if self.tm.last_place != place:
+                    self.tm.go_to_place(place)
                 print("Next Place: " + place)
                 self.checked_places.append(place)
                 self.last_place = place
@@ -325,7 +324,7 @@ class STICKLER_RULES(object):
         drink_check_thread = threading.Thread(target=self.check_drink)
         drink_check_thread.start()
         
-        while self.has_drink==2 and self.has_shoes==2:
+        while self.has_drink==2 or self.has_shoes==2:
             
             rospy.sleep(0.1)
             
@@ -344,16 +343,12 @@ class STICKLER_RULES(object):
             self.breakers_found += 1
             
         else:
-            if self.has_drink != 4 and self.has_shoes != 4 :
+            if self.has_drink != 4 and self.has_shoes != 4 and (not is_in_forbidden):
                 self.tm.talk("Congratulations! You're not breaking any rule","English", wait=False)
                         
         self.has_drink = 2
         self.has_shoes = 2
         
-        if self.last_place == self.forbidden:
-            
-            # Moving to the ASK2LEAVE state
-            self.ASK2LEAVE()
 
     # --------------------------- ROSPY CHECK FUNCTION ------------------------------
     def check_rospy(self):

@@ -50,27 +50,41 @@ class GPSR(object):
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
         ############################# GLOBAL VARIABLES #############################
-        self.gpsr_location = "house_door_gpsr"
-        self.init_place = "house_door_gpsr"
+        self.gpsr_location = "house_door"
+        self.init_place = "house_door"
 
     def on_enter_INIT(self):
-        print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.initialize_pepper()
         self.tm.turn_camera("bottom_camera","custom",1,15)
+        # CAMBIAR EN LA COMPETENCIA, EL ROBOT NO INICIA EN GPSR_LOCATION DEBE NAVEGAR ALLA TODO
+        self.tm.current_place = "house_door"
         self.tm.set_current_place(self.init_place)
         print("initial position: ",self.init_place)
         self.tm.turn_camera("depth_camera","custom",1,15)
         self.tm.toggle_filter_by_distance(True,2,["person"])
-        self.tm.talk("I am going to do the  "+ self.task_name + " task","English", wait=False)
-        self.tm.talk("I am going to the GPSR location","English", wait=False)
-        #self.tm.go_to_place(self.gpsr_location)
+        print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
+        self.tm.talk("I am going to do the  "+ self.task_name + " task","English")
+        self.tm.talk("I am going to the GPSR location","English")
+        print("gpsr_location:", self.gpsr_location )
+        print(self.tm.last_place)
+        if self.tm.last_place != self.gpsr_location:
+            self.tm.go_to_place(self.gpsr_location)
         self.beggining()
 
     def on_enter_GPSR(self):
         print(self.consoleFormatter.format("GPSR", "HEADER"))
         self.tm.look_for_object("")
-        self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. You can talk to me when my eyes are blue: ","English", wait=True)
+        self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. You can talk to me when my eyes are blue: ","English")
+        rospy.sleep(1)
         task = self.tm.speech2text_srv(0)
+        self.tm.talk(f"Your command is {task}","English", wait=True)
+        self.tm.talk(f"If that is correct, please touch my head. If not, please wait until my eyes are blue again ","English", wait=False)
+        correct = self.tm.wait_for_head_touch(message="", message_interval=100, timeout=13)
+        while not correct:
+            self.tm.talk("I am sorry, please repeat your command","English", wait=True)
+            task = self.tm.speech2text_srv(0)
+            self.tm.talk(f"Your command is {task}. If that is correct, please touch my head","English", wait=True)
+            correct = self.tm.wait_for_head_touch(message="Touch my head if that is correct!", message_interval=13, timeout=13)
         print(f"Task: {task}")
         if task!="":
             self.tm.talk("Processing your request")
@@ -94,7 +108,8 @@ class GPSR(object):
     def on_enter_GO2GPSR(self):
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
         self.tm.talk("I am going to the GPSR location","English", wait=False)
-        self.tm.go_to_place(self.gpsr_location)
+        if self.tm.last_place != self.gpsr_location:
+            self.tm.go_to_place(self.gpsr_location)
         self.go_to_gpsr()
 
     def on_enter_WAIT4GUEST(self):

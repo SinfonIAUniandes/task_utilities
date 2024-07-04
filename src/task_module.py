@@ -58,6 +58,8 @@ class Task_module:
             3: (1280, 960),
             4: (2560, 1920)
         }
+        self.last_place = ""
+        self.current_place = ""
         self.angles = 0
         self.navigating = False
         self.stopped_for_safety = False
@@ -687,21 +689,35 @@ class Task_module:
         """
         if self.perception:
             try:
-                place_prompt = ""
-                if place != "":
-                    place_prompt = f" in the {place}"
-                rospy.sleep(1)
-                if class_type == "color":
-                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture has these colors: {characteristic}. Answer only with one word, either the item name or None"
-                elif class_type == "size" or class_type == "weight":
-                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is the {characteristic}. Answer only with one word, either the item name or None"
-                elif class_type == "position":
-                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is positioned {characteristic}most. Answer only with one word, either the item name or None"
-                elif class_type == "description":
-                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is {characteristic}. Answer only with one word, either the item name or None"
-                answer = self.img_description(gpt_vision_prompt,camera_name="bottom_camera")["message"]
-                print(answer)
+                angles_to_check = [0,-60,60]
+                self.setRPosture_srv("stand")
+                found = False
+                for angle in angles_to_check:
+                    print("angulo actual:",angle)
+                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), 0],0.1)
+                    if angle==0:
+                        rospy.sleep(1)
+                    elif angle==-60:
+                        rospy.sleep(3)
+                    elif angle==60:
+                        rospy.sleep(5)
+                    place_prompt = ""
+                    if place != "":
+                        place_prompt = f" in the {place}"
+                    if class_type == "color":
+                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture has these colors: {characteristic}. Answer only with one word, either the item name or None"
+                    elif class_type == "size" or class_type == "weight":
+                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is the {characteristic}. Answer only with one word, either the item name or None"
+                    elif class_type == "position":
+                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is positioned {characteristic}most. Answer only with one word, either the item name or None"
+                    elif class_type == "description":
+                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is {characteristic}. Answer only with one word, either the item name or None"
+                    answer = self.img_description(gpt_vision_prompt,camera_name="bottom_camera")["message"]
+                    if not "none" in answer.lower():
+                        break
+                self.setRPosture_srv("stand")
                 return answer
+                
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return "None"
@@ -725,6 +741,32 @@ class Task_module:
             print("perception or manipulation as false")
             return "None"
 
+    def wait_for_head_touch(self, timeout = 15, message = "", message_interval = 5):
+        """
+        Input:
+        timeout: The time until the robot stops waiting
+        message: The message the robot should repeat every x seconds
+        message_interval: The time the robot should wait between talks
+        Output: True if the robot head was touched, False if timeout
+        ----------
+        Waits until the robots head is touched or a timeout
+        """
+        first_time = True
+        self.head_touched = False
+        self.waiting_touch = True
+        start_time = rospy.get_time()
+        last_talk_time = rospy.get_time()
+        while (not self.head_touched) and rospy.get_time() - start_time < timeout:
+            rospy.sleep(0.1)
+            if rospy.get_time()-last_talk_time > message_interval and not first_time:
+                self.talk(message,"English",wait=True)
+                last_talk_time = rospy.get_time()
+            if first_time:
+                first_time = False
+        result = self.head_touched
+        self.waiting_touch = False
+        return result
+
     def search_for_specific_person(self, class_type: str, specific_characteristic: str,true_check=False) -> bool:
         """
         Input:
@@ -741,13 +783,12 @@ class Task_module:
                 self.look_for_object("person", ignore_already_seen=True)
                 specific_person_found = False
                 for angle in angles_to_check:
-                    print("angulo actual:",angle)
                     self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
-                    if angle=="0":
-                        rospy.sleep(0)
-                    elif angle=="-60":
+                    if angle==0:
+                        rospy.sleep(1)
+                    elif angle==-60:
                         rospy.sleep(3)
-                    elif angle=="60":
+                    elif angle==60:
                         rospy.sleep(5)
                     persons = self.labels.get("person", [])
                     for person in persons:
@@ -780,6 +821,7 @@ class Task_module:
                         self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
                     if specific_person_found:
                         break
+                self.setRPosture_srv("stand")
                 return specific_person_found
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -843,17 +885,20 @@ class Task_module:
                 found = False
                 for angle in angles_to_check:
                     print("angulo actual:",angle)
-                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
-                    if angle=="0":
-                        rospy.sleep(0)
-                    elif angle=="-60":
+                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), 0],0.1)
+                    if angle==0:
+                        rospy.sleep(1)
+                    elif angle==-60:
                         rospy.sleep(3)
-                    elif angle=="60":
+                    elif angle==60:
                         rospy.sleep(5)
                     labels = self.labels.get(object_name, [])
-                    label_found = labels[0]
-                    self.center_head_with_label(label_found)
-                    found = True
+                    if len(labels)>0:
+                        label_found = labels[0]
+                        self.center_head_with_label(label_found)
+                        found = True
+                        break
+                self.setRPosture_srv("stand")
                 return found
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -876,17 +921,17 @@ class Task_module:
                 counter = 0
                 for angle in angles_to_check:
                     self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.2)
-                    if angle=="0":
-                        rospy.sleep(0)
-                    elif angle=="-60":
+                    if angle==0:
+                        rospy.sleep(1)
+                    elif angle==-60:
                         rospy.sleep(3)
-                    elif angle=="60":
+                    elif angle==60:
                         rospy.sleep(5)
                     answer = self.img_description(gpt_vision_prompt, camera_name="both")["message"]
                     print(answer)
                     if answer.isdigit():
                         counter+= int(answer)
-                    rospy.sleep(2)
+                self.setRPosture_srv("stand")
                 return counter
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -1334,6 +1379,8 @@ class Task_module:
             try:
                 self.set_move_arms_enabled(False)
                 approved = self.set_current_place_proxy(place_name)
+                self.last_place = self.current_place
+                self.current_place = place_name
                 if approved == "approved":
                     return True
                 else:
@@ -1386,9 +1433,11 @@ class Task_module:
                 approved = self.go_to_place_proxy(place_name, graph)
                 if wait:
                     self.wait_go_to_place()
+                self.last_place = self.current_place
+                self.current_place = place_name
                 if lower_arms:
                     self.setRPosture_srv("stand")
-                if approved=="approved":
+                if approved == "approved":
                     return True
                 else:
                     return False
@@ -1508,8 +1557,8 @@ class Task_module:
                 start_time = rospy.get_time()
                 print("Started following")
                 while (not self.head_touched):
-                    if rospy.get_time()-last_talk_time > 5:
-                        self.talk("Remember to touch my head when we arrive","English",wait=False)
+                    if rospy.get_time()-last_talk_time > 10:
+                        self.talk("Remember to touch my head when we arrive","English",wait=True)
                         last_talk_time = rospy.get_time()
                 self.waiting_touch = False
                 self.start_yolo_awareness(False)
@@ -1571,7 +1620,13 @@ class Task_module:
         self.iterations=0
 
     def go_back(self) -> None:
-        self.go_to_place(place_name="house_door")
+        """
+        Input: None
+        Output: None
+        ----------
+        Service to make the robot return to its last place.
+        """
+        self.go_to_place(place_name = self.last_place)
 
     def center_head_with_label(self, label_info) -> None:   
         """
@@ -1701,7 +1756,7 @@ class Task_module:
                     # Try to run over the obstacle again
                     self.stop_moving()
                     rospy.sleep(1.5)
-                    self.talk("Please wait!", wait=False, animated=False)
+                    self.talk("Please wait!", wait=True, animated=False)
                     self.start_moving(self.linear_vel/3, 0, angular_vel)
                     rospy.sleep(0.2)
                     # Stop rotating but keeping moving forward

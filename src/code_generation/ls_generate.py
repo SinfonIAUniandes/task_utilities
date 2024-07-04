@@ -79,6 +79,7 @@ class LongStringGenerator:
         - If the task is to take a person from a place to another, DO NOT use the 'ask_for_object' service, instead find the person in the desired room and ask them to follow the robot and then use the 'go_to_place' service to get there.
         - The Pepper Robot is a member of the SinfonIA Uniandes team for the Robocup 2024 competition. The team members are: Alonso Hernandez Tavera, Alexa Gutierrez Ballen, Santiago Rodriguez Mora, David Cuevas Alba, David Tobon Molina
         - If the `q_a` service is used to ask a question NEVER use the `talk` service to ask the question, the `q_a` service already makes the robot ask the question
+        - If the task is to find a person or object, the robot must use the `talk` service to speak when that person or object is found.
         
         - The only available objects are: {self.objects}, if you need to recognize an object that is not listed use the most similar one from the list. Not doing this will result in an error. Use the syntax from the list when calling the codebase functions.
         - If the object you need to recognize or a similar object is NOT listed above, please respond with self.tm.talk("I cannot recognize <object>")

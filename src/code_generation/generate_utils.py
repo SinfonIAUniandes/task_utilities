@@ -32,7 +32,7 @@ def load_task_config()->dict:
                 splitted_line = line.split(",")
                 place = splitted_line[0].strip()
                 last_field = splitted_line[4].strip()
-                if last_field != "False" and "gpsr" in place:
+                if last_field != "False" :
                     places.append(place)
             config["place_names"] = places
         
