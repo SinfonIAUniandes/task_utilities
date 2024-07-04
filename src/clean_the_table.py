@@ -52,7 +52,7 @@ class CLEAN_THE_TABLE(object):
         # Poses to grab items by item
         self.grab_items_poses = {
         "dish": ["open_both_hands","prepare_2_grab", "grab_plate_vertically"],
-        "bowl": ["open_both_hands","prepare_2_grab", "grab_plate_vertically","almost_close_both_hands"],
+        "bowl": ["open_both_hands","prepare_2_grab", "grab_plate_vertically","bowl_hands"],
         "cup": ["open_both_hands","prepare_2_grab", "grab_plate_vertically","almost_close_both_hands"],
         "spoon": ["carry_cutlery", "close_both_hands"],
         "fork":["carry_cutlery", "close_both_hands"]
@@ -68,12 +68,12 @@ class CLEAN_THE_TABLE(object):
         }
         
         # Grab table position
-        self.relative_table_rotation = 90
-        self.relative_table_approach = 0.2
+        self.relative_table_rotation = 0
+        self.relative_table_approach = 0.0
         
         # In Dishwasher
-        self.turn_around_2_dishwasher = 180
-        self.relative_dishwasher_approach = 0.4
+        self.turn_around_2_dishwasher = -90
+        self.relative_dishwasher_approach = 0.6
         self.crouch_4_dishwasher = -1.5 # 10 grados hacia adelante
         
         self.place_items_poses = {
@@ -85,8 +85,9 @@ class CLEAN_THE_TABLE(object):
         }
         
         # Relatives positions from dishwasher to table
-        self.dishwasher_2_table_rotation = 180
-        self.dishwasher_table_approach = 0.4
+        self.dishwasher_2_table_rotation = -90
+        self.dishwasher_table_approach = 0.6
+        self.dishwasher_2_table_rotation_back = 180
         
         # -------------------------------------------------------------------------------------------------------------------------------------------
         #                                                            ESTADOS / TRANSICIONES
@@ -96,10 +97,10 @@ class CLEAN_THE_TABLE(object):
         print(self.consoleFormatter.format("INIT", "HEADER"))
         self.tm.go_to_pose("standard", self.fast_movement)
         self.tm.go_to_pose("default_head", self.fast_movement)
-        self.tm.set_current_place("kitchen")
-        self.tm.set_security_distance(False)
+        # self.tm.set_current_place("kitchen")
         self.tm.talk("Hi, I am going to clean the table.", "English", wait=False)
         self.tm.initialize_pepper()
+        self.tm.set_security_distance(False)
         self.start()
 
     def on_enter_LOOK_2_TABLE(self):
@@ -107,7 +108,7 @@ class CLEAN_THE_TABLE(object):
         self.tm.go_to_relative_point(0.0,0.0,self.relative_table_rotation)
         rospy.sleep(1)
         self.tm.go_to_pose("down_head", self.fast_movement)
-        self.tm.go_to_relative_point(self.relative_table_approach,0.0, 0.0)
+        self.tm.go_to_relative_point(self.relative_table_approach,0.0,0.0)
         response = self.tm.img_description("You are observing a table set for a meal through a camera. On the table, there are various items which may include a cup, bowl, dish, spoon, and fork. Your task is to list exactly and only the objects you see from these options. Please respond by typing out the response directly as a Python list, including the square brackets and using quotes for each item. The format should look like this: ['object1', 'object2', ...]. For example, if you see a spoon, fork, and cup on the table, your response should be exactly: ['spoon', 'fork', 'cup']. Ensure your response is structured strictly as a list for direct use in a Python program.", "front_camera")
         try:
             self.items = ast.literal_eval(response["message"])
@@ -136,18 +137,18 @@ class CLEAN_THE_TABLE(object):
             self.tm.go_to_pose(pose, self.normal_movement)
             if pose == "prepare_2_grab" or pose == "close_both_hands":
                 self.tm.talk(f"Please give me and still holding the {self.actual_item} just like you can see in my tablet until I can grab propertly", "English", wait=False)
-                rospy.sleep(5)
-                self.tm.talk("Thank you", "English", wait=False)
-            rospy.sleep(1)
+                rospy.sleep(6)
+            rospy.sleep(2)
+        
         self.turn_around()
                 
     def on_enter_GO_2_DISHWASHER(self):
         print(self.consoleFormatter.format("GO_2_DISHWASHER", "HEADER"))
         self.tm.go_to_relative_point(0.0,0.0,self.turn_around_2_dishwasher)
-        self.tm.go_to_relative_point(0.0,self.relative_dishwasher_approach,0.0)
+        self.tm.go_to_relative_point(self.relative_dishwasher_approach,0.0,0.0)
         self.set_angle_srv(["HipPitch"], [self.crouch_4_dishwasher], self.normal_movement)
         place_distance = self.place_items_distances[self.actual_item]
-        self.tm.go_to_relative_point(place_distance, 0.0, 0.0)
+        self.tm.go_to_relative_point(0.0, place_distance, 0.0)
         place_poses = self.place_items_poses[self.actual_item]
         for pose in place_poses:
             self.tm.go_to_pose(pose, self.slow_movement)
@@ -164,8 +165,9 @@ class CLEAN_THE_TABLE(object):
             
     def on_enter_BACK_2_TABLE(self):
         print(self.consoleFormatter.format("BACK_2_TABLE", "HEADER"))
+        self.tm.go_to_relative_point(0.0,0.0,self.dishwasher_2_table_rotation_back)
+        self.tm.go_to_relative_point(self.relative_dishwasher_approach,0.0,0.0)
         self.tm.go_to_relative_point(0.0,0.0,self.dishwasher_2_table_rotation)
-        self.tm.go_to_relative_point(0.0,self.dishwasher_table_approach,0.0)
         self.grab_again()
 
     def on_enter_END(self):
