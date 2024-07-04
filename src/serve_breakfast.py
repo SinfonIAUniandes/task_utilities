@@ -162,6 +162,9 @@ class ServeBreakfast(object):
                 self.tm.go_to_pose(action, self.slow_movement)
                 self.tm.talk("Please place the bowl in my hands just like the image in my tablet shows until I say you Thank you and have my hands closed!", wait=False)
                 rospy.sleep(7)
+                self.tm.talk("Make sure that the spoon is above one of my fingers please", wait=False)
+                rospy.sleep(3)
+                self.tm.talk("Thank you!", wait=False)
 
             if action == "prepare_2_grab_mid" or action == "prepare_2_grab_big":
                 self.tm.go_to_pose(action, self.slow_movement)
@@ -175,7 +178,7 @@ class ServeBreakfast(object):
             
             if action  == "carry_cereal" or action  == "carry_milk" or action  == "grab_bowl_up":
                 self.carry_to_serve = True
-                self.tm.talk("Thank you!", "English", wait=False) 
+                self.tm.talk("Thank you! again", "English", wait=False) 
                 rospy.sleep(2)
                 carry_thread = threading.Thread(target=self.carry_thread,args=[action])
                 carry_thread.start()
