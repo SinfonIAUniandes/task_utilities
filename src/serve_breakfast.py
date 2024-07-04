@@ -10,7 +10,7 @@ import ConsoleFormatter
 class ServeBreakfast(object):
     def __init__(self) -> None:
         self.console_formatter = ConsoleFormatter.ConsoleFormatter()
-        self.tm = tm(navigation=True, manipulation=True, speech=False, perception=True, pytoolkit=True)
+        self.tm = tm(navigation=True, manipulation=True, speech=True, perception=True, pytoolkit=True)
         self.tm.initialize_node('SERVE_BREAKFAST')
         self.states = ['INIT', 'GO_TO_CUPBOARD', 'LOOK_4_ITEM', 'GRAB_OBJECT', 'GO_TO_DROP_PLACE', 'DROP', 'SERVE', 'END']
         
@@ -52,9 +52,9 @@ class ServeBreakfast(object):
         
         # Izquierda positivo - Derecha negativo
         self.drop_and_serve_position = {
-            "bowl": 0.35,
-            "milk_carton": 0.0,
-            "cereal_box": 0.7
+            "bowl": 0.0,
+            "milk_carton": -0.3,
+            "cereal_box": 0.3
         }
         
         
@@ -72,9 +72,9 @@ class ServeBreakfast(object):
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         
         # Positivo adelante - Negativo atras
-        self.relative_drop_position=0.7
+        self.relative_drop_position=0.66
         
-        self.crouch_4_drop = -0.35 # Cambiar segun la altura de la mesa de dining
+        self.crouch_4_drop = -0.4 # Cambiar segun la altura de la mesa de dining
         
         # ---------------------------------------------------------------------------
         #                       SERVICES
@@ -152,33 +152,40 @@ class ServeBreakfast(object):
         self.tm.go_to_pose("open_both_hands")
         
         if self.actual_item == "bowl":
-            self.tm.talk("Could you please put the spoon in the bowl?", "English", wait=False)     
-            rospy.sleep(4)
+            self.tm.talk("Could you please put the spoon in the bowl just like appear in my tablet?", "English", wait=False)     
+            rospy.sleep(5)
             self.tm.talk("Thank you!", "English", wait=False) 
         
         for action in actions:
             print(action)
             if action == "prepare_2_bowl" :
                 self.tm.go_to_pose(action, self.slow_movement)
-                self.tm.talk("Please place the bowl in my hands just like the image in my tablet shows", wait=False)
-                rospy.sleep(5)
-                self.tm.talk("Thank you again!", "English", wait=False) 
+                self.tm.talk("Please place the bowl in my hands just like the image in my tablet shows until I say you Thank you and have my hands closed!", wait=False)
+                rospy.sleep(7)
+                self.tm.talk("Make sure that the spoon is above one of my fingers please", wait=False)
+                rospy.sleep(3)
+                self.tm.talk("Thank you!", wait=False)
 
-            if action == "prepare_2_grab_mid" or action == "prepare_2_grab_big": 
+            if action == "prepare_2_grab_mid" or action == "prepare_2_grab_big":
                 self.tm.go_to_pose(action, self.slow_movement)
-                self.tm.talk(f"Please hold the {self.actual_item} in middle of my hands like the image in my tablet shows! I will tell you when to stop holding it.", "English", wait=False)   
-                rospy.sleep(5)
-                self.tm.talk("Thank you!", "English", wait=False) 
+                if self.actual_item == "cereal_box":
+                    self.tm.talk("To help me serve the cereal, make sure to give me the box already opened, with the open side in my right hand.", "English", wait=False)
+                elif self.actual_item == "milk_carton":
+                    self.tm.talk("To help me serve the milk, make sure to give me the carton already opened, with the open side in my left hand.", "English", wait=False)
+                rospy.sleep(3)
+                self.tm.talk(f"Now that you have ensured the {self.actual_item} is open, please hold it in the middle of my hands as shown in the image on my tablet until I say 'Thank you' and my hands are closed.", "English", wait=False)
+                rospy.sleep(7)
             
             if action  == "carry_cereal" or action  == "carry_milk" or action  == "grab_bowl_up":
                 self.carry_to_serve = True
+                self.tm.talk("Thank you! again", "English", wait=False) 
+                rospy.sleep(2)
                 carry_thread = threading.Thread(target=self.carry_thread,args=[action])
                 carry_thread.start()
-            
-            self.tm.go_to_pose(action, self.slow_movement)
-                
+    
+            self.tm.go_to_pose(action, self.slow_movement)  
             rospy.sleep(2)
-
+        
         self.tm.show_words_proxy()
         self.go_to_drop_place()
         
