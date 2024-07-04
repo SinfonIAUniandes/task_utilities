@@ -10,7 +10,7 @@ import ConsoleFormatter
 class ServeBreakfast(object):
     def __init__(self) -> None:
         self.console_formatter = ConsoleFormatter.ConsoleFormatter()
-        self.tm = tm(navigation=True, manipulation=True, speech=True, perception=True, pytoolkit=True)
+        self.tm = tm(navigation=True, manipulation=True, speech=False, perception=True, pytoolkit=True)
         self.tm.initialize_node('SERVE_BREAKFAST')
         self.states = ['INIT', 'GO_TO_CUPBOARD', 'LOOK_4_ITEM', 'GRAB_OBJECT', 'GO_TO_DROP_PLACE', 'DROP', 'SERVE', 'END']
         
@@ -37,6 +37,7 @@ class ServeBreakfast(object):
         
         self.items = ["bowl", "cereal_box", "milk_carton"] 
         
+        # Angulos para ver los items en kitchen
         self.relative_item_angle = {
             "bowl": 0,
             "cereal_box": 0,
@@ -49,10 +50,11 @@ class ServeBreakfast(object):
             "milk_carton": ["open_both_hands", "prepare_2_grab_big", "grab_big", "close_both_hands" ,"grab_big_up" "carry_milk"] # DONE
         }
         
+        # Izquierda positivo - Derecha negativo
         self.drop_and_serve_position = {
-            "bowl": 0.1,
-            "milk_carton": -0.2,
-            "cereal_box": 0.3
+            "bowl": 0.35,
+            "milk_carton": 0.0,
+            "cereal_box": 0.7
         }
         
         
@@ -69,9 +71,10 @@ class ServeBreakfast(object):
                 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         
-        self.relative_drop_position=0.6
+        # Positivo adelante - Negativo atras
+        self.relative_drop_position=0.7
         
-        self.crouch_4_drop = -0.35
+        self.crouch_4_drop = -0.35 # Cambiar segun la altura de la mesa de dining
         
         # ---------------------------------------------------------------------------
         #                       SERVICES
@@ -124,7 +127,7 @@ class ServeBreakfast(object):
         actual_relative_angle = self.relative_item_angle[self.actual_item]
         self.tm.go_to_relative_point(0.0,0.0,actual_relative_angle)
         response = self.tm.img_description(
-                f"Describe the {self.actual_item} you see in front of you, add some details about the size and color. "
+                f"Describe where is the {self.actual_item} you see in front of you, add some details about the size and color. "
                 "Then describe the place where it is located naming objects around it. "
                 "Don't add any other words to your response. Give a short answer of maximum 2 lines. "
                 "If you don't see a {object_name}, answer just with an empty string and don't say sorry or anything more.",
