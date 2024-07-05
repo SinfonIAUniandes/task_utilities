@@ -63,9 +63,9 @@ class STORING_GROCERIES(object):
         
         # Cabinets and altures
         self.cabinets = {
-            "sports stuff": -1,
-            "healthy food": 0,
-            "junk food":  1
+            "sports stuff": 0.3,
+            "healthy food": 0.0,
+            "junk food":  -0.3
         }
         
         # Objects list (just in case gpt vision fails)
@@ -73,8 +73,8 @@ class STORING_GROCERIES(object):
         
         # Grab actions list dictionary by object
         self.grab_actions = {
-            "small_object":[],
-            "drink":[]
+            "small_object":["prepare_2_grab_small", "bowl_hands"],
+            "one_hand":["grab_one_hand", "close_both_hands"]
         }
         
         # Relative distance to place the object
@@ -82,8 +82,8 @@ class STORING_GROCERIES(object):
         
         # Drop actions list dictionary by object
         self.drop_actions = {
-            "small_object":[],
-            "drink":[]
+            "small_object":["open_both_hands","drop"],
+            "one_hand":["open_both_hands"]
         }
         
         # -------------------------------------------------------------------------------------------------------------------------------------------
@@ -140,16 +140,24 @@ class STORING_GROCERIES(object):
         f"I will provide you with an item, and I need you to categorize this item strictly into one of the following categories: "
         f"{', '.join(self.cabinets_categories)}. Please categorize the following item: {self.actual_item}. "
         "Respond with only the category name from the list above."
+
         )
         self.actual_item_category = self.tm.answer_question(categorize_prompt, 0)
         
         self.tm.talk(f"Please help me take the {self.actual_item} from the table. I described it earlier.", "English", wait=False)
         rospy.sleep(6)
-        self.tm.talk(f"Thank you! Now I will instruct you on how to hand me the {self.actual_item}.", "English", wait=False)
+        self.tm.talk(f"Thank you!", "English", wait=False)
         
         
         object_type_prompt = (
-        f" I will provide you with an item and I need you to categorize this item strictly into one of the following categories 'small_object' or 'drink'. Please use only one of these two categories in your response, and respond with the category name exactly as it is listed. Here is the item: {self.actual_item}"
+        f"""
+        I will provide you with an item and I need you to categorize this item strictly into one of the following categories: 'small_object' or 'one_hand'. Please use only one of these two categories in your response, and respond with the category name exactly as it is listed.
+
+        - 'small_object': Small but relatively heavy or long items, such as a can, a beverage, or a banana.
+        - 'one_hand': Small and lightweight items that can be comfortably held with one hand, such as a fruit like an apple or a small ball.
+
+        Here is the item: {self.actual_item}
+        """
         )
         
         self.actual_item_type = self.tm.answer_question(object_type_prompt, 0)
@@ -158,8 +166,8 @@ class STORING_GROCERIES(object):
         self.tm.show_image(f"http://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/grab_{self.actual_item}.jpeg")
         
         for action in actions:
-            if action == "prepare_2_grab":
-                self.tm.talk(f"Please place the {self.actual_item} as shown on my tablet until I can hold it properly.", "English", wait=False)
+            if action == "grab_one_hand" or "prepare_2_grab_small":
+                self.tm.talk(f"Please place the {self.actual_item} as the example is shown on my tablet until I can hold it properly.", "English", wait=False)
                 rospy.sleep(2)
             self.tm.go_to_pose(action,self.slow_movement)
                 
@@ -173,23 +181,22 @@ class STORING_GROCERIES(object):
         self.tm.go_to_relative_point(0.0, 0.0, self.cabinet_angle)
         rospy.sleep(2)
         self.tm.go_to_relative_point(self.cabinet_approach_distance, 0.0, 0.0)
-        self.tm.talk(f"I have arrived at the cabinet. Now, I'm going to place the {self.actual_item} on the {self.actual_item_category} shelf.", "English", wait=False)
+        self.tm.talk(f"I have arrived at the cabinet. Now, I'm going tell you how to place the {self.actual_item} on the {self.actual_item_category} shelf.", "English", wait=False)
         self.place_object()
         
         
         
     def on_enter_PLACE_OBJECT(self):
         print(self.consoleFormatter.format("PLACE_OBJECT", "HEADER"))  
-        inclination_to_place = self.cabinets[self.actual_item_category]
-        self.set_angle_srv(["HipPitch"], [inclination_to_place], self.normal_movement)
-        self.tm.go_to_relative_point(self.cabinet_place_distance, 0.0, 0.0)
+        self.tm.talk(f"Please take the {self.actual_item} from my hand. Then, I will point to the {self.actual_item_category} shelf where you need to place the {self.actual_item}.", "English", wait=False)
+        rospy.sleep(2)
+        self.tm.go_to_pose("open_both_hands", 0.01)
+        rospy.sleep(9)
+        point_angle = self.cabinets[self.actual_item_category]
+        self.set_angle_srv((["LShoulderPitch"], [point_angle], self.normal_movement))
+        rospy.sleep(5)
+        self.tm.talk(f"Perfect! Now follow me to grab the next item", "English", wait=False)
         
-        actions = self.drop_actions[self.actual_item_type]
-        for action in actions:
-            self.tm.go_to_pose(action)
-            rospy.sleep(2)
-        
-        self.tm.go_to_relative_point(-(self.cabinet_place_distance), 0.0, 0.0)
         self.objects_list.pop(0)
         self.tm.go_to_pose("standard")
         
