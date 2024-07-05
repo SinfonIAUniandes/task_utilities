@@ -1,586 +1,238 @@
 #!/usr/bin/env python3
-from transitions import Machine #pylint: disable=import-error
-from task_module import Task_module as tm
-from std_srvs.srv import SetBool
-from perception_msgs.msg import get_labels_msg #pylint: disable=import-error
-from geometry_msgs.msg import Twist, PoseWithCovarianceStamped
-from robot_toolkit_msgs.msg import touch_msg, animation_msg #pylint: disable=import-error
-from robot_toolkit_msgs.srv import point_at_srv, get_segmentation3D_srv, point_at_srvRequest #pylint: disable=import-error
-from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv #pylint: disable=import-error
-from speech_utilities_msgs.srv import hot_word_srv, hot_word_srvRequest
-from robot_toolkit_msgs.srv import set_move_arms_enabled_srv, set_security_distance_srv,  misc_tools_srv, misc_tools_srvRequest, set_security_distance_srvRequest
-from nav_msgs.msg import Odometry
-import ConsoleFormatter
-import rospy
 import os
-import time
+import ast
+import rospy
 import threading
-import numpy as np
-import random
-import sys
+import ConsoleFormatter
 
-#TODO: poner REQHELPGRAB como un diccionario por tipo de cosa o meter en grasp_object del modulo ese diccionario y que solo se llame grasp object
+from transitions import Machine
+from task_module import Task_module as tm
+
+from robot_toolkit_msgs.srv import set_angle_srv
 
 class STORING_GROCERIES(object):
-    def __init__(self):
+    def __init__(self) -> None:
+        
+        self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
+        self.tm = tm(navigation=True, manipulation=True, speech=True, perception = True, pytoolkit=True)
+        self.tm.initialize_node('STORING_GROCERIES')
+ 
+        self.STATES = ['INIT', 'GO_2_TABLE', 'ASK_E_GRAB_OBJECT', 'GO_2_CABINET', 'PLACE_OBJECT', 'BACK_2_TABLE','END'] 
 
-        self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
-        # Definir los estados posibles del semáforo
-        self.task_name = "storing_groceries"
-        states = ['INIT', 'GO2TABLE', 'LOOK4OBJECT', 'REQHELPGRAB', 'GO2CABINET', 'RECOGCABINETCATEGORIES', 'REQHELPSTORE', 'END']
-        self.tm = tm(perception=True, speech=True, manipulation=True, navigation=True)
-        self.tm.initialize_node(self.task_name)
-        # Definir las transiciones permitidas entre los estados
-        transitions = [
-            {'trigger': 'start', 'source': 'STORING_GROCERIES', 'dest': 'INIT'},
-            {'trigger': 'init_go2table', 'source': 'INIT', 'dest': 'GO2TABLE'},
-            {'trigger': 'arrived_table', 'source': 'GO2TABLE', 'dest': 'LOOK4OBJECT'},
-            {'trigger': 'object_found_categorized', 'source': 'LOOK4OBJECT', 'dest': 'REQHELPGRAB'},
-            {'trigger': 'object_grabbed', 'source': 'REQHELPGRAB', 'dest': 'GO2CABINET'},
-            {'trigger': 'arrived_cabinet_first_time', 'source': 'GO2CABINET', 'dest': 'RECOGCABINETCATEGORIES'},
-            {'trigger': 'cabinet_sections_recognized', 'source': 'RECOGCABINETCATEGORIES', 'dest': 'REQHELPSTORE'},
-            {'trigger': 'arrived_cabinet', 'source': 'GO2CABINET', 'dest': 'REQHELPSTORE'},
-            {'trigger': 'object_stored', 'source': 'REQHELPSTORE', 'dest': 'GO2TABLE'},
-        ]
-
-        # Crear la máquina de estados
-        self.machine = Machine(model=self, states=states, transitions=transitions, initial='STORING_GROCERIES')
-        # {'trigger': 'arrived_cabinet_first_time', 'source': 'GO2CABINET', 'dest': 'RECOGCABINETCATEGORIES'},
-        #self.machine.add_transition(trigger='arrived_cabinet', source='GO2CABINET', dest='RECOGCABINETCATEGORIES', conditions=['is_first_time'])
-
-        self.machine.add_transition(trigger='object_stored', source='REQHELPSTORE', dest='END', conditions=['all_objects_stored'])
+        self.TRANSITIONS = [
+            {'trigger': 'zero', 'source': 'STORING_GROCERIES', 'dest': 'INIT'},
+            {'trigger': 'go_2_table', 'source': 'INIT', 'dest': 'GO_2_TABLE'},
+            {'trigger': 'analice_objects', 'source': 'GO_2_TABLE', 'dest': 'ANALIZE_OBJECTS'},
+            {'trigger': 'ask_e_grab', 'source': 'ANALIZE_OBJECTS', 'dest': 'ASK_E_GRAB_OBJECT'},
+            {'trigger': 'go_2_cabinet', 'source': 'ASK_E_GRAB_OBJECT', 'dest': 'GO_2_CABINET'},
+            {'trigger': 'place_object', 'source': 'GO_2_CABINET', 'dest': 'PLACE_OBJECT'},
+            {'trigger': 'back_2_table', 'source': 'PLACE_OBJECT', 'dest': 'BACK_2_TABLE'},
+            {'trigger': 'new_object', 'source': 'BACK_2_TABLE', 'dest': 'ASK_E_GRAB_OBJECT'},
+            {'trigger': 'finish', 'source': 'PLACE_OBJECT', 'dest': 'END'},
+            ]
+        
+        self.machine = Machine(model=self, states=self.STATES, transitions=self.TRANSITIONS, initial='STORING_GROCERIES')
+        
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
-
-        # ROS Callbacks
-
-        # ROS Services (PyToolkit)
-        print(self.consoleFormatter.format("Waiting for pytoolkit/awareness...", "WARNING"))
-        rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
-        self.awareness_srv = rospy.ServiceProxy("/pytoolkit/ALBasicAwareness/set_awareness_srv",SetBool)
-
-        print(self.consoleFormatter.format("Waiting for pytoolkit/set_move_arms...", "WARNING"))
-        rospy.wait_for_service("/pytoolkit/ALMotion/set_move_arms_enabled_srv")
-        self.setMoveArms_srv = rospy.ServiceProxy('pytoolkit/ALMotion/set_move_arms_enabled_srv', set_move_arms_enabled_srv)
-
         
-        self.securityDistance_srv = rospy.ServiceProxy('pytoolkit/ALMotion/set_security_distance_srv', set_security_distance_srv)
-        self.securityDistance_srv.call(set_security_distance_srvRequest(0.01))
+        # -------------------------------------------------------------------------------------------------------------------------------------------
+        #                                                           ROS
+        # -------------------------------------------------------------------------------------------------------------------------------------------
 
-        rospy.wait_for_service("/pytoolkit/ALMotion/move_head_srv")
-        self.move_head_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/move_head_srv",move_head_srv)
-
-        print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
-        rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
-        self.show_topic_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_topic_srv",tablet_service_srv)
-
-        print(self.consoleFormatter.format("Waiting for pytoolkit/autononumusLife...", "WARNING"))
-        rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
-        self.autonomous_life_srv = rospy.ServiceProxy("/pytoolkit/ALAutonomousLife/set_state_srv",SetBool)
-
-        self.headSensorSubscriber = rospy.Subscriber('/touch', touch_msg, self.callback_head_sensor_subscriber)
-
-        # Ros services (Speech)
-        print(self.consoleFormatter.format("Waiting for speech_utilities/hot_word_srv", "WARNING"))
-        rospy.wait_for_service("/speech_utilities/hot_word_srv")
-        self.hotword_client = rospy.ServiceProxy("/speech_utilities/hot_word_srv", hot_word_srv)
+        rospy.wait_for_service("/pytoolkit/ALMotion/set_angle_srv")
+        self.set_angle_srv = rospy.ServicePcategorizeroxy("/pytoolkit/ALMotion/set_angle_srv",set_angle_srv)
         
-        # ROS subscribers (perception)
-        print(self.consoleFormatter.format("Waiting for /perception_utilities/get_labels_publisher", "WARNING"))
-        self.get_labels_publisher = rospy.Subscriber("/perception_utilities/get_labels_publisher", get_labels_msg, self.callback_get_labels)
-        self.currentPoseOdomSuscriber = rospy.Subscriber('/odom', Odometry, self.callback_odom_subscriber)
+        # -------------------------------------------------------------------------------------------------------------------------------------------
+        #                                                           PARÁMETROS AJUSTABLES
+        # -------------------------------------------------------------------------------------------------------------------------------------------
 
+        # Movement Parameters
+        self.fast_movement = 0.15
+        self.normal_movement = 0.1
+        self.slow_movement = 0.05
         
+        # Relative angle to cabinet from the main table
+        self.cabinet_angle = -90
         
-
-        ##################### ROS CALLBACK VARIABLES #####################
-        self.labels ={}
-
-        ##################### GLOBAL VARIABLES #####################
-        self.sinfonia_url_img="https://cdn.discordapp.com/attachments/876543237270163498/1123367466102427708/logo_sinfonia.png"
-        self.img_dimensions = (640,480)
-
-        self.selected_object = ""
-        self.actual_obj_cat = "Uncategorized"
-        self.num_sections = 3
-        self.isTouched = False
-        self.sensorFront = False
-        self.sensorMiddle = False
-        self.sensorRear = False
-
-        self.objects_to_store = 0
-        self.objects_stored = 0
-
-        self.cabinet_1 = 0
-        self.cabinet_2 = 1
-        self.cabinet_3 = 2
+        # Relative distance to cabinet from the main table
+        self.cabinet_approach_distance = 0.1
         
-        # 'section' numero de gabinete asignado (0..self.num_sections)
-        # 'y_approx' coordenada y aproximada de los objetos que estan en 'stored_objects' (en el gabinete)
-        # 'stored_objects' lista con los objetos que ya estan en el gabinete
-        # 'contain_objects' objetos que deben ser almacenados en la categoria
-        self.cabinet_sections = {
-            'cleaning supplies':{
-                'name_individual': "cleanning supply",
-                'section': -1,
-                'y_approx': -1,
-                'stored_objects': [],
-                'contain_objects': ['cleanser'],
-            },
-            'drinks':{
-                'name_individual': 'drink',
-                'section': -1,
-                'y_approx': -1,
-                'stored_objects': [],
-                'contain_objects': ['juice', 'bottle', 'drink'],
-            },
-            'food':{
-                'name_individual': 'food',
-                'section': -1,
-                'y_approx': -1,
-                'stored_objects': [],
-                'contain_objects': ['tuna', 'tomato_soup', 'spam', 'mustard', 'jello', 'coffee_grounds', 'sugar'],
-            },
-            'fruits':{
-                'name_individual': 'fruit',
-                'section': -1,
-                'y_approx': -1,
-                'stored_objects': [],
-                'contain_objects': ['banana', 'fruit']
-            },
-            'snacks':{
-                'name_individual': 'snack',
-                'section': -1,
-                'y_approx': -1,
-                'stored_objects': [],
-                'contain_objects': ['cheezit','snack']
-            },
-            'Uncategorized':{
-                'name_individual': 'object',
-                'section': -1,
-                'y_approx': -1,
-                'stored_objects': [],
-                'contain_objects': []
-            }
+        # Cabinets categories
+        self.cabinets_categories = ["sports stuff","healthy food","junk food"]
+        
+        # Cabinets and altures
+        self.cabinets = {
+            "sports stuff": -1,
+            "healthy food": 0,
+            "junk food":  1
         }
-
-        posible_objects = ["cheezit", "spam", "cleanser", "tuna", "tomato_soup", "mustard", "jello", "apple", "orange", "banana", "lemon", "pera", "peach", "sugar"]
-
-    def callback_get_labels(self,data):
-        """CALLBACK for get_labels topic
-
-        transform the data from the topic to a dictonary with the following structure:
-        labels = {
-            "id":{
-                "label": "object_name",
-                "x": x_coordinate,
-                "y": y_coordinate,
-                "w": width,
-                "h": height
-            },
-            ...
+        
+        # Objects list (just in case gpt vision fails)
+        self.objects_list = ["apple", "tenis ball", "ketchup", "tuna can", "orange juice"]
+        
+        # Grab actions list dictionary by object
+        self.grab_actions = {
+            "small_object":[],
+            "drink":[]
         }
-        """
-        labels = data.labels
-        x_coordinates = data.x_coordinates
-        y_coordinates = data.y_coordinates
-        widths = data.widths
-        heights = data.heights
-        ids = data.ids
-        for i in range(len(labels)):
-            self.labels[ids[i]] = {"label":labels[i],"x":x_coordinates[i],"y":y_coordinates[i],"w":widths[i],"h":heights[i]}
+        
+        # Relative distance to place the object
+        self.cabinet_place_distance = 0.1
+        
+        # Drop actions list dictionary by object
+        self.drop_actions = {
+            "small_object":[],
+            "drink":[]
+        }
+        
+        # -------------------------------------------------------------------------------------------------------------------------------------------
+        #                                                            ESTADOS / TRANSICIONES
+        # -------------------------------------------------------------------------------------------------------------------------------------------
 
-    def callback_head_sensor_subscriber(self, msg:touch_msg):
-        if 'head_' in msg.name and msg.state:
-            self.isTouched=True
-        else:
-            self.isTouched=False
-        if msg.name == "head_rear":
-            self.sensorRear = msg.state
-        elif msg.state == "head_middle":
-            self.sensorMiddle = msg.state
-        elif msg.state == "head_front":
-            self.sensorFront = msg.state
-
-
-    def categorize_object(self, object_name):
-        for category,info_category in self.cabinet_sections.items():
-            if object_name in info_category['contain_objects']:
-                return category
-        self.cabinet_sections['Uncategorized']['contain_objects'].append(object_name)
-        return "Uncategorized"
-
-    def categorize_sections(self):
-        print(self.consoleFormatter.format("Categorizing sections...", "WARNING"))
-        max_diff = self.img_dimensions[0]//(self.num_sections+1)
-        max_different_diff = (self.img_dimensions[0]//(self.num_sections-1))*2
-        self.labels = {}
-        t1 = time.time()
-        while time.time()-t1<2:
-            pass
-        processed_labels = 0
-        processed_cats = 0
-        for label_id, object_info in self.labels.items():
-            stored=False
-            if processed_labels == 0:
-                cat = self.categorize_object(object_info['label'])
-                self.cabinet_sections[cat]['section'] = 0
-                self.cabinet_sections[cat]['y_approx'] = object_info['y']
-                self.cabinet_sections[cat]['stored_objects'].insert(0,object_info['label'])
-                stored = True
-                self.objects_stored += 1
-                processed_cats += 1
-            else:
-                for category,info_category in self.cabinet_sections.items():
-                    if info_category['y_approx'] != -1:
-                        if abs(info_category['y_approx'] - object_info['y']) < max_diff:
-                            if object_info['label'] not in info_category['contain_objects']:
-                                self.cabinet_sections[category]['contain_objects'].append(object_info['label'])
-                            self.cabinet_sections[category]['stored_objects'].insert(0,object_info['label'])
-                            stored = True
-                            self.objects_stored += 1
-                            self.cabinet_sections[category]['y_approx'] = (self.cabinet_sections[category]['y_approx'] + object_info['y'])/2
-                if not stored:
-                    cat = self.categorize_object(object_info['label'])
-                    self.cabinet_sections[cat]['section'] = processed_cats
-                    self.cabinet_sections[cat]['y_approx'] = object_info['y']
-                    self.cabinet_sections[cat]['stored_objects'].insert(0,object_info['label'])
-                    stored = True
-                    self.objects_stored += 1
-                    processed_cats += 1
-
-            processed_labels += 1
-            
-
-
-    def all_objects_stored(self):
-        if self.objects_stored >= len(self.objects_to_store):
-            return True
-        return False
-
-    def is_first_time(self):
-        if self.objects_stored == 0:
-            return True
-        return False
-
-    def on_enter_INIT(self):
-        #self.autonomous_life_srv(False)
-        self.tm.talk("I am going to do the storing groceries task","English")
-        print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        self.tm.turn_camera("front_camera","custom",2,15)
-        self.awareness_srv(False)
-        self.init_go2table()
-
-    def on_enter_GO2TABLE(self):
-        print(self.consoleFormatter.format("GO2TABLE", "HEADER"))
-        self.tm.talk("I am going to the table position","English",wait=False)
-        if self.is_first_time():
-            self.setMoveArms_srv.call(True,True)
-            self.tm.go_to_place("intermedio_cabinet_table")
-            self.tm.go_to_defined_angle_srv(270)
-            print('Navigating')
-        else:
-            self.tm.go_to_defined_angle_srv(270)
-        self.setMoveArms_srv.call(False,False)
-        self.tm.talk("I'm in the table position","English",wait=False)
-        self.arrived_table()
-
-    def on_enter_LOOK4OBJECT(self):
-        print(self.consoleFormatter.format("LOOK4OBJECT", "HEADER"))
-        self.tm.go_to_pose("down_head",0.1)
-        self.tm.set_model("objects")
-        actual_model = "objects"
-        print("I'm going to look for objects")
-        self.tm.start_recognition("front_camera")
-        self.tm.talk("I am looking for an object","English",wait=False)
-        self.labels = {}
-        posible_objects = ["cheezit", "spam", "cleanser", "tuna", "tomato_soup", "mustard", "jello", "apple", "orange", "banana", "lemon", "pear", "peach", "sugar", "strawberry", "plum"]
-        objects_valid = [obj["label"] for obj in self.labels.values() if obj["label"] in posible_objects]
-        while len(objects_valid) == 0:
-            t1 = time.time()
-            time_to_look = 2
-            if self.is_first_time():
-                time_to_look = 5
-            while time.time()-t1<time_to_look:
-                objects_valid = [obj["label"] for obj in self.labels.values() if obj["label"] in posible_objects]
-                print(objects_valid)
-            if self.is_first_time():
-                self.objects_to_store = len(self.labels)
-            if len(objects_valid) == 0:
-                self.tm.talk("I did not find any object yet, I will try again","English",wait=False)    
-                self.tm.go_to_pose("default_head",0.1)
-                self.tm.go_to_pose("down_head",0.1)
-                if actual_model == "objects":
-                    actual_model = "fruits"
-                    self.tm.set_model("fruits")
-                    rospy.sleep(3)
-                else:
-                    actual_model = "objects"
-                    self.tm.set_model("objects")
-                    rospy.sleep(3)
-        print(objects_valid)
-        self.selected_object = random.choice([obj["label"] for obj in self.labels.values() if obj["label"] in posible_objects])
-        self.actual_obj_cat = self.categorize_object(self.selected_object)
-        self.tm.talk("I found a "+self.selected_object,"English",wait=False)
-        self.labels = {}
-        self.tm.go_to_pose("default_head",0.1)
-        self.object_found_categorized()
+    def on_enter_INIT(self): 
+        print(self.consoleFormatter.format("INIT", "HEADER"))
+        self.tm.go_to_pose("standard", self.fast_movement)
+        self.tm.go_to_pose("default_head", self.fast_movement)
+        self.tm.set_current_place("house_door")
+        self.tm.talk("Hello! I will assist you in storing groceries.", "English", wait=False)
+        self.tm.initialize_pepper()
+        self.start()
+        
+        
     
-    def on_enter_REQHELPGRAB(self):
-        res = False
-        hotword_req = hot_word_srvRequest()
-        hotword_req.key = "ready"
-        hotword_req.threshold = 0.6
-        hotword_req.timeout = 3
-
-        print(self.consoleFormatter.format("REQHELPGRAB", "HEADER"))
-        print('Object to grab: '+self.selected_object)
-        if self.selected_object == "cheezit":
-            self.tm.go_to_pose('box', 0.2)
-            self.tm.go_to_pose('open_both_hands')
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            res = self.hotword_client.call(hotword_req)
-            self.tm.go_to_pose('cylinder', 0.1)
-            rospy.sleep(2)
-            self.tm.go_to_pose('close_both_hands', 0.2)
-            rospy.sleep(1)
-
-        elif self.selected_object == "spam":
-            self.tm.go_to_pose('small_object_right_hand', 0.2)
-            self.tm.go_to_pose('open_right_hand', 0.2)
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            res = self.hotword_client.call(hotword_req)
-            self.tm.go_to_pose('close_right_hand', 0.2)
-            rospy.sleep(1)
-
-        elif self.selected_object == "cleanser":
-            self.tm.go_to_pose('pringles', 0.1)
-            self.tm.go_to_pose('almost_open_both_hands', 0.2)
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            res = self.hotword_client.call(hotword_req)
-            self.tm.go_to_pose('close_both_hands', 0.2)
-
-        elif self.selected_object == "milk":
-            self.tm.go_to_pose('bottle', 0.1)
-            self.tm.go_to_pose('almost_open_both_hands', 0.2)
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            res = self.hotword_client.call(hotword_req)
-            self.tm.go_to_pose('close_both_hands', 0.2)
-            rospy.sleep(1)
-
-        elif self.selected_object == "tuna":
-            self.tm.go_to_pose('small_object_right_hand', 0.2)
-            self.tm.go_to_pose('open_right_hand', 0.2)
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            res = self.hotword_client.call(hotword_req)
-            self.tm.go_to_pose('close_right_hand', 0.2)
-            rospy.sleep(1)
-
-        elif self.selected_object == "tomato_soup":
-            self.tm.go_to_pose('small_object_right_hand', 0.2)
-            self.tm.go_to_pose('almost_open_right_hand', 0.2)
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            res = self.hotword_client.call(hotword_req)
-            self.tm.go_to_pose('close_right_hand', 0.2)
-            rospy.sleep(1)
-
-        elif self.selected_object == "mustard":
-            self.tm.go_to_pose('pringles', 0.1)
-            self.tm.go_to_pose('almost_open_both_hands', 0.2)
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            res = self.hotword_client.call(hotword_req)
-            self.tm.go_to_pose('close_both_hands', 0.2)
-            rospy.sleep(1)
-
-        elif self.selected_object == "jello":
-            self.tm.go_to_pose('small_object_right_hand', 0.2)
-            self.tm.go_to_pose('almost_open_right_hand', 0.2)
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            res = self.hotword_client.call(hotword_req)
-            self.tm.go_to_pose('close_right_hand', 0.2)
-            rospy.sleep(1)
-
-        elif self.selected_object == "apple":
-            self.tm.go_to_pose('small_object_right_hand', 0.2)
-            self.tm.go_to_pose('open_right_hand', 0.2)
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            res = self.hotword_client.call(hotword_req)
-            self.tm.go_to_pose('close_right_hand', 0.2)
-            rospy.sleep(1)
+    def on_enter_GO_2_TABLE(self):
+        print(self.consoleFormatter.format("GO_2_TABLE", "HEADER"))
+        self.tm.go_to_place("dining")
+        self.analice_objects()
         
-        elif self.selected_object == "orange":
-            self.tm.go_to_pose('small_object_right_hand', 0.2)
-            self.tm.go_to_pose('almost_open_right_hand', 0.2)
+        
+    
+    def on_enter_ANALIZE_OBJECTS(self):
+        print(self.consoleFormatter.format("ANALIZE_OBJECTS", "HEADER"))
+        objects_response = self.tm.img_description(
+                "Please analyze the image and describe all the objects you see on the table. Focus on identifying each object, their characteristics, and their approximate locations on the table. Ignore any items that are not on the table. Provide a brief and clear description.",
+                "front_camera"
+                )
+        objects_description = objects_response["message"]
+        self.tm.talk(f"{objects_description}", "English", wait=False)
+        objects_list_response = self.tm.img_description(
+                f"Based on this '{objects_description}', return a Python list with the names of the objects you mentioned. Then analyze the image again to verify and ensure the list is accurate. Ignore any items that are not on the table. Provide your final response in the format of a Python list.",
+                "front_camera"
+                )
+        objects_list = objects_list_response["message"]
+        try:
+            self.objects_list = eval(objects_list_response.get("message", "[]"))
+            if not isinstance(objects_list, list):
+                raise ValueError("Response is not a list")
+        except (SyntaxError, ValueError) as e:
+            print(f"Error parsing objects list: {e}")
+    
+        self.tm.talk(f"The list of objects is: {self.objects_list}", "English", wait=False)
+        self.ask_e_grab()
+        
+        
+    
+    def on_enter_ASK_E_GRAB_OBJECT(self):
+        print(self.consoleFormatter.format("ASK_E_GRAB_OBJECT", "HEADER"))
+        self.actual_item= self.objects_list[0]
+        categorize_prompt = (
+        f"I will provide you with an item, and I need you to categorize this item strictly into one of the following categories: "
+        f"{', '.join(self.cabinets_categories)}. Please categorize the following item: {self.actual_item}. "
+        "Respond with only the category name from the list above."
+        )
+        self.actual_item_category = self.tm.answer_question(categorize_prompt, 0)
+        
+        self.tm.talk(f"Please help me take the {self.actual_item} from the table. I described it earlier.", "English", wait=False)
+        rospy.sleep(6)
+        self.tm.talk(f"Thank you! Now I will instruct you on how to hand me the {self.actual_item}.", "English", wait=False)
+        
+        
+        object_type_prompt = (
+        f" I will provide you with an item and I need you to categorize this item strictly into one of the following categories 'small_object' or 'drink'. Please use only one of these two categories in your response, and respond with the category name exactly as it is listed. Here is the item: {self.actual_item}"
+        )
+        
+        self.actual_item_type = self.tm.answer_question(object_type_prompt, 0)
+        
+        actions = self.grab_actions[self.actual_item_type]
+        self.tm.show_image(f"http://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/grab_{self.actual_item}.jpeg")
+        
+        for action in actions:
+            if action == "prepare_2_grab":
+                self.tm.talk(f"Please place the {self.actual_item} as shown on my tablet until I can hold it properly.", "English", wait=False)
+                rospy.sleep(2)
+            self.tm.go_to_pose(action,self.slow_movement)
+                
+        self.tm.talk("Thank you!", "English", wait=False)
+        self.go_2_cabinet()
+        
+        
+        
+    def on_enter_GO_2_CABINET(self):
+        print(self.consoleFormatter.format("GO_2_CABINET", "HEADER"))
+        self.tm.go_to_relative_point(0.0, 0.0, self.cabinet_angle)
+        rospy.sleep(2)
+        self.tm.go_to_relative_point(self.cabinet_approach_distance, 0.0, 0.0)
+        self.tm.talk(f"I have arrived at the cabinet. Now, I'm going to place the {self.actual_item} on the {self.actual_item_category} shelf.", "English", wait=False)
+        self.place_object()
+        
+        
+        
+    def on_enter_PLACE_OBJECT(self):
+        print(self.consoleFormatter.format("PLACE_OBJECT", "HEADER"))  
+        inclination_to_place = self.cabinets[self.actual_item_category]
+        self.set_angle_srv(["HipPitch"], [inclination_to_place], self.normal_movement)
+        self.tm.go_to_relative_point(self.cabinet_place_distance, 0.0, 0.0)
+        
+        actions = self.drop_actions[self.actual_item_type]
+        for action in actions:
+            self.tm.go_to_pose(action)
             rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            res = self.hotword_client.call(hotword_req)
-            self.tm.go_to_pose('close_right_hand', 0.2)
-            rospy.sleep(1)
-
-        elif self.selected_object == "banana":
-            self.tm.go_to_pose('small_object_right_hand', 0.2)
-            self.tm.go_to_pose('almost_open_right_hand', 0.2)
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            
-            res = self.hotword_client.call(hotword_req)
-            
-            self.tm.go_to_pose('close_right_hand', 0.2)
-            rospy.sleep(1)
-
-        elif self.selected_object == "lemon":
-            self.tm.go_to_pose('small_object_right_hand', 0.2)
-            self.tm.go_to_pose('almost_open_right_hand', 0.2)
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            
-            res = self.hotword_client.call(hotword_req)
-            self.tm.go_to_pose('close_right_hand', 0.2)
-            rospy.sleep(1)
-
-        elif self.selected_object == "pear":
-            self.tm.go_to_pose('small_object_right_hand', 0.2)
-            self.tm.go_to_pose('almost_open_right_hand', 0.2)
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            
-            res = self.hotword_client.call(hotword_req)
-
-            self.tm.go_to_pose('close_right_hand', 0.2)
-            rospy.sleep(1)
-
-        elif self.selected_object == "peach":
-            self.tm.go_to_pose('small_object_right_hand', 0.2)
-            self.tm.go_to_pose('almost_open_right_hand', 0.2)
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            res = self.hotword_client.call(hotword_req)
-            self.tm.go_to_pose('close_right_hand', 0.2)
-            rospy.sleep(1)
-
-        elif self.selected_object == "sugar":
-            self.tm.go_to_pose('small_object_right_hand', 0.2)
-            self.tm.go_to_pose('almost_open_right_object', 0.2)
-            rospy.sleep(2)
-            self.tm.talk("Could you place the "+self.selected_object+" between my hands, please?, when you are ready say ready","English",wait=True)
-            res = self.hotword_client.call(hotword_req)
-            self.tm.go_to_pose('close_right_hand', 0.2)
-            rospy.sleep(1)
-        self.object_grabbed()
-
-    def on_enter_GO2CABINET(self):
-        print(self.consoleFormatter.format("GO2CABINET", "HEADER"))
-        self.tm.talk("I am going to the cabinet position","English",wait=False)
-        #self.tm.go_to_place("storing_groceries_cabinet")
-        self.tm.go_to_defined_angle_srv(175)
-        self.tm.talk("I'm in the cabinet position","English",wait=False)
-        if self.is_first_time():
-            self.arrived_cabinet_first_time()
-        self.arrived_cabinet()
-
-    def on_enter_REQHELPSTORE(self):
-        posible_objects = ["cheezit", "spam", "cleanser", "tuna", "tomato_soup", "mustard", "jello", "apple", "orange", "banana", "lemon", "pera", "peach", "sugar"]
-        hotword_req = hot_word_srvRequest()
-        hotword_req.key = "ready"
-        hotword_req.threshold = 0.5
-        hotword_req.timeout = 5
-        print(self.consoleFormatter.format("REQHELPSTORE", "HEADER"))
-        destine_section = self.cabinet_sections[self.actual_obj_cat]
-        # if(destine_section["section"] == 1):
-        #     if self.actual_obj_cat in ['cheezit', 'cleanser', 'milk']:
-        #         previousPosition = self.currentPositionOdom.position
-        #         decreaseDistance = 0
-        #         while True:
-        #             distanceTraveled = self.calculateEuclideanDistance(self.currentPositionOdom.position.x, self.currentPositionOdom.position.y, previousPosition.x, previousPosition.y) 
-        #             if distanceTraveled < 0.1-decreaseDistance:
-        #                 self.tm.go_to_relative_point(1-(distanceTraveled), 0, 0)
-        #                 decreaseDistance += 0.05
-        #             else:
-        #                 break
-        #         self.tm.execute_trayectory("place_both_hands") 
-        #     else:
-        #         previousPosition = self.currentPositionOdom.position
-        #         decreaseDistance = 0
-        #         while True:
-        #             distanceTraveled = self.calculateEuclideanDistance(self.currentPositionOdom.position.x, self.currentPositionOdom.position.y, previousPosition.x, previousPosition.y) 
-        #             if distanceTraveled < 0.1-decreaseDistance:
-        #                 self.tm.go_to_relative_point(1.0, 0, 0)
-        #                 decreaseDistance += 0.05
-        #             else:
-        #                 break
-        #         self.tm.execute_trayectory("place_right_arm")
-        #     self.tm.go_to_relative_point(-0.3,0,0,0)
-        #else:
-        put_in = ""
-        if len(destine_section["stored_objects"]) == 0:
-            put_in = "inside the empty drawer at the bottom"
+        
+        self.tm.go_to_relative_point(-(self.cabinet_place_distance), 0.0, 0.0)
+        self.objects_list.pop(0)
+        self.tm.go_to_pose("standard")
+        
+        if self.objects_list == []:
+            self.finish()
         else:
-            put_in = "beside the "+destine_section["stored_objects"][0] + " in the drawer " + str(np.random.randint(1,4)) + " from the bottom"
-        if self.selected_object in posible_objects:
-            self.tm.talk("Could you take the "+self.selected_object+" from my hands?", "English",wait=True)
-            self.tm.talk("When you are ready to grab the "+ self.selected_object + " say ready","English",wait=True)
-            res = self.hotword_client.call(hotword_req)
-            self.tm.go_to_pose('open_both_hands', 0.1)
-            rospy.sleep(3)
-            self.tm.go_to_pose('standard', 0.2)
-            rospy.sleep(1)
-
-
-        self.tm.talk("Can you please put the "+ self.selected_object + put_in, "English",wait=True)
-        rospy.sleep(3)
-        self.tm.talk("Thank you for your help","English",wait=True)
-        self.objects_stored += 1
-        destine_section["stored_objects"].insert(0, self.selected_object)
-        self.object_stored()
-
-    def on_enter_RECOGCABINETCATEGORIES(self):
-        print(self.consoleFormatter.format("RECOGCABINETCATEGORIES", "HEADER"))
-        self.tm.talk("Recognizing cabinet categories","English",wait=False)
-        self.categorize_sections()
-        print(self.consoleFormatter.format("Sections categorized", "OKGREEN"))
-        print(self.consoleFormatter.format("Sections: "+str(self.cabinet_sections), "OKGREEN"))
-        self.cabinet_sections_recognized()
+            self.back_2_table()
+            
+            
+        
+    def on_enter_BACK_2_TABLE(self):
+        print(self.consoleFormatter.format("BACK_2_TABLE", "HEADER"))
+        self.tm.go_to_relative_point((self.cabinet_approach_distance), 0.0, 0.0)
+        rospy.sleep(2)
+        self.tm.go_to_relative_point(0.0, 0.0, -(self.cabinet_angle))
+        self.new_object()
         
 
 
     def on_enter_END(self):
         print(self.consoleFormatter.format("END", "HEADER"))
-        sys.exit(0)
+        self.tm.talk("I have finished storing the groceries.", "English", wait=False)
+        os._exit(os.EX_OK)
+
+
 
     def check_rospy(self):
-        #Termina todos los procesos al cerrar el nodo
         while not rospy.is_shutdown():
             rospy.sleep(0.1)
         print(self.consoleFormatter.format("Shutting down", "FAIL"))
         os._exit(os.EX_OK)
-
+    
+    
+    
     def run(self):
         while not rospy.is_shutdown():
-            self.start()
+            self.zero()
 
-    def calculateEuclideanDistance(self, xPoint1, yPoint1, xPoint2, yPoint2):
-        return np.linalg.norm(np.array([xPoint1, yPoint1])-np.array([xPoint2, yPoint2]))
+        
+    # -------------------------------------------------------------------------------------------------------------------------------------------
+    #                                                         FUNCIÓN PRINCIPAL
+    # -------------------------------------------------------------------------------------------------------------------------------------------
     
-    def callback_odom_subscriber(self,msg:Odometry):
-        """
-        Callback for /odom subscriber: It changes the currentPositionOdom attribute with the information of the
-        input message.
-
-        Args:
-            msg (Odometry): Robot's estimated pose by the odom.
-        """
-        self.currentPositionOdom = msg.pose.pose
-
-# Crear una instancia de la maquina de estados
 if __name__ == "__main__":
     sm = STORING_GROCERIES()
     sm.run()
