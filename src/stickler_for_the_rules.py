@@ -4,15 +4,10 @@
 from transitions import Machine
 from task_module import Task_module as tm
 import ConsoleFormatter
-import time
 import threading
 import rospy
 import math
 import os
-import numpy as np
-
-# --------------------------- MESSAGES AND SERVICES IMPORTS ------------------------------
-from robot_toolkit_msgs.srv import set_angle_srvRequest
 
 # --------------------------- STICKLER FOR THE RULES TASK CLASS  ------------------------------
 class STICKLER_RULES(object):
@@ -26,7 +21,7 @@ class STICKLER_RULES(object):
         self.task_name = "stickler_for_the_rules"
         
         # Possible states for the states machine
-        states = ['INIT', 'LOOK4PERSON', 'LOOK4GARBAGE', 'ASK4SHOES', 'ASK4DRINK', 'GO2NEXT']
+        states = ['INIT', 'LOOK4PERSON', 'ASK4SHOES', 'ASK4DRINK', 'GO2NEXT']
         
         # Initialization of the task module
         self.tm = tm(perception = True,speech=True, navigation=True, pytoolkit=True, manipulation=True)
@@ -101,12 +96,6 @@ class STICKLER_RULES(object):
         self.tm.toggle_filter_by_distance(True,2,["person"])
         self.tm.show_topic("/perception_utilities/yolo_publisher")
         
-        toggle_msg =  set_angle_srvRequest()
-        toggle_msg.name = ["HeadYaw"]
-        toggle_msg.angle = []
-        toggle_msg.speed = 0
-        
-        self.tm.toggle_get_angles_topic_srv(toggle_msg)
         self.tm.set_current_place(self.initial_place)
         self.checked_places.append(self.initial_place)
         self.last_place = self.initial_place
