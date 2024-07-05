@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import os
-import ast
 import rospy
 import threading
 import ConsoleFormatter
@@ -17,7 +16,7 @@ class STORING_GROCERIES(object):
         self.tm = tm(navigation=True, manipulation=True, speech=True, perception = True, pytoolkit=True)
         self.tm.initialize_node('STORING_GROCERIES')
  
-        self.STATES = ['INIT', 'GO_2_TABLE', 'ASK_E_GRAB_OBJECT', 'GO_2_CABINET', 'PLACE_OBJECT', 'BACK_2_TABLE','END'] 
+        self.STATES = ['INIT', 'GO_2_TABLE', 'ASK_E_GRAB_OBJECT', 'GO_2_CABINET','ANALIZE_OBJECTS', 'PLACE_OBJECT', 'BACK_2_TABLE','END'] 
 
         self.TRANSITIONS = [
             {'trigger': 'zero', 'source': 'STORING_GROCERIES', 'dest': 'INIT'},
@@ -41,7 +40,7 @@ class STORING_GROCERIES(object):
         # -------------------------------------------------------------------------------------------------------------------------------------------
 
         rospy.wait_for_service("/pytoolkit/ALMotion/set_angle_srv")
-        self.set_angle_srv = rospy.ServicePcategorizeroxy("/pytoolkit/ALMotion/set_angle_srv",set_angle_srv)
+        self.set_angle_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_angle_srv",set_angle_srv)
         
         # -------------------------------------------------------------------------------------------------------------------------------------------
         #                                                           PARÁMETROS AJUSTABLES
@@ -97,7 +96,7 @@ class STORING_GROCERIES(object):
         self.tm.set_current_place("house_door")
         self.tm.talk("Hello! I will assist you in storing groceries.", "English", wait=False)
         self.tm.initialize_pepper()
-        self.start()
+        self.go_2_table()
         
         
     
@@ -110,8 +109,9 @@ class STORING_GROCERIES(object):
     
     def on_enter_ANALIZE_OBJECTS(self):
         print(self.consoleFormatter.format("ANALIZE_OBJECTS", "HEADER"))
+        self.tm.set_security_distance(False)
         objects_response = self.tm.img_description(
-                "Please analyze the image and describe all the objects you see on the table. Focus on identifying each object, their characteristics, and their approximate locations on the table. Ignore any items that are not on the table. Provide a brief and clear description.",
+                "Please analyze the image and describe all the objects you see on the table. Focus on identifying each object, their characteristics, and their approximate locations on the table. Ignore any items that are not on the table. Provide a brief and clear description. Maximum 200 worlds",
                 "front_camera"
                 )
         objects_description = objects_response["message"]
@@ -170,7 +170,7 @@ class STORING_GROCERIES(object):
                 self.tm.talk(f"Please place the {self.actual_item} as the example is shown on my tablet until I can hold it properly.", "English", wait=False)
                 rospy.sleep(2)
             self.tm.go_to_pose(action,self.slow_movement)
-                
+        rospy.sleep(2)
         self.tm.talk("Thank you!", "English", wait=False)
         self.go_2_cabinet()
         
@@ -193,7 +193,7 @@ class STORING_GROCERIES(object):
         self.tm.go_to_pose("open_both_hands", 0.01)
         rospy.sleep(9)
         point_angle = self.cabinets[self.actual_item_category]
-        self.set_angle_srv((["LShoulderPitch"], [point_angle], self.normal_movement))
+        self.set_angle_srv(["LShoulderPitch"], [point_angle], self.normal_movement)
         rospy.sleep(5)
         self.tm.talk(f"Perfect! Now follow me to grab the next item", "English", wait=False)
         
