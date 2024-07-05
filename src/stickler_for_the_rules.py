@@ -12,7 +12,7 @@ import os
 import numpy as np
 
 # --------------------------- MESSAGES AND SERVICES IMPORTS ------------------------------
-from robot_toolkit_msgs.srv import move_head_srv, set_angle_srvRequest
+from robot_toolkit_msgs.srv import set_angle_srvRequest
 
 # --------------------------- STICKLER FOR THE RULES TASK CLASS  ------------------------------
 class STICKLER_RULES(object):
@@ -46,14 +46,6 @@ class STICKLER_RULES(object):
         # Thread to check if rospy is running
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
-        
-        # --------------------------- ROS Services (PyToolkit) ------------------------------
-
-        #TODO: Change this service for the TM one
-        print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/move_head...", "WARNING"))
-        rospy.wait_for_service("/pytoolkit/ALMotion/move_head_srv")
-        self.move_head_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/move_head_srv",move_head_srv)
- 
  
         # --------------------------- Task Parameters ------------------------------
         
@@ -132,8 +124,6 @@ class STICKLER_RULES(object):
         
         print(self.consoleFormatter.format("LOOK4PERSON", "WARNING"))
         
-        self.tm.look_for_object("person", ignore_already_seen=True)
-        
         self.tm.talk("I am going to check if the guests are breaking the rules!","English", wait=False)
         self.tm.setRPosture_srv("stand")
         
@@ -150,6 +140,9 @@ class STICKLER_RULES(object):
                 
             elif angle==60:
                 rospy.sleep(5)
+                
+            self.tm.labels = dict()
+            
             rospy.sleep(2)
                 
             persons = self.tm.labels.get("person", [])
@@ -189,15 +182,15 @@ class STICKLER_RULES(object):
         
         print("Esta descalza:"+answer)
         
-        if "True" in answer:
+        if "true" in answer.lower():
             # Esta descalso o con medias
             self.has_shoes = 0
             
-        elif "None" in answer:
+        elif "none" in answer.lower():
             # No se sabe
             self.has_shoes = 3
             
-        elif "Wall" in answer:
+        elif "wall" in answer.lower():
             # Detras de una pared
             self.has_shoes = 4
             
@@ -212,10 +205,10 @@ class STICKLER_RULES(object):
         gpt_vision_prompt = f"Is the person in the center of the picture holding a bottle,a juice box, a cup, a can, or any kind of drink in their hand? Answer only with True or False. If the person you see is behind a wall answer only with 'Wall' and don't check the other rules"
         answer = self.tm.img_description(gpt_vision_prompt,camera_name="both")["message"]
         print("Tiene bebida:"+answer)
-        if "True" in answer:
+        if "true" in answer.lower():
             # Tiene una bebida
             self.has_drink = 1
-        elif "Wall" in answer:
+        elif "wall" in answer.lower():
             # Detras de una pared
             self.has_drink = 4
         else:
@@ -223,7 +216,7 @@ class STICKLER_RULES(object):
             self.has_drink = 0
             
     
-    # --------------------- Complementary function 3: Check if a person is in the Forbideen room --------------------------
+    # --------------------- Complementary function 3: Check if a person is in the Forbidden room --------------------------
     def check_forbidden(self):
         
         self.tm.robot_stop_srv()
@@ -231,8 +224,6 @@ class STICKLER_RULES(object):
         if self.last_place == self.forbidden:
             
             self.tm.talk("You should not be here, because this room is forbidden.","English", wait=True)
-            rospy.sleep(1)
-            self.move_head_srv("default")
             self.someone_in_forbidden = True
             return True
         
@@ -263,14 +254,14 @@ class STICKLER_RULES(object):
         
         print(self.consoleFormatter.format("ASK4SHOES", "HEADER"))
         
-        self.tm.talk("You must not wear shoes in this place!. Please, go to the entrance and take them off!","English", wait=False)
+        self.tm.talk("You must not wear shoes in this place!. Please, go to the entrance and take them off!","English", wait=True)
 
     # --------------------------- FOURTH STATE: ASK FOR DRINK ------------------------------
     def ASK4DRINK(self):
         
         print(self.consoleFormatter.format("ASK4DRINK", "HEADER"))
         
-        self.tm.talk("You must have a Drink in your hand. Please, go to the kitchen and grab a drink, you must keep it in your hand!","English", wait=False)
+        self.tm.talk("You must have a Drink in your hand. Please, go to the kitchen and grab a drink, you must keep it in your hand!","English", wait=True)
 
     # --------------------------- FIFTH STATE: ASK TO LEAVE ------------------------------
     def ASK2FOLLOW(self):
@@ -279,7 +270,14 @@ class STICKLER_RULES(object):
         self.tm.setRPosture_srv("stand")
         self.tm.talk("Follow me to the other party guests please","English", wait=False)
         self.tm.go_to_place(self.party_place)
-        self.tm.talk("Now, please stay here and do not come back to the forbidden room","English", wait=False)
+        self.tm.go_to_relative_point(0,0,180)
+        gpt_vision_prompt = f"Are the people in the picture close to camera (within 1 to 2 meters of the camera)? Answer only with True or False. If there is no one in the picture answer False"
+        answer = self.tm.img_description(prompt=gpt_vision_prompt,camera_name="both")["message"]
+        print("followed?:",answer)
+        if "true" in answer.lower():
+            self.tm.talk("Thank you for following me. Now, please stay here and do not come back to the forbidden room","English", wait=False)
+        else:
+            self.tm.talk("I see you did not comply but i must keep looking for the other guests. But please remember you must not be in the forbidden room","English", wait=False)
             
             
     # --------------------------- SIXTH STATE: GO TO THE NEXT ROOM ------------------------------
@@ -288,7 +286,6 @@ class STICKLER_RULES(object):
         print("Current Place: " + self.last_place)
         
         self.tm.talk("I'm going to check another room!","English", wait=False)
-        self.tm.setRPosture_srv("stand")
         
         print(self.consoleFormatter.format("GO2NEXT", "HEADER"))
         
@@ -299,8 +296,8 @@ class STICKLER_RULES(object):
             if place not in self.checked_places:
                 
                 self.tm.talk("I'm gonna check " + self.places_names[place_num],"English", wait=False)
-                if self.tm.last_place != place:
-                    self.tm.go_to_place(place)
+                self.tm.setRPosture_srv("stand")
+                self.tm.go_to_place(place)
                 print("Next Place: " + place)
                 self.checked_places.append(place)
                 self.last_place = place
@@ -314,7 +311,6 @@ class STICKLER_RULES(object):
     # --------------------- Complementary function 5: Check the rules --------------------------
     def check_rules(self):
         
-        is_in_forbidden = self.check_forbidden()
         
         # Threads to check the rules related to wearing shoes
         shoes_check_thread = threading.Thread(target=self.check_shoes)
@@ -323,6 +319,10 @@ class STICKLER_RULES(object):
         # Threads to check the rules related to having a drink
         drink_check_thread = threading.Thread(target=self.check_drink)
         drink_check_thread.start()
+        
+        is_in_forbidden = self.check_forbidden()
+        
+        self.tm.talk("Please wait while i check if you're breaking more rules",wait=False)
         
         while self.has_drink==2 or self.has_shoes==2:
             
@@ -335,7 +335,7 @@ class STICKLER_RULES(object):
             self.ASK4SHOES()
             
         elif self.has_shoes == 3:
-            self.tm.talk("I can't see your feet, but remember you can't use shoes in the house.","English", wait=False)
+            self.tm.talk("I can't see your feet, but remember you can't use shoes in the house.","English", wait=True)
         
         if is_in_forbidden or self.has_drink==0 or self.has_shoes==1:
             
@@ -344,7 +344,7 @@ class STICKLER_RULES(object):
             
         else:
             if self.has_drink != 4 and self.has_shoes != 4 and (not is_in_forbidden):
-                self.tm.talk("Congratulations! You're not breaking any rule","English", wait=False)
+                self.tm.talk("Congratulations! You're not breaking any rule","English", wait=True)
                         
         self.has_drink = 2
         self.has_shoes = 2
