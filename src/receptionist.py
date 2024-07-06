@@ -51,7 +51,7 @@ class RECEPTIONIST(object):
         rospy.wait_for_service("/pytoolkit/ALMotion/set_angle_srv")
         self.set_angle_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_angle_srv",set_angle_srv)
         
- 
+
         # --------------------------- Task Parameters ------------------------------
         
         # The angles of the chairs the robot must check to introduce the people
@@ -94,12 +94,13 @@ class RECEPTIONIST(object):
         self.tm.turn_camera("depth_camera","custom",1,15)
         self.tm.toggle_filter_by_distance(True,2.5,["person"])
         self.tm.publish_filtered_image("face", "front_camera")
+        self.tm.remove_faces_data()
         
         self.tm.set_current_place(self.initial_place)
         
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         
-        self.tm.talk("I am going to do the " + self.task_name + " task","English", wait=True)
+        self.tm.talk("I am going to do the " + self.task_name + " task","English", wait=False)
         
         # Moving to the LOOK4PERSON state
         self.beggining()

@@ -238,7 +238,8 @@ class RECEPTIONIST(object):
         self.tm.turn_camera("depth_camera", "custom", 1, 20)
         self.tm.toggle_filter_by_distance(True, 2, ["person"])
         self.tm.set_current_place(self.initial_place)
-        self.tm.talk("I am going to do the  " + self.task_name + " task", "English")
+        self.tm.talk("I am going to do the  " + self.task_name + " task", "English", wait=False)
+        self.tm.remove_faces_data()
         print(
             self.consoleFormatter.format(
                 "Inicializacion del task: " + self.task_name, "HEADER"
