@@ -62,9 +62,9 @@ class STORING_GROCERIES(object):
         
         # Cabinets and altures
         self.cabinets = {
-            "sports stuff": 0.3,
+            "sports stuff": 0.6,
             "healthy food": 0.0,
-            "junk food":  -0.3
+            "junk food":  -0.6
         }
         
         # Objects list (just in case gpt vision fails)
@@ -110,17 +110,20 @@ class STORING_GROCERIES(object):
     def on_enter_ANALIZE_OBJECTS(self):
         print(self.consoleFormatter.format("ANALIZE_OBJECTS", "HEADER"))
         self.tm.set_security_distance(False)
+        self.tm.go_to_pose
         objects_response = self.tm.img_description(
-                "Please analyze the image and describe all the objects you see on the table. Focus on identifying each object, their characteristics, and their approximate locations on the table. Ignore any items that are not on the table. Provide a brief and clear description. Maximum 200 worlds",
+                "Please analyze the image and describe all the objects you see on the table. Focus on identifying each object, their characteristics, and their approximate locations on the table. Ignore any items that are not on the table. Provide a brief and clear description. Maximum 100 worlds",
                 "front_camera"
                 )
         objects_description = objects_response["message"]
-        self.tm.talk(f"{objects_description}", "English", wait=False)
+        print(objects_description)
+        self.tm.talk(f"{objects_description}", "English", wait=True)
         objects_list_response = self.tm.img_description(
                 f"Based on this '{objects_description}', return a Python list with the names of the objects you mentioned. Then analyze the image again to verify and ensure the list is accurate. Ignore any items that are not on the table. Provide your final response in the format of a Python list.",
                 "front_camera"
                 )
         objects_list = objects_list_response["message"]
+        print(objects_list)
         try:
             self.objects_list = eval(objects_list_response.get("message", "[]"))
             if not isinstance(objects_list, list):
@@ -143,7 +146,7 @@ class STORING_GROCERIES(object):
 
         )
         self.actual_item_category = self.tm.answer_question(categorize_prompt, 0)
-        
+        print(self.actual_item_category)
         self.tm.talk(f"Please help me take the {self.actual_item} from the table. I described it earlier.", "English", wait=False)
         rospy.sleep(6)
         self.tm.talk(f"Thank you!", "English", wait=False)
@@ -161,16 +164,15 @@ class STORING_GROCERIES(object):
         )
         
         self.actual_item_type = self.tm.answer_question(object_type_prompt, 0)
+        print(self.actual_item_type)
         
         actions = self.grab_actions[self.actual_item_type]
         self.tm.show_image(f"http://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/grab_{self.actual_item}.jpeg")
-        
+        self.tm.talk(f"Please place the {self.actual_item} as the example is shown on my tablet until I can hold it properly.", "English", wait=False)
         for action in actions:
-            if action == "grab_one_hand" or "prepare_2_grab_small":
-                self.tm.talk(f"Please place the {self.actual_item} as the example is shown on my tablet until I can hold it properly.", "English", wait=False)
-                rospy.sleep(2)
+            rospy.sleep(2)
             self.tm.go_to_pose(action,self.slow_movement)
-        rospy.sleep(2)
+        rospy.sleep(4)
         self.tm.talk("Thank you!", "English", wait=False)
         self.go_2_cabinet()
         
@@ -209,7 +211,7 @@ class STORING_GROCERIES(object):
         
     def on_enter_BACK_2_TABLE(self):
         print(self.consoleFormatter.format("BACK_2_TABLE", "HEADER"))
-        self.tm.go_to_relative_point((self.cabinet_approach_distance), 0.0, 0.0)
+        self.tm.go_to_relative_point(-(self.cabinet_approach_distance), 0.0, 0.0)
         rospy.sleep(2)
         self.tm.go_to_relative_point(0.0, 0.0, -(self.cabinet_angle))
         self.new_object()

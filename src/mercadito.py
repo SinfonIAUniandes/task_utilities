@@ -4,27 +4,11 @@ from task_module import Task_module as tm
 from std_msgs.msg import Bool, String
 import ConsoleFormatter
 import time
-import random
 import threading
-import sys
 import rospy
-import math
 import os
-import numpy as np
-from std_srvs.srv import SetBool
-from code_generation import ls_generate as gen
-from code_generation import generate_utils
-from code_generation.database.models import Model
 
-from robot_toolkit_msgs.msg import touch_msg, speech_recognition_status_msg
-
-from navigation_msgs.srv import constant_spin_srv
-from navigation_msgs.msg import simple_feedback_msg
-from robot_toolkit_msgs.msg import animation_msg
-from geometry_msgs.msg import PoseWithCovarianceStamped
-from tf.transformations import euler_from_quaternion
-
-
+from robot_toolkit_msgs.msg import speech_recognition_status_msg
 class MERCADITO(object):
     def __init__(self):
 
@@ -51,10 +35,6 @@ class MERCADITO(object):
             {"trigger": "finish", "source": "FINISH", "dest": "MERCADITO_DONE"},
         ]
 
-        # self.handSensorSubscriber = rospy.Subscriber(
-        #     "/touch", touch_msg, self.callback_hand_sensor_subscriber
-        # )
-
         # Crear la máquina de estados
         self.machine = Machine(
             model=self, states=states, transitions=transitions, initial="MERCADITO"
@@ -74,10 +54,7 @@ class MERCADITO(object):
         print(self.consoleFormatter.format("INIT", "HEADER"))
         self.tm.initialize_pepper()
         self.tm.show_topic("/perception_utilities/yolo_publisher")
-        if self.language == "Spanish":
-            self.tm.talk("Voy a hacer la tarea de la compra", self.language)
-        else:
-            self.tm.talk("I am going to do the shopping task", "English")
+        self.tm.talk("I am going to do the shopping task", "English")
 
         print(
             self.consoleFormatter.format(
