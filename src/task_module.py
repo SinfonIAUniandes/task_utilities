@@ -1628,7 +1628,7 @@ class Task_module:
         """
         self.go_to_place(place_name = self.last_place)
 
-    def center_head_with_label(self, label_info) -> None:   
+    def center_head_with_label(self, label_info,height=-0.3,resolution=1) -> None:   
         """
         Input:
         label_info: tuple that represents the label to center
@@ -1643,10 +1643,18 @@ class Task_module:
         self.toggle_get_angles_topic_srv(toggle_msg)
         label_width = label_info[3]
         label_center = (label_info[1] + label_width/2)
-        label_degree_yolo = (label_center*0.16875) - 27
+        # 54 grados caben en la camara y hay 320 pixeles en resolution 1
+        factor = 54 / 320
+        if resolution==2:
+            # 54 grados caben en la camara y hay 640 pixeles en resolution 2
+            factor = 54 / 640
+        label_degree_yolo = (label_center*factor) - 27
+        rospy.sleep(1)
         current_head_angle = self.angles
+        print("current_head_angle: ", self.angles)
         label_degree = math.radians(label_degree_yolo - current_head_angle)
-        self.set_angles_srv(["HeadYaw","HeadPitch"],[-label_degree, -0.3],0.1)
+        print("label_degree: ",-label_degree)
+        self.set_angles_srv(["HeadYaw","HeadPitch"],[-label_degree, height],0.1)
         toggle_msg =  set_angle_srvRequest()
         toggle_msg.name = ["None"]
         toggle_msg.angle = []
@@ -2348,7 +2356,7 @@ class Task_module:
                 self.stopped_for_safety = True
 
     def callback_get_angles(self, msg):
-        self.angles = math.degrees(msg.angles[0])     
+        self.angles = math.degrees(msg.angles[0]) 
             
     def callback_get_labels_subscriber(self, msg):
         self.labels = {}

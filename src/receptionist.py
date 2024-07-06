@@ -1,212 +1,350 @@
 #!/usr/bin/env python3
+
+# --------------------------- GENERAL LIBRARIES IMPORTS ------------------------------
 from transitions import Machine
 from task_module import Task_module as tm
+from robot_toolkit_msgs.srv import set_angle_srv
 import ConsoleFormatter
-import time
-import random
 import threading
 import rospy
 import math
 import os
-from std_srvs.srv import SetBool
 
-from perception_msgs.msg import get_labels_msg
-from robot_toolkit_msgs.srv import tablet_service_srv, move_head_srv
-from robot_toolkit_msgs.msg import animation_msg
-
-
+# --------------------------- RECEPTIONIST TASK CLASS  ------------------------------
 class RECEPTIONIST(object):
+    
+    # --------------------------- Class Constructor ------------------------------
     def __init__(self):
-        self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
+
+        self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
+        
+        # Task name
         self.task_name = "receptionist"
-        states = [
-            "INIT",
-            "WAIT4GUEST",
-            "QA",
-            "SAVE_FACE",
-            "INTRODUCE_NEW",
-            "INTRODUCE_OLD",
-            "GO2LIVING",
-            "GO2DOOR",
-            "LOOK4PERSON",
-            "LOOK4CHAIR",
-            "SIGNAL_SOMETHING",
-        ]
-        self.tm = tm(
-            perception=True,
-            speech=True,
-            manipulation=True,
-            navigation=True,
-            pytoolkit=True,
-        )
+        
+        # Possible states for the states machine
+        states = ['INIT', 'GO2DOOR', 'WAIT4GUEST', 'SAVE_GUEST', 'GO2LIVING','INTRODUCE_GUEST']
+        
+        # Initialization of the task module
+        self.tm = tm(perception = True,speech=True, navigation=True, pytoolkit=True, manipulation=True)
         self.tm.initialize_node(self.task_name)
+        
+        # Definition of the permitted transitions between states
         transitions = [
-            {"trigger": "start", "source": "RECEPTIONIST", "dest": "INIT"},
-            {"trigger": "beggining", "source": "INIT", "dest": "WAIT4GUEST"},
-            {"trigger": "person_arrived", "source": "WAIT4GUEST", "dest": "QA"},
-            {"trigger": "person_met", "source": "QA", "dest": "SAVE_FACE"},
-            {"trigger": "save_face_failed", "source": "SAVE_FACE", "dest": "SAVE_FACE"},
-            {
-                "trigger": "save_face_succeded",
-                "source": "SAVE_FACE",
-                "dest": "GO2LIVING",
-            },
-            {
-                "trigger": "arrived_to_point",
-                "source": "GO2LIVING",
-                "dest": "INTRODUCE_NEW",
-            },
-            {
-                "trigger": "introduced_new_guest",
-                "source": "INTRODUCE_NEW",
-                "dest": "LOOK4PERSON",
-            },
-            {
-                "trigger": "person_not_found",
-                "source": "LOOK4PERSON",
-                "dest": "LOOK4PERSON",
-            },
-            {
-                "trigger": "person_found",
-                "source": "LOOK4PERSON",
-                "dest": "INTRODUCE_OLD",
-            },
-            {
-                "trigger": "introduced_old_guest",
-                "source": "INTRODUCE_OLD",
-                "dest": "LOOK4PERSON",
-            },
-            {
-                "trigger": "introduced_everyone",
-                "source": "LOOK4PERSON",
-                "dest": "LOOK4CHAIR",
-            },
-            {
-                "trigger": "chair_found",
-                "source": "LOOK4CHAIR",
-                "dest": "SIGNAL_SOMETHING",
-            },
-            {
-                "trigger": "person_accomodated",
-                "source": "SIGNAL_SOMETHING",
-                "dest": "GO2DOOR",
-            },
-            {"trigger": "wait_new_guest", "source": "GO2DOOR", "dest": "WAIT4GUEST"},
+            {'trigger': 'start', 'source': 'RECEPTIONIST', 'dest': 'INIT'},
+            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'GO2DOOR'},
+            {'trigger': 'arrive_house_door', 'source': 'GO2DOOR', 'dest': 'WAIT4GUEST'},
+            {'trigger': 'guest_found', 'source': 'WAIT4GUEST', 'dest': 'SAVE_GUEST'},
+            {'trigger': 'guest_saved', 'source': 'SAVE_GUEST', 'dest': 'GO2LIVING'},
+            {'trigger': 'arrive_living_room', 'source': 'GO2LIVING', 'dest': 'INTRODUCE_GUEST'},
+            {'trigger': 'guest_introduced', 'source': 'INTRODUCE_GUEST', 'dest': 'GO2DOOR'},
         ]
+        
+        # Creation of the states machine
+        self.machine = Machine(model=self, states=states, transitions=transitions, initial='RECEPTIONIST')
 
-        # Crear la máquina de estados
-        self.machine = Machine(
-            model=self, states=states, transitions=transitions, initial="RECEPTIONIST"
-        )
-
+        # Thread to check if rospy is running
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
 
-        ##################### ROS CALLBACK VARIABLES #####################
-        self.labels = {}
-        ##################### GLOBAL VARIABLES #####################
-        self.person_description_thread = None
-        self.get_clothes_and_hair_color_thread = None
-        self.clothes_color = ""
-        self.hair_color = ""
-        self.initial_place = "init_receptionist"
-        self.greeting_place = "house_door"
-        self.guests_place = "living_room"
-        self.recognized_guests_counter = 0
-        self.all_guests = {
-            "Charlie": {
-                "name": "Charlie",
-                "age": self.categorize_age(21),
-                "drink": "Milk",
-                "gender": "Man",
-                "pronoun": "he",
-            }
+        # --------------------------- Pytoolkit Services ------------------------------
+
+        rospy.wait_for_service("/pytoolkit/ALMotion/set_angle_srv")
+        self.set_angle_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_angle_srv",set_angle_srv)
+        
+ 
+        # --------------------------- Task Parameters ------------------------------
+        
+        # The angles of the chairs the robot must check to introduce the people
+        self.chair_angles = [-10,35,70]
+        
+        self.host = {
+            "name": "charlie",
+            "age": self.categorize_age(21),
+            "drink": "Milk",
+            "gender": "Man",
+            "pronoun": "he",
         }
-        self.introduced_guests = []
-        self.current_guest = {}
-        self.old_person = ""
-        self.failed_saving_face = False
-        self.angle_index = 0
-        self.chair_angles = [-10, 10, -70]
-        self.checked_chair_angles = []
-        self.empty_chair_angles = []
-        self.is_first_guest = True
-        self.introducing_2nd_guest = False
-        self.first_guest = {}
-        self.host_name = "Charlie"
+        
+        self.first_guest = {
+            "hair": "",
+            "clothes": "",
+            "age": "",
+            "gender": "",
+        }
+        
+        self.second_guest = {}
+        
+        self.first_guest_saved = False
+        self.host_saved = False
+        self.guests_count = 1
+        # Where the robot must introduce the guests
+        self.seating_place = "living_room"
+        self.initial_place = "house_door"
+        self.greeting_place = "house_door"
+        self.last_place = self.initial_place
+        
+    
+    # --------------------------- STATES FUNCTIONS ------------------------------
+    
+    # --------------------------- FIRST STATE: INIT ------------------------------
+    def on_enter_INIT(self):
+        
+        
+        self.tm.initialize_pepper()
+        self.tm.turn_camera("depth_camera","custom",1,15)
+        self.tm.toggle_filter_by_distance(True,2.5,["person"])
+        self.tm.publish_filtered_image("face", "front_camera")
+        
+        self.tm.set_current_place(self.initial_place)
+        
+        print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
+        
+        self.tm.talk("I am going to do the " + self.task_name + " task","English", wait=True)
+        
+        # Moving to the LOOK4PERSON state
+        self.beggining()
+        
+    # --------------------------- SECOND STATE: GO TO THE HOUSE DOOR ------------------------------
+    def on_enter_GO2DOOR(self):
+        
+        self.tm.talk("I'm going to the door to greet the guests!","English", wait=False)
+        
+        print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
+        
+        self.tm.setRPosture_srv("stand")
+        #TODO EL robot navega de otro lugar a la puerta
+        if self.tm.current_place != self.initial_place:
+            self.tm.go_to_place(self.greeting_place)
+        self.arrive_house_door()
+        
+    # --------------------------- THIRD STATE: WAIT FOR THE GUESTS ------------------------------
+    def on_enter_WAIT4GUEST(self):
+        print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
+        self.tm.go_to_pose("default_head")
+        self.tm.setRPosture_srv("stand")
+        self.tm.setMoveHead_srv.call("up")
+        self.tm.talk("Waiting for guests","English")
+        self.tm.look_for_object("person")
+        self.tm.wait_for_object(-1)
+        self.guest_found()
 
-        # ROS Services (PyToolkit)
-        print(
-            self.consoleFormatter.format(
-                "Waiting for pytoolkit/awareness...", "WARNING"
-            )
-        )
-        rospy.wait_for_service("/pytoolkit/ALBasicAwareness/set_awareness_srv")
-        self.awareness_srv = rospy.ServiceProxy(
-            "/pytoolkit/ALBasicAwareness/set_awareness_srv", SetBool
-        )
+    # --------------------------- FOURTH STATE: LOOK FOR PERSON ------------------------------
+    def on_enter_SAVE_GUEST(self):
+        
+        print(self.consoleFormatter.format("LOOK4PERSON", "WARNING"))
+        
+        self.tm.set_angles_srv(["HeadYaw", "HeadPitch"],[0, -0.45],0.1,)
+        
+        print("guests:",self.guests_count)
+        self.tm.show_topic("/perception_utilities/filtered_image")
+        if self.guests_count == 1:
+            self.tm.turn_camera("front_camera","custom",2,10)
+            self.tm.talk("Hello guest, please center your face in the circle in my tablet so i can remember your face later!","English", wait=False)
+            rospy.sleep(3)
+            gpt_hair_thread = threading.Thread(target=self.gpt_hair_t)
+            gpt_hair_thread.start()
+            gpt_clothes_thread = threading.Thread(target=self.gpt_clothes_t)
+            gpt_clothes_thread.start()
+            save_face_thread = threading.Thread(target=self.save_face_t,args=[1])
+            save_face_thread.start()
+            age_gender_thread = threading.Thread(target=self.age_gender_t)
+            age_gender_thread.start()
+        
+            rospy.sleep(4)
+            self.tm.talk("I will ask you a couple of questions while i get a good look at your face! Please answer them when my eyes are blue","English", wait=True)
+        else:
+            self.tm.talk("I will ask you a couple of questions. Please answer them when my eyes are blue!","English", wait=True)
+        name = self.tm.q_a("name").lower()
+        drink = self.tm.q_a("drink")
+        
+        if self.guests_count == 1:
+            self.first_guest["name"] = name
+            self.first_guest["drink"] = drink
+            while self.first_guest["age"]=="" or self.first_guest["gender"]=="" or not self.first_guest_saved:
+                rospy.sleep(0.1)
+        elif  self.guests_count == 2:
+            self.second_guest["name"] = name
+            self.second_guest["drink"] = drink
+        self.tm.setRPosture_srv("stand")
+        self.tm.talk("Thank you'!","English", wait=False)
+        self.tm.turn_camera("front_camera","custom",1,15)
+        
+        self.guest_saved()
+        
+    # --------------------------- FIFTH STATE: GO TO THE LIVING ROOM ------------------------------
+    def on_enter_GO2LIVING(self):
+        
+        self.tm.talk("Please follow me to the living room to introduce you!","English", wait=False)
+        
+        print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
+        
+        self.tm.setRPosture_srv("stand")
+        self.tm.show_topic("/perception_utilities/yolo_publisher")
+        self.tm.go_to_place(self.seating_place)
+        self.arrive_living_room()
+        
+    
+    # --------------------------- SIXTH STATE: INTRODUCE GUEST ------------------------------
+    def on_enter_INTRODUCE_GUEST(self):
+        
+        print(self.consoleFormatter.format("INTRODUCE_GUEST", "WARNING"))
+        
+        if self.guests_count == 1:
+            self.tm.talk(f'Hello everyone, this is {self.first_guest["name"]}, {self.first_guest["pronoun"]} is a {self.first_guest["gender"]}.  {self.first_guest["pronoun"]} is {self.first_guest["age"]}, and {self.first_guest["pronoun"]} likes to drink {self.first_guest["drink"]}.',"English", wait=False)
+        else:
+            self.tm.talk(f'Hello everyone, this is {self.second_guest["name"]}, They like to drink {self.second_guest["drink"]}.',"English", wait=False)
+            
+        numero_personas = 0
+        
+        occupied_chairs = []
+        
+        for angle in self.chair_angles:
+            
+            print("angulo actual:",angle)
+            self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
+            
+            if angle==-10:
+                rospy.sleep(1)
+                
+            elif angle==35:
+                rospy.sleep(2)
+                
+            elif angle==60:
+                rospy.sleep(3)
+                
+            self.tm.labels = dict()
+            
+            rospy.sleep(1)
+                
+            persons = self.tm.labels.get("person", [])
+            
+            for person in persons:
+                
+                occupied_chairs.append(angle)
+                numero_personas +=1
+                
+                self.tm.talk("Recognizing person!","English", wait=False)
+                if self.guests_count == 1:
+                    
+                    print("centrando persona:",person)
+                    self.tm.center_head_with_label(person, height=0,resolution=2)
+                    print("persona centrada")
+                    
+                    self.tm.turn_camera("front_camera","custom",2,10)
+                    rospy.sleep(2)
+                    self.tm.show_topic("/perception_utilities/filtered_image")
+                    self.tm.talk("Hi charlie, can you look at me and try to center your face in the circle in my tablet", "English", wait=False)
+                    save_face_thread = threading.Thread(target=self.save_face_t,args=[2])
+                    save_face_thread.start()
+                    self.tm.talk(f"{self.first_guest['name']}, I introduce to you {self.host['name']}, {self.host['pronoun']} is a {self.host['gender']}. {self.host['pronoun']} is {self.host['age']}, and {self.host['pronoun']} likes to drink {self.host['drink']}.", "English", wait=False)
+                    while not self.host_saved:
+                        rospy.sleep(0.1)
+                    print("host_saved")
+                    self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
+                else:
+                    self.tm.turn_camera("front_camera","custom",2,10)
+                    rospy.sleep(2)
+                    guest_name = self.tm.recognize_face(3)
+                    rospy.sleep(5)
+                    print("guest:",guest_name)
+                    if guest_name == "guest1":
+                        self.tm.talk(f"{self.second_guest['name']}, I introduce to you {self.first_guest['name']} is a {self.first_guest['gender']}. {self.first_guest['pronoun']} is {self.first_guest['age']}, and {self.first_guest['pronoun']} likes to drink {self.first_guest['drink']}. {self.first_guest['pronoun']} is wearing {self.first_guest['clothes']}, and has {self.first_guest['hair']} hair.", "English", wait=False)
+                    elif guest_name == self.host["name"]:
+                        self.tm.talk(f"{self.second_guest['name']}, I introduce to you {self.host['name']} is a {self.host['gender']}. {self.host['pronoun']} is {self.host['age']}, and {self.host['pronoun']} likes to drink {self.host['drink']}.", "English", wait=False)
+                    else:
+                        self.tm.talk("I'm sorry I couldn't recognize you, could you tell me your name?", "English", wait=True)
+                        name = self.tm.q_a("name").lower()
+                        if name == self.first_guest["name"]:
+                            self.tm.talk(f"{self.second_guest['name']}, I introduce to you {self.first_guest['name']} is a {self.first_guest['gender']}. {self.first_guest['pronoun']} is {self.first_guest['age']}, and {self.first_guest['pronoun']} likes to drink {self.first_guest['drink']}. {self.first_guest['pronoun']} is wearing {self.first_guest['clothes']}, and has {self.first_guest['hair']} hair.", "English", wait=True)
+                        elif name == self.host["name"]:
+                            self.tm.talk(f"{self.second_guest['name']}, I introduce to you {self.host['name']} is a {self.host['gender']}. {self.host['pronoun']} is {self.host['age']}, and {self.host['pronoun']} likes to drink {self.host['drink']}.", "English", wait=True)
+                        else:
+                            self.tm.talk(f"I'm sorry I couldn't introduce you to {self.second_guest['name']}, please introduce yourself", "English", wait=True)
+                self.tm.turn_camera("front_camera","custom",1,15)
+                
+            if self.guests_count == 1 and self.host_saved:
+                break
+            if len(occupied_chairs) == 2:
+                break
 
-        print(
-            self.consoleFormatter.format(
-                "Waiting for pytoolkit/ALMotion/move_head...", "WARNING"
-            )
-        )
-        rospy.wait_for_service("/pytoolkit/ALMotion/move_head_srv")
-        self.move_head_srv = rospy.ServiceProxy(
-            "/pytoolkit/ALMotion/move_head_srv", move_head_srv
-        )
+        self.tm.setRPosture_srv("stand")
+        
+        if numero_personas == 0:
+            if self.guests_count == 1:
+                self.tm.talk(f"I'm sorry i couldn't see anyone. Could everyone introduce themselves to {self.first_guest['name']} please?", "English", wait=True)
+            else:
+                self.tm.talk(f"I'm sorry i couldn't see anyone. Could everyone introduce themselves to {self.second_guest['name']} please?", "English", wait=True)
+            
+        for angle in self.chair_angles:
+            if not angle in occupied_chairs:
+                self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
+                self.point_angle(angle)
+                if angle==-10:
+                    rospy.sleep(1)
+                    
+                elif angle==35:
+                    rospy.sleep(3)
+                    
+                elif angle==60:
+                    rospy.sleep(5)
+                self.tm.talk("I see that chair is free. Please sit there.", "English", wait=True)
+                self.tm.setRPosture_srv("stand")
+                
+                if self.guests_count == 2:
+                    self.tm.talk("Receptionist task completed succesfully", "English", wait=True)
+                    os._exit(os.EX_OK)
+                self.guests_count +=1
+                
+                break
+                
+        # Moving to the GO2NEXT state
+        self.guest_introduced()
+        
+    # --------------------------- Complementary thread 1: Save Face ------------------------------
+    def save_face_t(self,who):
+        
+        print(self.consoleFormatter.format("SAVE_FACE THREAD", "HEADER"))
+        if who == 1:
+            attempts = 0
+            while not self.first_guest_saved and attempts<3:
+                self.first_guest_saved  = self.tm.save_face("guest1", 5)
+        else:
+            attempts = 0
+            while not self.host_saved and attempts<3:
+                self.host_saved = self.tm.save_face("charlie", 5)
+        
 
-        print(
-            self.consoleFormatter.format(
-                "Waiting for /pytoolkit/ALTabletService/show_image_srv...", "WARNING"
-            )
-        )
-        rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
-        self.show_image_srv = rospy.ServiceProxy(
-            "/pytoolkit/ALTabletService/show_image_srv", tablet_service_srv
-        )
+    # --------------------------- Complementary thread 2: Get hair color with gptvision ------------------------------
+    def gpt_hair_t(self):
+        
+        print(self.consoleFormatter.format("GET HAIR THREAD", "HEADER"))
+        
+        gpt_vision_prompt = "Please answer about the person centered in the image: What is the hair color of the person? Answer only with the color for example: Black"
+        answer = self.tm.img_description(gpt_vision_prompt)["message"]
+        self.first_guest["hair"] = answer
+        
 
-        print(
-            self.consoleFormatter.format(
-                "Waiting for pytoolkit/show_topic...", "WARNING"
-            )
-        )
-        rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
-        self.show_topic_srv = rospy.ServiceProxy(
-            "/pytoolkit/ALTabletService/show_topic_srv", tablet_service_srv
-        )
+    # --------------------------- Complementary thread 3: Get clothes color with gptvision ------------------------------
+    def gpt_clothes_t(self):
+        
+        print(self.consoleFormatter.format("GET CLOTHES THREAD", "HEADER"))
+        
+        gpt_vision_prompt = "Please answer about the person centered in the image: What is the main color of the clothes this person is wearing? Answer only with the color for example: Black"
+        answer = self.tm.img_description(gpt_vision_prompt)["message"]
+        self.first_guest["clothes"] = answer
 
-        print(
-            self.consoleFormatter.format(
-                "Waiting for pytoolkit/autononumusLife...", "WARNING"
-            )
-        )
-        rospy.wait_for_service("/pytoolkit/ALAutonomousLife/set_state_srv")
-        self.autonomous_life_srv = rospy.ServiceProxy(
-            "/pytoolkit/ALAutonomousLife/set_state_srv", SetBool
-        )
-
-        # ROS subscribers (perception)
-        print(
-            self.consoleFormatter.format(
-                "Waiting for /perception_utilities/get_labels_publisher", "WARNING"
-            )
-        )
-        self.get_labels_publisher = rospy.Subscriber(
-            "/perception_utilities/get_labels_publisher",
-            get_labels_msg,
-            self.callback_get_labels,
-        )
-
-        # ROS Publishers
-        print(self.consoleFormatter.format("Waiting for /animations", "WARNING"))
-        self.animations_publisher = rospy.Publisher(
-            "/animations", animation_msg, queue_size=1
-        )
-
-    def callback_get_labels(self, data):
-        self.labels = data.labels
-
+    # --------------------------- Complementary thread 4: Get the persons age and gender with perception ------------------------------
+    def age_gender_t(self):
+        
+        print(self.consoleFormatter.format("GET ATTRIBUTES THREAD", "HEADER"))
+        
+        person_attributes = self.tm.get_person_description()
+        self.first_guest["age"] = self.categorize_age(person_attributes["age"])
+        self.first_guest["gender"] = person_attributes["gender"]
+        self.first_guest["pronoun"] = "he" if person_attributes["gender"] == "Man" else "she"
+    
+    
+    # --------------------------- Complementary function 1: Calculates ranges of age ------------------------------
     def categorize_age(self, age):
         if age < 18:
             category = "a teenager"
@@ -221,268 +359,37 @@ class RECEPTIONIST(object):
         else:
             category = "an elder"
         return category
-    
-    def get_clothes_and_hair_color(self):
-        gpt_vision_prompt = "Please answer about the person centered in the image: What main color of clothes is the person wearing? What is the hair color of the person? Answer only with the 2 color's names separated by a comma as follows: 'blue, black'"
-        answer = self.tm.img_description(gpt_vision_prompt)["message"].split(", ")
-        self.clothes_color = answer[0]
-        self.hair_color = answer[1]
-        return answer
 
-    ############## TASK STATES ##############
+    # --------------------------- Complementary function 2: Point to desired angle ------------------------------
 
-    def on_enter_INIT(self):
-        print(self.consoleFormatter.format("INIT", "HEADER"))
-        self.tm.initialize_pepper()
-        self.tm.turn_camera("front_camera", "custom", 1, 20)
-        self.tm.turn_camera("depth_camera", "custom", 1, 20)
-        self.tm.toggle_filter_by_distance(True, 2, ["person"])
-        self.tm.set_current_place(self.initial_place)
-        self.tm.talk("I am going to do the  " + self.task_name + " task", "English")
-        print(
-            self.consoleFormatter.format(
-                "Inicializacion del task: " + self.task_name, "HEADER"
-            )
-        )
-        self.tm.go_to_place(self.greeting_place)
-        self.beggining()
-
-    def on_enter_WAIT4GUEST(self):
-        print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
-        self.show_topic_srv("/perception_utilities/yolo_publisher")
-        time.sleep(0.2)
-        self.tm.talk("Waiting for guests", "English")
-        person_detected = False
-        self.tm.look_for_object("person")
-        while not person_detected:
-            self.tm.talk("I can't see a guest properly, please come a little bit closer", "English")
-            person_detected = self.tm.wait_for_object(4)
-        self.person_arrived()
-
-    def on_enter_QA(self):
-        print(self.consoleFormatter.format("QA", "HEADER"))
-        self.tm.go_to_pose("up_head")
-        self.tm.talk(
-            "Hello, when you are going to talk to me, please wait until my eyes turn blue.",
-            wait=False,
-        )
-        if self.is_first_guest:
-            self.get_clothes_and_hair_color_thread = threading.Thread(target=self.get_clothes_and_hair_color)
-            self.get_clothes_and_hair_color_thread.start()
-        rospy.sleep(4)
-        name = self.tm.q_a("name")
-        drink = self.tm.q_a("drink")
-        self.current_guest = {"name": name, "drink": drink}
-        self.tm.start_recognition("")
-        self.person_met()
-
-    def on_enter_SAVE_FACE(self):
-
-        print(self.consoleFormatter.format("SAVE_FACE", "HEADER"))
-        self.tm.set_angles_srv(["HeadPitch"],[-0.6],0.1,)
-        if not self.failed_saving_face:
-            self.tm.publish_filtered_image("face", "front_camera")
-            self.show_topic_srv("/perception_utilities/filtered_image")
-            self.tm.talk(
-                "Hey {}, I will take some pictures of your face to recognize you in future occasions, please place your face inside the green circle.".format(
-                    self.current_guest["name"]
-                ),
-                "English",
-            )
-        success = self.tm.save_face(self.current_guest["name"], 3)
-        self.person_description_thread = threading.Thread(
-            target=self.tm.get_person_description
-        )
-        self.person_description_thread.start()
-
-        print("success: ", success)
-        if success:
-            self.save_face_succeded()
-        else:
-            self.failed_saving_face = True
-            self.tm.talk(
-                "I am sorry {}, I was not able to save your face, can you please see my tablet and fit your face".format(
-                    self.current_guest["name"]
-                ),
-                "English",
-            )
-            self.save_face_failed()
-
-    def on_enter_GO2LIVING(self):
-        print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
-        self.tm.talk(
-            "Please {}, follow me to the living room".format(
-                self.current_guest["name"]
-            ),
-            "English",
-            wait=False,
-        )
-        self.tm.go_to_place(self.guests_place)
-        self.arrived_to_point()
-
-    def on_enter_INTRODUCE_NEW(self):
-        self.tm.go_to_pose("default_head")
-        self.person_description_thread.join()
-        attributes = self.tm.person_attributes
-        print("attributes: ", attributes)
-        self.current_guest["age"] = self.categorize_age(attributes["age"])
-        self.current_guest["gender"] = attributes["gender"]
-        self.current_guest["pronoun"] = "he" if attributes["gender"] == "Man" else "she"
-        self.all_guests[self.current_guest["name"]] = self.current_guest
-        if self.is_first_guest:
-            self.get_clothes_and_hair_color_thread.join()
-            print("1st guest is wearing ", self.clothes_color)
-            print("1st guest has ", self.hair_color, " hair")
-            self.is_first_guest = False
-            self.first_guest["name"] = self.current_guest["name"]
-            self.first_guest["drink"] = self.current_guest["drink"]
-            self.first_guest["age"] = self.categorize_age(attributes["age"])
-            self.first_guest["gender"] = attributes["gender"]
-            self.first_guest["pronoun"] = (
-                "he" if attributes["gender"] == "Man" else "she"
-            )
-            self.first_guest["color"] = self.clothes_color
-
-        if len(self.all_guests) == 3:
-            self.introducing_2nd_guest = True
-        self.failed_saving_face = False
-        self.tm.show_words_proxy()
-        self.saving_face = False
-
-        self.tm.go_to_pose("up_head")
-        print(self.consoleFormatter.format("INTRODUCE_NEW", "HEADER"))
-        self.tm.talk(
-            "Please {}, stand besides me".format(self.current_guest["name"]), "English"
-        )
+    def point_angle(self, angle):
+        self.tm.go_to_pose("open_both_hands")
+        if angle < 0:
+            self.tm.go_to_pose("point_there_left",0.1)
+            joint = "LElbowRoll"
+        elif angle > 0:
+            self.tm.go_to_pose("point_there_right",0.1)
+            joint = "RElbowRoll"
+        rospy.sleep(2)
+        self.tm.set_angles_srv([joint], [math.radians(angle)], 0.1)
+            
         
-        self.tm.talk(
-            f'Hello everyone, this is {self.current_guest["name"]}, {self.current_guest["pronoun"]} is a {self.current_guest["gender"]}.  {self.current_guest["pronoun"]} is {self.current_guest["age"]}, and {self.current_guest["pronoun"]} likes to drink {self.current_guest["drink"]}.',
-            "English",
-            animated=True,
-        )
-        # Turns on recognition and looks for  person
-        self.tm.start_recognition("front_camera")
-        # Reiniciar las variables de presentacion de personas y sillas
-        self.introduced_guests = []
-        self.introduced_guests.append(self.current_guest["name"])
-        self.checked_chair_angles = []
-        self.empty_chair_angles = self.chair_angles.copy()
-        self.angle_index = 0
-        self.show_topic_srv("/perception_utilities/yolo_publisher")
-        self.introduced_new_guest()
-
-    def on_enter_LOOK4PERSON(self):
-        print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
-        # El robot ya fue a todas las posiciones de personas o introdujo a todas las personas
-        if len(self.checked_chair_angles) == len(self.chair_angles):
-            if len(self.introduced_guests) == len(self.all_guests):
-                print(self.consoleFormatter.format("INTRODUCED_EVERYONE", "OKGREEN"))
-                self.introduced_everyone()
-            else:
-                print(self.consoleFormatter.format("FAILED_INTRODUCING", "FAIL"))
-                not_introduced = []
-                for person in self.all_guests:
-                    if person not in self.introduced_guests:
-                        not_introduced.append(person)
-                not_introduced_persons = ", ".join(not_introduced)
-                self.tm.talk(
-                    "{} I am sorry I was not able to recognize you, please introduce yourself to {}".format(
-                        not_introduced_persons, self.current_guest["name"]
-                    ),
-                    "English",
-                    wait=True,
-                )
-                self.introduced_everyone()
-        # El robot busca una persona
-        else:
-            self.tm.go_to_pose("default_head")
-            self.tm.set_angles_srv(
-                ["HeadYaw", "HeadPitch"],
-                [math.radians(self.chair_angles[self.angle_index]), 0],
-                0.1,
-            )
-            rospy.sleep(4)
-            self.checked_chair_angles.append(self.chair_angles[self.angle_index])
-            self.angle_index += 1
-            start_time = time.time()
-            self.labels = {}
-            while time.time() - start_time < 2:
-                if "person" in self.labels:
-                    self.tm.talk("Recognizing person", "English")
-                    self.person_found()
-                    break
-            self.person_not_found()
-
-    def on_enter_INTRODUCE_OLD(self):
-        print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
-        guest_name = ""
-        recongize_guest_tries = 0
-        while recongize_guest_tries < 2 and guest_name == "":
-            guest_name = self.tm.recognize_face(3)
-            print("saw: " + guest_name)
-            recongize_guest_tries += 1
-        if guest_name not in self.introduced_guests and guest_name in self.all_guests:
-            self.empty_chair_angles.remove(self.checked_chair_angles[-1])
-            guest_being_introduced = self.all_guests[guest_name]
-            print("Introducing person: ", guest_being_introduced)
-            # TODO manipulacion animations/poses
-            self.animations_publisher.publish("animations", "Gestures/TakePlace_2")
-            self.introduced_guests.append(guest_name)
-            if (guest_name == self.first_guest["name"]) and self.introducing_2nd_guest:
-                clothes_color_str = f"is wearing {self.first_guest['color']}"
-                hair_color_str = f"has {self.first_guest['color']} hair"
-                self.tm.talk(
-                    f'{self.current_guest["name"]}, I introduce to you {guest_name} is a {guest_being_introduced["gender"]}. {guest_being_introduced["pronoun"]} is {guest_being_introduced["age"]}, and {guest_being_introduced["pronoun"]} likes to drink {guest_being_introduced["drink"]}. {guest_being_introduced["pronoun"]} {clothes_color_str}, and {hair_color_str}.',
-                    "English",
-                )
-            else:
-                self.tm.talk(
-                    f'{self.current_guest["name"]}, I introduce to you {guest_name}. {guest_being_introduced["pronoun"]} is a {guest_being_introduced["gender"]}. {guest_being_introduced["pronoun"]} is {guest_being_introduced["age"]}, and {guest_being_introduced["pronoun"]} likes to drink {guest_being_introduced["drink"]}.'
-                )
-
-        self.introduced_old_guest()
-
-    def on_enter_LOOK4CHAIR(self):
-        print(self.consoleFormatter.format("LOOK4CHAIR", "HEADER"))
-        self.tm.show_words_proxy()
-        if len(self.empty_chair_angles) != 0:
-            chair_angle = random.choice(self.empty_chair_angles)
-            print("chair_angle ", chair_angle)
-        else:
-            chair_angle = 0
-        self.tm.set_angles_srv(
-            ["HeadYaw", "HeadPitch"], [math.radians(chair_angle), -0.3], 0.1
-        )
-        self.chair_found()
-
-    def on_enter_SIGNAL_SOMETHING(self):
-        print(self.consoleFormatter.format("SIGNAL_SOMETHING", "HEADER"))
-        self.animations_publisher.publish("animations", "Gestures/TakePlace_2")
-        self.tm.talk(
-            "Please, take a seat {}".format(self.current_guest["name"]), "English"
-        )
-        time.sleep(0.5)
-        self.person_accomodated()
-
-    def on_enter_GO2DOOR(self):
-        print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
-        self.tm.talk("Waiting for other guests to come", "English", wait=False)
-        self.tm.go_to_place(self.greeting_place)
-        self.wait_new_guest()
-
+    # --------------------------- ROSPY CHECK THREAD ------------------------------
     def check_rospy(self):
-        # Termina todos los procesos al cerrar el nodo
+        
+        # Ends all processes if rospy is not running
         while not rospy.is_shutdown():
             rospy.sleep(0.1)
+            
         print(self.consoleFormatter.format("Shutting down", "FAIL"))
+        
         os._exit(os.EX_OK)
 
+    # --------------------------- RUN FUNCTION TO START THE TASK CLASS CONSTRUCTOR ------------------------------
     def run(self):
-        while not rospy.is_shutdown():
-            self.start()
+        self.start()
 
-
-# Crear una instancia de la maquina de estados
+# --------------------------- MAIN FUNCTION OF THE STICKLER TASK CLASS ------------------------------
 if __name__ == "__main__":
     sm = RECEPTIONIST()
     sm.run()
