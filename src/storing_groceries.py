@@ -116,31 +116,21 @@ class STORING_GROCERIES(object):
         self.tm.set_security_distance(False)
         self.tm.go_to_pose("down_head_more")
         self.tm.talk("I arrived at the table, I will now look for 5 items to store them in the shelf, for that I will need your valuable help!", language="English", wait=False)
-        objects_response = self.tm.img_description(
-                "Analyze the image and describe all the objects corresponding mainly to groceries that you see on the table just in front of you. Only describe what you can see in a distance of 1 meter or less in front of you. Focus on identifying for each object their characteristics and their relative locations on the table. Ignore any items that are not on the table. Replace general descriptions with specific names for example instead of saying a bottle with orange liquid say orange juice and instead of saying a ball say tennis ball. Provide a brief and clear description up to 100 words ",
-                "front_camera")
-        objects_description = objects_response["message"]
-        print(objects_description)
-        self.tm.talk(f"{objects_description}", "English", wait=True)
-        objects_list_response = self.tm.img_description(
-                f"Based on this {objects_description} return a Python list with the names of the objects you mentioned Make sure to categorize them as food and replace any spaces with underscores Analyze the image again to verify and ensure the list is accurate Ignore any items that are not on the table Provide your final response strictly in the format of a Python list like this milk_carton water_bottle cereal",
-                "front_camera")
-        objects_list = objects_list_response["message"]
-        print(objects_list)
-        try:
-            self.objects_list = eval(objects_list_response.get("message", "[]"))
-            if not isinstance(objects_list, list):
-                raise ValueError("Response is not a list")
-        except (SyntaxError, ValueError) as e:
-            print(f"Error parsing objects list: {e}")
-    
-        self.tm.talk(f"The list of objects is: {self.objects_list}", "English", wait=False)
+     
         self.ask_e_grab()
         
         
     
     def on_enter_ASK_E_GRAB_OBJECT(self):
         print(self.consoleFormatter.format("ASK_E_GRAB_OBJECT", "HEADER"))
+        
+        current_object_to_grab = """Please look at the table that is in front of you, less than 1 meter and don't mind about the other items in the picture.
+        Now, you will notice that there are a set of objects like groceries on the table. I need you to pick only one of them and describe them.
+        
+        Answer ONLY with the following structure: "I can see there is a {object name} in the table in front of me. It is located {describe of the items surrounding it, and its relative position in the table, be concrete and use few words}. Dear referee please help me grab it, put it in my hand."
+        
+        """
+        
         self.actual_item= self.objects_list[0]    
         
         object_type_prompt = (
