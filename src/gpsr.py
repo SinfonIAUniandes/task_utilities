@@ -78,15 +78,18 @@ class GPSR(object):
         self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. You can talk to me when my eyes are blue: ","English")
         rospy.sleep(1)
         task = self.tm.speech2text_srv(0)
+        self.generate_code(task)
         self.tm.talk(f"Your command is {task}","English", wait=True)
         self.tm.talk(f"If that is correct, please touch my head. If not, please wait until my eyes are blue again ","English", wait=False)
         correct = self.tm.wait_for_head_touch(message="", message_interval=100, timeout=13)
         while not correct:
             self.tm.talk("I am sorry, please repeat your command","English", wait=True)
             task = self.tm.speech2text_srv(0)
+            self.generate_code(task)
             self.tm.talk(f"Your command is {task}. If that is correct, please touch my head","English", wait=True)
             correct = self.tm.wait_for_head_touch(message="", message_interval=13, timeout=13)
         print(f"Task: {task}")
+<<<<<<< HEAD
         if task!="":
             self.tm.talk("Processing your request")
             generate_utils.load_code_gen_config() 
@@ -106,6 +109,17 @@ class GPSR(object):
             if contador==1:
                 self.tm.talk("I cannot the following task: " + task,"English")
         self.GPSR_done()
+=======
+        if not "I am sorry but I cannot complete this task" in self.code:
+            print("\nIt is possible to execute the request")
+            if self.is_valid_syntax(self.code):
+                exec(self.code)
+                contador = 5
+        contador += 1
+        if contador==1:
+            self.tm.talk("I cannot the following task: " + task,"English")
+            self.GPSR_done()
+>>>>>>> fc8e63aaa6e948ac16f57241386e3134c6a30c59
 
     def on_enter_GO2GPSR(self):
         if self.task_counter == 3:
@@ -127,6 +141,21 @@ class GPSR(object):
         self.tm.look_for_object("person")
         self.tm.wait_for_object(-1)
         self.person_arrived()
+        
+    def generate_code_thread(self, task):
+        print(f"Task: {task}")
+        generating_code = True
+        while generating_code:
+            if task!="":
+                self.tm.talk("Processing your request")
+                generate_utils.load_code_gen_config() 
+                contador = 0
+                while contador<1:
+                    self.code = self.gen.generate_code(task, Model.GPT4).replace("`","").replace("python","")
+                    pattern = r'self\.tm\.go_to_place\((.*?)\)'
+                    self.code = re.sub(pattern, r'self.tm.go_to_place(\1, lower_arms=False)', self.code)
+                    print(self.code)
+                    generating_code = False
 
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo

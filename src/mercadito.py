@@ -48,7 +48,7 @@ class MERCADITO(object):
         self.tm.go_to_pose("basket", 0.1)
         self.tm.go_to_pose("open_both_hands", 0.05)
         rospy.sleep(2)
-        self.tm.talk("Hello, I will help you with your shopping today. When you are ready, place your basket in my hands, just as it appears on my tablet.","English",)
+        self.tm.talk("Hello, I will help you with your shopping today. When you are ready, place your basket in my hands, just as it appears on my tablet.","English")
         self.beggining()
         
         
