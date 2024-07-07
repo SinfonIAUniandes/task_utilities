@@ -89,7 +89,6 @@ class GPSR(object):
             self.tm.talk(f"Your command is {task}. If that is correct, please touch my head","English", wait=True)
             correct = self.tm.wait_for_head_touch(message="", message_interval=13, timeout=13)
         print(f"Task: {task}")
-<<<<<<< HEAD
         if task!="":
             self.tm.talk("Processing your request")
             generate_utils.load_code_gen_config() 
@@ -109,17 +108,6 @@ class GPSR(object):
             if contador==1:
                 self.tm.talk("I cannot the following task: " + task,"English")
         self.GPSR_done()
-=======
-        if not "I am sorry but I cannot complete this task" in self.code:
-            print("\nIt is possible to execute the request")
-            if self.is_valid_syntax(self.code):
-                exec(self.code)
-                contador = 5
-        contador += 1
-        if contador==1:
-            self.tm.talk("I cannot the following task: " + task,"English")
-            self.GPSR_done()
->>>>>>> fc8e63aaa6e948ac16f57241386e3134c6a30c59
 
     def on_enter_GO2GPSR(self):
         if self.task_counter == 3:
