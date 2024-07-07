@@ -55,7 +55,7 @@ class STICKLER_RULES(object):
         
         # Where the other guests are located, it is for the forbidden room
         self.party_place = "living_room"
-        self.initial_place = "house_door"
+        self.initial_place = "init_stickler"
         self.last_place = self.initial_place
         
         # TODO Set total guests
@@ -68,7 +68,7 @@ class STICKLER_RULES(object):
         self.breakers_found = 0
         
         # TODO Set the forbidden room
-        self.forbidden = "kitchen"
+        self.forbidden = "dining"
         
         # List of places to check
         self.list_places = ["kitchen","living_room","intermed_door","dining","bedroom"]

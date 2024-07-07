@@ -9,7 +9,6 @@ class LongStringGenerator:
         self.robot_vars = load_task_config()
         self.place_names = self.robot_vars["place_names"]
         self.objects = self.robot_vars["objects"]
-        self.question_tags = self.robot_vars["question_tags"]
         self.task_module_code = f"""
         Perception functions:
         self.tm.find_object(object_name)->bool: Returns True if the object was found, False if not, the only possible objects with their exact syntax are: {self.objects}.
@@ -21,7 +20,7 @@ class LongStringGenerator:
         Speech functions:
         self.tm.talk(text): Allows the robot to say the input of the service
         self.tm.speech2text_srv()->str: Allows the robot to listen to the user and returns the text that the robot heard
-        self.tm.q_a(tag)->str: Allows the robot to ASK a question and returns the answer of the user (filtering unnecesary content), the list of possible questions with exact syntax is: {self.question_tags}. The robot asks the question, so it's not necessary to ask a second time with self.tm.talk
+        self.tm.q_a(tag)->str: Allows the robot to ASK a question and returns the answer of the user (filtering unnecesary content). The robot asks the question, so it's not necessary to ask a second time with self.tm.talk
         self.tm.answer_question(question)->bool: Returns a string with an answer to the question
 
         Navigation functions:
@@ -85,7 +84,6 @@ class LongStringGenerator:
         - If the object you need to recognize or a similar object is NOT listed above, please respond with self.tm.talk("I cannot recognize <object>")
         - For recognizing people just use "person" instead of a specific name
 
-        - The only available default questions are: {self.question_tags}
         - If you need to ask a question that is not listed just use the `talk` method to say the question and the `speech2text_srv` followed to save the answer. Use the syntax from the list when calling the codebase functions.
 
         # Output Format:

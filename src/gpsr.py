@@ -50,8 +50,9 @@ class GPSR(object):
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
         ############################# GLOBAL VARIABLES #############################
-        self.gpsr_location = "house_door"
-        self.init_place = "house_door"
+        self.gpsr_location = "living_room"
+        self.init_place = "init_stickler"
+        self.task_counter = 0 
 
     def on_enter_INIT(self):
         self.tm.initialize_pepper()
@@ -86,8 +87,29 @@ class GPSR(object):
             task = self.tm.speech2text_srv(0)
             self.generate_code(task)
             self.tm.talk(f"Your command is {task}. If that is correct, please touch my head","English", wait=True)
-            correct = self.tm.wait_for_head_touch(message="Touch my head if that is correct!", message_interval=13, timeout=13)
+            correct = self.tm.wait_for_head_touch(message="", message_interval=13, timeout=13)
         print(f"Task: {task}")
+<<<<<<< HEAD
+        if task!="":
+            self.tm.talk("Processing your request")
+            generate_utils.load_code_gen_config() 
+            contador = 0
+            while contador<1:
+                code = self.gen.generate_code(task, Model.GPT4).replace("`","").replace("python","")
+                pattern = r'self\.tm\.go_to_place\((.*?)\)'
+                code = re.sub(pattern, r'self.tm.go_to_place(\1, lower_arms=False)', code)
+                print(code)
+                if not "I am sorry but I cannot complete this task" in code:
+                    print("\nIt is possible to execute the request")
+                    if self.is_valid_syntax(code):
+                        exec(code)
+                        self.task_counter += 1
+                        contador = 5
+                contador += 1
+            if contador==1:
+                self.tm.talk("I cannot the following task: " + task,"English")
+        self.GPSR_done()
+=======
         if not "I am sorry but I cannot complete this task" in self.code:
             print("\nIt is possible to execute the request")
             if self.is_valid_syntax(self.code):
@@ -97,8 +119,13 @@ class GPSR(object):
         if contador==1:
             self.tm.talk("I cannot the following task: " + task,"English")
             self.GPSR_done()
+>>>>>>> fc8e63aaa6e948ac16f57241386e3134c6a30c59
 
     def on_enter_GO2GPSR(self):
+        if self.task_counter == 3:
+            self.tm.talk("GPSR task completed succesfully", "English", wait=True)
+            os._exit(os.EX_OK)
+
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
         self.tm.talk("I am going to the GPSR location","English", wait=False)
         if self.tm.last_place != self.gpsr_location:

@@ -725,7 +725,7 @@ class Task_module:
         """
         if self.perception:
             try:
-                angles_to_check = [0,-60,60]
+                angles_to_check = [0]
                 self.setRPosture_srv("stand")
                 found = False
                 for angle in angles_to_check:
@@ -814,7 +814,7 @@ class Task_module:
         """
         if self.perception and self.manipulation:
             try:
-                angles_to_check = [0,-60,60]
+                angles_to_check = [0]
                 self.setRPosture_srv("stand")
                 self.look_for_object("person", ignore_already_seen=True)
                 specific_person_found = False
@@ -915,7 +915,7 @@ class Task_module:
         # spins until the object is found or timeout
         if self.perception and self.navigation and self.manipulation:
             try:
-                angles_to_check = [0,-60,60]
+                angles_to_check = [0]
                 self.setRPosture_srv("stand")
                 self.look_for_object(object_name, ignore_already_seen=ignore_already_seen)
                 found = False
@@ -952,7 +952,7 @@ class Task_module:
         if self.perception and self.navigation and self.manipulation and self.pytoolkit:
             try:
                 self.setRPosture_srv("stand")
-                angles_to_check = [0,-60,60]
+                angles_to_check = [0]
                 gpt_vision_prompt = f"How many {object_name} are there in the picture? Answer only with an Integer number of occurrrences"
                 counter = 0
                 for angle in angles_to_check:
