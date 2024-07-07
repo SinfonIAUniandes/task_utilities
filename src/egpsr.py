@@ -27,17 +27,16 @@ class EGPSR(object):
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
         self.task_name = "EGPSR"
-        states = ['INIT', 'SEARCH4GUEST', 'EGPSR', 'GO2GPSR']
+        states = ['INIT', 'SEARCH4GUEST', 'EGPSR']
         self.tm = tm(perception = True,speech=True,manipulation=True, navigation=True, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         # Definir las transiciones permitidas entre los estados
         transitions = [
             {'trigger': 'start', 'source': 'EGPSR', 'dest': 'INIT'},
             {'trigger': 'beggining', 'source': 'INIT', 'dest': 'SEARCH4GUEST'},
-            {'trigger': 'go_to_gpsr', 'source': 'GO2GPSR', 'dest': 'SEARCH4GUEST'},
             {'trigger': 'person_arrived', 'source': 'SEARCH4GUEST', 'dest': 'EGPSR'},
             {'trigger': 'again', 'source': 'SEARCH4GUEST', 'dest': 'SEARCH4GUEST'},
-            {'trigger': 'GPSR_done', 'source': 'EGPSR', 'dest': 'GO2GPSR'}
+            {'trigger': 'GPSR_done', 'source': 'EGPSR', 'dest': 'SEARCH4GUEST'}
         ]
         
         # Crear la máquina de estados
@@ -75,44 +74,27 @@ class EGPSR(object):
         print(self.consoleFormatter.format("EGPSR", "HEADER"))
         self.tm.look_for_object("")
         self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. You can talk to me when my eyes are blue: ","English")
-        rospy.sleep(1)
         task = self.tm.speech2text_srv(0)
+        code_gen_thread = threading.Thread(target=self.code_gen_t,args=[task])
+        code_gen_thread.start()
         self.tm.talk(f"Your command is {task}","English", wait=True)
         self.tm.talk(f"If that is correct, please touch my head. If not, please wait until my eyes are blue again ","English", wait=False)
         correct = self.tm.wait_for_head_touch(message="", message_interval=100, timeout=13)
         while not correct:
             self.tm.talk("I am sorry, please repeat your command","English", wait=True)
             task = self.tm.speech2text_srv(0)
+            code_gen_thread = threading.Thread(target=self.code_gen_t,args=[task])
+            code_gen_thread.start()
             self.tm.talk(f"Your command is {task}. If that is correct, please touch my head","English", wait=True)
-            correct = self.tm.wait_for_head_touch(message="Touch my head if that is correct!", message_interval=13, timeout=13)
+            correct = self.tm.wait_for_head_touch(message="", message_interval=13, timeout=13)
+        
+        self.tm.talk("Processing your request")
+        while self.generated_code == "":
+            rospy.sleep(0.1)
+        if self.generated_code != "impossible":
+            exec(self.generated_code)
         print(f"Task: {task}")
-        if task!="":
-            self.tm.talk("Processing your request")
-            generate_utils.load_code_gen_config() 
-            contador = 0
-            while contador<1:
-                code = self.gen.generate_code(task, Model.GPT4).replace("`","").replace("python","")
-                pattern = r'self\.tm\.go_to_place\((.*?)\)'
-                code = re.sub(pattern, r'self.tm.go_to_place(\1, lower_arms=False)', code)
-                print(code)
-                if not "I am sorry but I cannot complete this task" in code:
-                    print("\nIt is possible to execute the request")
-                    if self.is_valid_syntax(code):
-                        exec(code)
-                        contador = 5
-                contador += 1
-            if contador==1:
-                self.tm.talk("I cannot the following task: " + task,"English")
         self.GPSR_done()
-        
-        
-
-    def on_enter_GO2GPSR(self):
-        print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
-        self.tm.talk("I am going to the EGPSR location","English", wait=False)
-        if self.tm.last_place != self.gpsr_location:
-            self.tm.go_to_place(self.gpsr_location)
-        self.go_to_gpsr()
         
         
 
@@ -138,7 +120,28 @@ class EGPSR(object):
             self.tm.talk(f"I didn't find a guest raising their hand in {self.current_place}","English")
             self.again()
         
+    
+    def code_gen_t(self, task):
         
+        print(self.consoleFormatter.format("GEN CODE THREAD", "HEADER"))
+        
+        contador = 0
+        code = ""
+        while contador<1:
+            code = self.gen.generate_code(task, Model.GPT4).replace("`","").replace("python","")
+            pattern = r'self\.tm\.go_to_place\((.*?)\)'
+            code = re.sub(pattern, r'self.tm.go_to_place(\1, lower_arms=False)', code)
+            print(code)
+            if not "I am sorry but I cannot complete this task" in code:
+                print("\nIt is possible to execute the request")
+                if self.is_valid_syntax(code):
+                    self.generated_code = code
+                    self.task_counter += 1
+                    contador = 5
+            contador += 1
+        if contador==1:
+            self.generated_code = "impossible"
+            self.tm.talk("I cannot the following task: " + task,"English")
         
     def check_rospy(self):
         while not rospy.is_shutdown():
