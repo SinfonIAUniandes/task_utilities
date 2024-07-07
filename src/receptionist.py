@@ -47,7 +47,7 @@ class RECEPTIONIST(object):
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
         
- 
+
         # --------------------------- Task Parameters ------------------------------
         
         # The angles of the chairs the robot must check to introduce the people
@@ -79,7 +79,7 @@ class RECEPTIONIST(object):
         self.guests_count = 1
         # Where the robot must introduce the guests
         self.seating_place = "see_faces"
-        self.initial_place = "guests_door"
+        self.initial_place = "init_stickler"
         self.greeting_place = "guests_door"
         self.last_place = self.initial_place
         
@@ -87,17 +87,16 @@ class RECEPTIONIST(object):
     # --------------------------- FIRST STATE: INIT ------------------------------
     def on_enter_INIT(self):
         
-        
         self.tm.initialize_pepper()
-        
         #self.tm.turn_camera("front_camera","custom",2,10)
         self.tm.turn_camera("depth_camera","custom",1,10)
         if self.resolution != 1:
             self.tm.toggle_filter_by_distance(True,2,["person"])
         self.tm.remove_faces_data()
         self.tm.publish_filtered_image("face", "front_camera")
+        self.tm.remove_faces_data()
+        self.tm.set_current_place(self.initial_place)
         
-        #self.tm.set_current_place(self.initial_place)
         self.tm.show_topic("/perception_utilities/filtered_image")
         
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
@@ -116,8 +115,7 @@ class RECEPTIONIST(object):
         
         self.tm.setRPosture_srv("stand")
         #TODO EL robot navega de otro lugar a la puerta
-        if self.tm.current_place != self.initial_place:
-            self.tm.go_to_place(self.greeting_place)
+        self.tm.go_to_place(self.greeting_place)
         self.arrive_house_door()
         
     # --------------------------- THIRD STATE: WAIT FOR THE GUESTS ------------------------------
@@ -326,7 +324,10 @@ class RECEPTIONIST(object):
                 elif name == "guest1":
                     self.guest_1_saved = True
             attempts+=1
-        
+        if attempts==3:
+            if name == "charlie":
+                self.waiting_host = False
+            
 
     # --------------------------- Complementary thread 2: Get hair color with gptvision ------------------------------
     def gpt_hair_t(self):

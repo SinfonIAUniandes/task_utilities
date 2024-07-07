@@ -192,7 +192,17 @@ class Task_module:
             self.recognize_face_proxy = rospy.ServiceProxy(
                 "/perception_utilities/recognize_face_srv", recognize_face_srv
             )
-
+            
+            print(
+                self.consoleFormatter.format(
+                    "Waiting for perception_utilities/remove_faces_data...", "WARNING"
+                )
+            )
+            rospy.wait_for_service("/perception_utilities/remove_faces_data_srv")
+            self.remove_faces_data_proxy = rospy.ServiceProxy(
+                "/perception_utilities/remove_faces_data_srv", remove_faces_data_srv
+            )
+            
             print(
                 self.consoleFormatter.format(
                     "Waiting for perception_utilities/read_qr...", "WARNING"
@@ -1004,6 +1014,22 @@ class Task_module:
         else:
             print("perception as false")
             return ""
+    
+    def remove_faces_data(self):
+        """
+        Removes all the faces data from the perception utilities 'resources/data' directory
+        """
+        if self.perception:
+            try:
+                approved = self.remove_faces_data_proxy()
+                print("approved", approved)
+                return approved.approved
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("perception as false")
+            return False
 
     def get_person_description(self) -> dict:
         """

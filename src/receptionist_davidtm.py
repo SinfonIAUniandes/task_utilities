@@ -51,7 +51,7 @@ class RECEPTIONIST:
         self.chair_angles_index = 0
         self.current_angle = 0
         self.people_from_current_angle = []
-        
+
         self.tm = tm(
             perception=True,
             speech=True,
@@ -59,7 +59,9 @@ class RECEPTIONIST:
             navigation=True,
             pytoolkit=True,
         )
+
         self.tm.initialize_node(self.task_name)
+
         states = [
             "INIT",
             "WAITING4GUEST",
@@ -73,6 +75,7 @@ class RECEPTIONIST:
             "LOOK4CHAIR",
             "ACCOMODATE_GUEST",
         ]
+
         transitions = [
             {"trigger": "start", "source": "RECEPTIONIST", "dest": "INIT"},
             {"trigger": "beggining", "source": "INIT", "dest": "WAITING4GUEST"},
@@ -124,8 +127,13 @@ class RECEPTIONIST:
                 "source": "ACCOMODATE_GUEST",
                 "dest": "GO2DOOR",
             },
-            {"trigger": "wait_for_new_guest", "source": "GO2DOOR", "dest": "WAITING4GUEST"},
+            {
+                "trigger": "wait_for_new_guest",
+                "source": "GO2DOOR",
+                "dest": "WAITING4GUEST",
+            },
         ]
+
         self.machine = Machine(
             model=self, states=states, transitions=transitions, initial="RECEPTIONIST"
         )
@@ -212,7 +220,7 @@ class RECEPTIONIST:
                     msg.y_coordinates[i],
                     msg.widths[i],
                     msg.heights[i],
-                    msg.ids[i]
+                    msg.ids[i],
                 )
             )
             self.labels_info_dict[msg.labels[i]] = detections_of_label
@@ -232,7 +240,7 @@ class RECEPTIONIST:
         else:
             category = "an elder"
         return category
-    
+
     def check_rospy(self):
         # Termina todos los procesos al cerrar el nodo
         while not rospy.is_shutdown():
@@ -249,16 +257,18 @@ class RECEPTIONIST:
         self.clothes_color, self.hair_color = self.tm.img_description(
             gpt_vision_prompt
         )["message"].split(", ")
-        
+
     def introduce_old_guest(self, guest_name):
         self.tm.show_words_proxy()
 
         if guest_name in self.not_introduced_guests_list:
             self.not_introduced_guests_list.remove(guest_name)
             guest_being_introduced = self.all_guests_dict[guest_name]
-            
+
             if guest_name == self.first_guest_name:
-                clothes_color_str = f"is wearing {guest_being_introduced['clothes_color']}"
+                clothes_color_str = (
+                    f"is wearing {guest_being_introduced['clothes_color']}"
+                )
                 hair_color_str = f"has {guest_being_introduced['hair_color']} hair"
                 self.tm.talk(
                     f"{self.current_guest['name']}, I introduce to you {guest_name}. {guest_being_introduced['pronoun']} is a {guest_being_introduced['gender']}. {guest_being_introduced['pronoun']} is {guest_being_introduced['age']}, and {guest_being_introduced['pronoun']} likes to drink {guest_being_introduced['drink']}. {guest_being_introduced['pronoun']} {clothes_color_str}, and {hair_color_str}.",
@@ -279,7 +289,9 @@ class RECEPTIONIST:
         self.tm.turn_camera("depth_camera", "custom", 1, 20)
         self.tm.toggle_filter_by_distance(True, 1.8, ["person"])
         self.tm.set_current_place(self.initial_place)
-        self.tm.talk(f"I am going to do the {self.task_name} task", "English", wait=False)
+        self.tm.talk(
+            f"I am going to do the {self.task_name} task", "English", wait=False
+        )
         print(self.consoleFormatter.format(f"Starting {self.task_name} task", "HEADER"))
         self.tm.go_to_place(self.greeting_place)
         self.beggining()
@@ -327,7 +339,7 @@ class RECEPTIONIST:
         self.tm.talk(
             f"Hey {self.current_guest['name']}, I will take some pictures of your face to recognize you in future occasions, please place your face inside the green circle.",
             "English",
-            wait=True
+            wait=True,
         )
         success = False
         save_face_attempts = 0
@@ -337,23 +349,23 @@ class RECEPTIONIST:
             save_face_attempts += 1
             if not success:
                 self.tm.talk(
-                f"I am sorry {self.current_guest['name']}, I was not able to save your face, can you please fit your face in the green circle on my tablet?",
-                "English",
-                wait=True
-            )
-        
+                    f"I am sorry {self.current_guest['name']}, I was not able to save your face, can you please fit your face in the green circle on my tablet?",
+                    "English",
+                    wait=True,
+                )
+
         # calculate the first guest's attributes in parallel
         self.get_person_description_thread = threading.Thread(
             target=self.tm.get_person_description
         )
         self.get_person_description_thread.start()
-        
+
         self.tm.talk("Thank you, I already took your pictures.", wait=False)
         print(f"Saved face? {'yes' if success else 'no'}.")
         # continue with the task, even if the face was not saved
         self.tm.show_words_proxy()
         self.save_face_succeded()
-    
+
     def on_enter_GO2LIVING(self):
         print(self.consoleFormatter.format("GO2LIVING", "HEADER"))
         self.tm.talk(
@@ -367,7 +379,7 @@ class RECEPTIONIST:
     def on_enter_INTRODUCE_NEW(self):
         print(self.consoleFormatter.format("INTRODUCE_NEW", "HEADER"))
         self.move_head_srv("default")
-        
+
         if self.is_saving_1st_guest:
             # collect the first guest's attributes
             self.get_clothes_and_hair_color_thread.join()
@@ -375,52 +387,57 @@ class RECEPTIONIST:
             guest_attributes = self.tm.person_attributes
             self.current_guest["age"] = self.categorize_age(guest_attributes["age"])
             self.current_guest["gender"] = guest_attributes["gender"]
-            self.current_guest["pronoun"] = "he" if guest_attributes["gender"] == "Man" else "she"
+            self.current_guest["pronoun"] = (
+                "he" if guest_attributes["gender"] == "Man" else "she"
+            )
             self.current_guest["clothes_color"] = self.clothes_color
             self.current_guest["hair_color"] = self.hair_color
             self.is_saving_1st_guest = False
-        
+
         print(f"Guest attributes: {self.current_guest}")
-        
+
         self.move_head_srv("up")
-        
+
         self.tm.talk(
-            f"Please {self.current_guest['name']}, stand besides me", "English", wait=False
+            f"Please {self.current_guest['name']}, stand besides me",
+            "English",
+            wait=False,
         )
         self.tm.show_words_proxy()
-        
+
         self.tm.talk(
             f"Hello everyone, this is {self.current_guest['name']}, {self.current_guest['pronoun']} is a {self.current_guest['gender']}.  {self.current_guest['pronoun']} is {self.current_guest['age']}, and {self.current_guest['pronoun']} likes to drink {self.current_guest['drink']}.",
             "English",
             animated=True,
         )
-        
+
         self.not_introduced_guests_list = list(self.all_guests_dict.keys())
         self.all_guests_dict[self.current_guest["name"]] = self.current_guest
-        
+
         # turns on object recognition to search for guests to introduce
         self.tm.start_recognition("front_camera")
-        
+
         # Reset the chair angles related variables to introduce old guests to the new one
         self.checked_chair_angles = []
         self.not_checked_chair_angles = self.CHAIR_ANGLES.copy()
         self.empty_chairs = self.CHAIR_ANGLES.copy()
         self.chair_angles_index = 0
-        
+
         self.show_topic_srv("/perception_utilities/yolo_publisher")
         self.introduced_new_guest()
-        
+
     def on_enter_LOOK4PERSON(self):
         print(self.consoleFormatter.format("LOOK4PERSON", "HEADER"))
         self.move_head_srv("default")
-        
-        
-        if (self.chair_angles_index < len(self.CHAIR_ANGLES)) and (len(self.not_introduced_guests_list) > 0):
+
+        if (len(self.checked_chair_angles) < len(self.CHAIR_ANGLES)) and (
+            len(self.not_introduced_guests_list) > 0
+        ):
             self.current_angle = self.CHAIR_ANGLES[self.chair_angles_index]
             self.chair_angles_index += 1
             self.checked_chair_angles.append(self.current_angle)
             self.not_checked_chair_angles.remove(self.current_angle)
-            
+
             self.tm.set_angles_srv(
                 ["HeadYaw", "HeadPitch"],
                 [math.radians(self.current_angle), -0.3],
@@ -429,17 +446,20 @@ class RECEPTIONIST:
             t0 = time.time()
             # reset detected labels
             self.labels_info_dict = {}
-            # 1 second to recognize a person in the current chair angle
-            while (time.time() - t0) < 1:
+            # 2 seconds to recognize a person in the current chair angle
+            person_found = False
+            while (time.time() - t0) < 2 and (not person_found):
                 if "person" in self.labels_info_dict:
                     self.empty_chairs.remove(self.current_angle)
                     self.people_from_current_angle = self.labels_info_dict["person"]
-                    self.person_found()
-                    break
-            self.person_not_found()
+                    person_found = True
+            if person_found:
+                self.person_found()
+            else:
+                self.person_not_found()
+
         elif len(self.not_introduced_guests_list) == 0:
             print(self.consoleFormatter.format("INTRODUCED_EVERYONE", "OKGREEN"))
-            self.introduced_everyone()
         else:
             print(self.consoleFormatter.format("NO_CHAIRS_LEFT", "FAIL"))
             for guest_name in self.not_introduced_guests_list:
@@ -448,7 +468,7 @@ class RECEPTIONIST:
                     "English",
                     wait=True,
                 )
-                self.introduced_everyone()
+        self.introduced_everyone()
 
     def on_enter_INTRODUCE_OLD(self):
         print(self.consoleFormatter.format("INTRODUCE_OLD", "HEADER"))
@@ -475,16 +495,16 @@ class RECEPTIONIST:
                 guest_name = self.not_introduced_guests_list[0]
                 self.introduce_old_guest(guest_name)
 
-            # Re center head to look for the next guest   
+            # Re center head to look for the next guest
             self.tm.set_angles_srv(
                 ["HeadYaw", "HeadPitch"],
                 [math.radians(self.current_angle), -0.3],
                 0.1,
             )
-                
+        self.people_from_current_angle = []
         self.show_topic_srv("/perception_utilities/yolo_publisher")
         self.introduced_old_guest()
-        
+
     def on_enter_LOOK4CHAIR(self):
         print(self.consoleFormatter.format("LOOK4CHAIR", "HEADER"))
         self.move_head_srv("default")
@@ -497,7 +517,7 @@ class RECEPTIONIST:
         else:
             self.move_head_srv("default")
         self.chair_found()
-    
+
     def on_enter_ACCOMODATE_GUEST(self):
         print(self.consoleFormatter.format("ACCOMODATE_GUEST", "HEADER"))
         self.tm.go_to_pose("point_there")
@@ -505,12 +525,13 @@ class RECEPTIONIST:
             f"Please, take a seat {self.current_guest['name']}", "English", wait=True
         )
         self.person_accomodated()
-        
+
     def on_enter_GO2DOOR(self):
         print(self.consoleFormatter.format("GO2DOOR", "HEADER"))
         self.tm.talk("Waiting for other guests to come", "English", wait=False)
         self.tm.go_to_place(self.greeting_place)
         self.wait_for_new_guest()
+
 
 if __name__ == "__main__":
     sm = RECEPTIONIST()

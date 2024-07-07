@@ -16,7 +16,7 @@ class STORING_GROCERIES(object):
         self.tm = tm(navigation=True, manipulation=True, speech=True, perception = True, pytoolkit=True)
         self.tm.initialize_node('STORING_GROCERIES')
  
-        self.STATES = ['INIT', 'GO_2_TABLE', 'ASK_E_GRAB_OBJECT', 'GO_2_CABINET','ANALIZE_OBJECTS', 'PLACE_OBJECT', 'BACK_2_TABLE','END'] 
+        self.STATES = ['INIT', 'GO_2_TABLE', 'ASK_E_GRAB_OBJECT', 'GO_2_CABINET','ANALIZE_OBJECTS','CATEGORIZE_CABINETS' ,'PLACE_OBJECT', 'BACK_2_TABLE','END'] 
 
         self.TRANSITIONS = [
             {'trigger': 'zero', 'source': 'STORING_GROCERIES', 'dest': 'INIT'},
@@ -24,6 +24,8 @@ class STORING_GROCERIES(object):
             {'trigger': 'analice_objects', 'source': 'GO_2_TABLE', 'dest': 'ANALIZE_OBJECTS'},
             {'trigger': 'ask_e_grab', 'source': 'ANALIZE_OBJECTS', 'dest': 'ASK_E_GRAB_OBJECT'},
             {'trigger': 'go_2_cabinet', 'source': 'ASK_E_GRAB_OBJECT', 'dest': 'GO_2_CABINET'},
+            {'trigger': 'categorize', 'source': 'GO_2_CABINET', 'dest': 'CATEGORIZE_CABINETS'},
+            {'trigger': 'place_first', 'source': 'CATEGORIZE_CABINETS', 'dest': 'PLACE_OBJECT'},
             {'trigger': 'place_object', 'source': 'GO_2_CABINET', 'dest': 'PLACE_OBJECT'},
             {'trigger': 'back_2_table', 'source': 'PLACE_OBJECT', 'dest': 'BACK_2_TABLE'},
             {'trigger': 'new_object', 'source': 'BACK_2_TABLE', 'dest': 'ASK_E_GRAB_OBJECT'},
@@ -55,16 +57,18 @@ class STORING_GROCERIES(object):
         self.cabinet_angle = -90
         
         # Relative distance to cabinet from the main table
-        self.cabinet_approach_distance = 0.1
+        self.cabinet_approach_distance = 0.3
         
         # Cabinets categories
         self.cabinets_categories = ["sports stuff","healthy food","junk food"]
         
+        self.categories = ["","",""]
+        
         # Cabinets and altures
         self.cabinets = {
-            "sports stuff": 0.3,
-            "healthy food": 0.0,
-            "junk food":  -0.3
+            self.categories[0]: 0.6,
+            self.categories[0]: 0.0,
+            self.categories[0]:  -0.6
         }
         
         # Objects list (just in case gpt vision fails)
@@ -76,14 +80,14 @@ class STORING_GROCERIES(object):
             "one_hand":["grab_one_hand", "close_both_hands"]
         }
         
-        # Relative distance to place the object
-        self.cabinet_place_distance = 0.1
         
         # Drop actions list dictionary by object
         self.drop_actions = {
             "small_object":["open_both_hands","drop"],
             "one_hand":["open_both_hands"]
         }
+        
+        self.firts_time = True
         
         # -------------------------------------------------------------------------------------------------------------------------------------------
         #                                                            ESTADOS / TRANSICIONES
@@ -110,44 +114,24 @@ class STORING_GROCERIES(object):
     def on_enter_ANALIZE_OBJECTS(self):
         print(self.consoleFormatter.format("ANALIZE_OBJECTS", "HEADER"))
         self.tm.set_security_distance(False)
-        objects_response = self.tm.img_description(
-                "Please analyze the image and describe all the objects you see on the table. Focus on identifying each object, their characteristics, and their approximate locations on the table. Ignore any items that are not on the table. Provide a brief and clear description. Maximum 200 worlds",
-                "front_camera"
-                )
-        objects_description = objects_response["message"]
-        self.tm.talk(f"{objects_description}", "English", wait=False)
-        objects_list_response = self.tm.img_description(
-                f"Based on this '{objects_description}', return a Python list with the names of the objects you mentioned. Then analyze the image again to verify and ensure the list is accurate. Ignore any items that are not on the table. Provide your final response in the format of a Python list.",
-                "front_camera"
-                )
-        objects_list = objects_list_response["message"]
-        try:
-            self.objects_list = eval(objects_list_response.get("message", "[]"))
-            if not isinstance(objects_list, list):
-                raise ValueError("Response is not a list")
-        except (SyntaxError, ValueError) as e:
-            print(f"Error parsing objects list: {e}")
-    
-        self.tm.talk(f"The list of objects is: {self.objects_list}", "English", wait=False)
+        self.tm.go_to_pose("down_head_more")
+        self.tm.talk("I arrived at the table, I will now look for 5 items to store them in the shelf, for that I will need your valuable help!", language="English", wait=False)
+     
         self.ask_e_grab()
         
         
     
     def on_enter_ASK_E_GRAB_OBJECT(self):
         print(self.consoleFormatter.format("ASK_E_GRAB_OBJECT", "HEADER"))
-        self.actual_item= self.objects_list[0]
-        categorize_prompt = (
-        f"I will provide you with an item, and I need you to categorize this item strictly into one of the following categories: "
-        f"{', '.join(self.cabinets_categories)}. Please categorize the following item: {self.actual_item}. "
-        "Respond with only the category name from the list above."
-
-        )
-        self.actual_item_category = self.tm.answer_question(categorize_prompt, 0)
         
-        self.tm.talk(f"Please help me take the {self.actual_item} from the table. I described it earlier.", "English", wait=False)
-        rospy.sleep(6)
-        self.tm.talk(f"Thank you!", "English", wait=False)
+        current_object_to_grab = """Please look at the table that is in front of you, less than 1 meter and don't mind about the other items in the picture.
+        Now, you will notice that there are a set of objects like groceries on the table. I need you to pick only one of them and describe them.
         
+        Answer ONLY with the following structure: "I can see there is a {object name} in the table in front of me. It is located {describe of the items surrounding it, and its relative position in the table, be concrete and use few words}. Dear referee please help me grab it, put it in my hand."
+        
+        """
+        
+        self.actual_item= self.objects_list[0]    
         
         object_type_prompt = (
         f"""
@@ -161,16 +145,21 @@ class STORING_GROCERIES(object):
         )
         
         self.actual_item_type = self.tm.answer_question(object_type_prompt, 0)
+        print(self.actual_item_type)
+        
+        self.tm.talk(f"Please help me take the {self.actual_item} from the table from the table that I described earlier.", "English", wait=False)
+        rospy.sleep(6)
+        self.tm.talk(f"Thank you!", "English", wait=False)
         
         actions = self.grab_actions[self.actual_item_type]
         self.tm.show_image(f"http://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/grab_{self.actual_item}.jpeg")
-        
+        self.tm.talk(f"Please place the {self.actual_item} as the example is shown on my tablet until I can hold it properly.", "English", wait=False)
         for action in actions:
-            if action == "grab_one_hand" or "prepare_2_grab_small":
-                self.tm.talk(f"Please place the {self.actual_item} as the example is shown on my tablet until I can hold it properly.", "English", wait=False)
-                rospy.sleep(2)
-            self.tm.go_to_pose(action,self.slow_movement)
-        rospy.sleep(2)
+            if action == "prepare_2_grab_small" or action == "grab_one_hand":
+                rospy.sleep(6)
+            self.tm.go_to_pose(action,self.normal_movement)
+            rospy.sleep(2)
+        rospy.sleep(4)
         self.tm.talk("Thank you!", "English", wait=False)
         self.go_2_cabinet()
         
@@ -178,20 +167,45 @@ class STORING_GROCERIES(object):
         
     def on_enter_GO_2_CABINET(self):
         print(self.consoleFormatter.format("GO_2_CABINET", "HEADER"))
+        self.tm.go_to_pose("up_head")
         self.tm.go_to_relative_point(0.0, 0.0, self.cabinet_angle)
         rospy.sleep(2)
         self.tm.go_to_relative_point(self.cabinet_approach_distance, 0.0, 0.0)
-        self.tm.talk(f"I have arrived at the cabinet. Now, I'm going tell you how to place the {self.actual_item} on the {self.actual_item_category} shelf.", "English", wait=False)
-        self.place_object()
+        self.tm.talk(f"I have arrived at the cabinet. Now, I'm going tell you how to place the {self.actual_item} on the shelf.", "English", wait=False)
+        if self.firts_time:
+            self.categorize()
+        else:
+            self.place_object()
+    
+    
+    
+    def on_enter_CATEGORIZE_CABINETS(self):
+        print(self.consoleFormatter.format("CATEGORIZE_CABINETS", "HEADER"))
+        cabinets_response = self.tm.img_description(
+                f"I will show you an image of a piece of furniture with cabinets. Inside these cabinets, there are various objects. Your task is to categorize the cabinets and return a list of the categories. Make sure the categories are single unique words without spaces. List the categories from top to bottom, one per line. An example of a potential category could be healthy. Please analyze the image carefully and provide the categories in the specified format.",
+                "front_camera"
+                )
+        cabinets_categories = cabinets_response["message"]
+        self.categories = cabinets_categories.split(",")
+        self.place_first()
+        
         
         
         
     def on_enter_PLACE_OBJECT(self):
-        print(self.consoleFormatter.format("PLACE_OBJECT", "HEADER"))  
+        print(self.consoleFormatter.format("PLACE_OBJECT", "HEADER"))
+        categorize_prompt = (
+        f"I will provide you with an item, and I need you to categorize this item strictly into one of the following categories: "
+        f"{', '.join(self.cabinets_categories)}. Please categorize the following item: {self.actual_item}. "
+        "Respond with only the category name from the list above.")
+        self.actual_item_category = self.tm.answer_question(categorize_prompt, 0)
+        print(self.actual_item_category)
         self.tm.talk(f"Please take the {self.actual_item} from my hand. Then, I will point to the {self.actual_item_category} shelf where you need to place the {self.actual_item}.", "English", wait=False)
         rospy.sleep(2)
         self.tm.go_to_pose("open_both_hands", 0.01)
         rospy.sleep(9)
+        self.tm.go_to_pose("default", 0.1)
+        rospy.sleep(2)
         point_angle = self.cabinets[self.actual_item_category]
         self.set_angle_srv(["LShoulderPitch"], [point_angle], self.normal_movement)
         rospy.sleep(5)
@@ -209,7 +223,7 @@ class STORING_GROCERIES(object):
         
     def on_enter_BACK_2_TABLE(self):
         print(self.consoleFormatter.format("BACK_2_TABLE", "HEADER"))
-        self.tm.go_to_relative_point((self.cabinet_approach_distance), 0.0, 0.0)
+        self.tm.go_to_relative_point(-(self.cabinet_approach_distance), 0.0, 0.0)
         rospy.sleep(2)
         self.tm.go_to_relative_point(0.0, 0.0, -(self.cabinet_angle))
         self.new_object()
