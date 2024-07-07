@@ -50,8 +50,9 @@ class GPSR(object):
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
         ############################# GLOBAL VARIABLES #############################
-        self.gpsr_location = "house_door"
-        self.init_place = "house_door"
+        self.gpsr_location = "living_room"
+        self.init_place = "init_stickler"
+        self.task_counter = 0 
 
     def on_enter_INIT(self):
         self.tm.initialize_pepper()
@@ -84,7 +85,7 @@ class GPSR(object):
             self.tm.talk("I am sorry, please repeat your command","English", wait=True)
             task = self.tm.speech2text_srv(0)
             self.tm.talk(f"Your command is {task}. If that is correct, please touch my head","English", wait=True)
-            correct = self.tm.wait_for_head_touch(message="Touch my head if that is correct!", message_interval=13, timeout=13)
+            correct = self.tm.wait_for_head_touch(message="", message_interval=13, timeout=13)
         print(f"Task: {task}")
         if task!="":
             self.tm.talk("Processing your request")
@@ -99,6 +100,7 @@ class GPSR(object):
                     print("\nIt is possible to execute the request")
                     if self.is_valid_syntax(code):
                         exec(code)
+                        self.task_counter += 1
                         contador = 5
                 contador += 1
             if contador==1:
@@ -106,6 +108,10 @@ class GPSR(object):
         self.GPSR_done()
 
     def on_enter_GO2GPSR(self):
+        if self.task_counter == 3:
+            self.tm.talk("GPSR task completed succesfully", "English", wait=True)
+            os._exit(os.EX_OK)
+
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
         self.tm.talk("I am going to the GPSR location","English", wait=False)
         if self.tm.last_place != self.gpsr_location:
