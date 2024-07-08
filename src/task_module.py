@@ -1087,7 +1087,7 @@ class Task_module:
         Input:
         camera_name: "front_camera" || "bottom_camera" || "depth_camera" || "Both
         prompt: A string that indicates what gpt vision must do with the image. example: "Describe this image:"
-        distance: distance threshold of camera_name is "depth_camera"
+        distance: distance threshold if camera_name is "depth_camera"
         Output: Dictionary containing the answer from gpt vision.
         ----------
         Make a call to the gpt vision api with an image of what the robot is currently seeing.
