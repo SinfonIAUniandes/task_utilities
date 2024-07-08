@@ -52,9 +52,9 @@ class ServeBreakfast(object):
         
         # Izquierda positivo - Derecha negativo
         self.drop_and_serve_position = {
-            "bowl": 0.0,
-            "milk_carton": -0.3,
-            "cereal_box": 0.3
+            "bowl": 0.5,
+            "milk_carton": 0.2,
+            "cereal_box": 0.7
         }
         
         

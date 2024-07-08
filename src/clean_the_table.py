@@ -74,7 +74,7 @@ class CLEAN_THE_TABLE(object):
         # In Dishwasher
         self.turn_around_2_dishwasher = -90
         self.relative_dishwasher_approach = 0.6
-        self.crouch_4_dishwasher = -1.5 # 10 grados hacia adelante
+        self.crouch_4_dishwasher = -2.0 # 10 grados hacia adelante
         
         self.place_items_poses = {
         "dish": ["grab_plate_vertically", "prepare_2_grab"],
