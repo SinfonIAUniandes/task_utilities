@@ -310,12 +310,14 @@ class RECEPTIONIST(object):
         
         print(self.consoleFormatter.format("SAVE_FACE THREAD", "HEADER"))
         attempts = 0
+        chances = 3
         if name == "charlie":
             self.host_saved = False
             self.waiting_host = True
+            chances = 2
         elif name == "guest1":
             self.guest_1_saved = False
-        while not self.saved_face and attempts<3:
+        while not self.saved_face and attempts<chances:
             self.saved_face  = self.tm.save_face(name, 3)
             if self.saved_face:
                 if name == "charlie":
