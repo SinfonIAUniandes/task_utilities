@@ -1082,11 +1082,12 @@ class Task_module:
         return self.clothes_color
         
         
-    def img_description(self, prompt: str, camera_name="front_camera") -> dict:
+    def img_description(self, prompt: str, camera_name="front_camera", distance=0.0) -> dict:
         """
         Input:
         camera_name: "front_camera" || "bottom_camera" || "depth_camera" || "Both
         prompt: A string that indicates what gpt vision must do with the image. example: "Describe this image:"
+        distance: distance threshold of camera_name is "depth_camera"
         Output: Dictionary containing the answer from gpt vision.
         ----------
         Make a call to the gpt vision api with an image of what the robot is currently seeing.
@@ -1094,7 +1095,7 @@ class Task_module:
         attributes = {}
         if self.perception:
             try:
-                response = self.img_description_proxy(camera_name, prompt)
+                response = self.img_description_proxy(camera_name, prompt, distance)
                 attributes = {
                     "status": response.approved,
                     "message": response.message
