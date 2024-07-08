@@ -53,8 +53,10 @@ class GPSR(object):
         self.gpsr_location = "living_room"
         self.init_place = "init_stickler"
         self.task_counter = 0 
+        self.generated_code = ""
 
     def on_enter_INIT(self):
+        generate_utils.load_code_gen_config() 
         self.tm.initialize_pepper()
         self.tm.turn_camera("bottom_camera","custom",1,15)
         # CAMBIAR EN LA COMPETENCIA, EL ROBOT NO INICIA EN GPSR_LOCATION DEBE NAVEGAR ALLA TODO
@@ -76,37 +78,26 @@ class GPSR(object):
         print(self.consoleFormatter.format("GPSR", "HEADER"))
         self.tm.look_for_object("")
         self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. You can talk to me when my eyes are blue: ","English")
-        rospy.sleep(1)
         task = self.tm.speech2text_srv(0)
-        self.generate_code(task)
+        code_gen_thread = threading.Thread(target=self.code_gen_t,args=[task])
+        code_gen_thread.start()
         self.tm.talk(f"Your command is {task}","English", wait=True)
         self.tm.talk(f"If that is correct, please touch my head. If not, please wait until my eyes are blue again ","English", wait=False)
         correct = self.tm.wait_for_head_touch(message="", message_interval=100, timeout=13)
         while not correct:
             self.tm.talk("I am sorry, please repeat your command","English", wait=True)
             task = self.tm.speech2text_srv(0)
-            self.generate_code(task)
+            code_gen_thread = threading.Thread(target=self.code_gen_t,args=[task])
+            code_gen_thread.start()
             self.tm.talk(f"Your command is {task}. If that is correct, please touch my head","English", wait=True)
             correct = self.tm.wait_for_head_touch(message="", message_interval=13, timeout=13)
+        
+        self.tm.talk("Processing your request")
+        while self.generated_code == "":
+            rospy.sleep(0.1)
+        if self.generated_code != "impossible":
+            exec(self.generated_code)
         print(f"Task: {task}")
-        if task!="":
-            self.tm.talk("Processing your request")
-            generate_utils.load_code_gen_config() 
-            contador = 0
-            while contador<1:
-                code = self.gen.generate_code(task, Model.GPT4).replace("`","").replace("python","")
-                pattern = r'self\.tm\.go_to_place\((.*?)\)'
-                code = re.sub(pattern, r'self.tm.go_to_place(\1, lower_arms=False)', code)
-                print(code)
-                if not "I am sorry but I cannot complete this task" in code:
-                    print("\nIt is possible to execute the request")
-                    if self.is_valid_syntax(code):
-                        exec(code)
-                        self.task_counter += 1
-                        contador = 5
-                contador += 1
-            if contador==1:
-                self.tm.talk("I cannot the following task: " + task,"English")
         self.GPSR_done()
 
     def on_enter_GO2GPSR(self):
@@ -129,21 +120,29 @@ class GPSR(object):
         self.tm.look_for_object("person")
         self.tm.wait_for_object(-1)
         self.person_arrived()
+
+
+    def code_gen_t(self, task):
         
-    def generate_code_thread(self, task):
-        print(f"Task: {task}")
-        generating_code = True
-        while generating_code:
-            if task!="":
-                self.tm.talk("Processing your request")
-                generate_utils.load_code_gen_config() 
-                contador = 0
-                while contador<1:
-                    self.code = self.gen.generate_code(task, Model.GPT4).replace("`","").replace("python","")
-                    pattern = r'self\.tm\.go_to_place\((.*?)\)'
-                    self.code = re.sub(pattern, r'self.tm.go_to_place(\1, lower_arms=False)', self.code)
-                    print(self.code)
-                    generating_code = False
+        print(self.consoleFormatter.format("GEN CODE THREAD", "HEADER"))
+        
+        contador = 0
+        code = ""
+        while contador<1:
+            code = self.gen.generate_code(task, Model.GPT4).replace("`","").replace("python","")
+            pattern = r'self\.tm\.go_to_place\((.*?)\)'
+            code = re.sub(pattern, r'self.tm.go_to_place(\1, lower_arms=False)', code)
+            print(code)
+            if not "I am sorry but I cannot complete this task" in code:
+                print("\nIt is possible to execute the request")
+                if self.is_valid_syntax(code):
+                    self.generated_code = code
+                    self.task_counter += 1
+                    contador = 5
+            contador += 1
+        if contador==1:
+            self.generated_code = "impossible"
+            self.tm.talk("I cannot the following task: " + task,"English")
 
     def check_rospy(self):
         #Termina todos los procesos al cerrar el nodo
