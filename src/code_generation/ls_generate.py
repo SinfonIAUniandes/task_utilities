@@ -20,7 +20,7 @@ class LongStringGenerator:
         Speech functions:
         self.tm.talk(text): Allows the robot to say the input of the service
         self.tm.speech2text_srv()->str: Allows the robot to listen to the user and returns the text that the robot heard
-        self.tm.q_a(tag)->str: Allows the robot to ASK a question and returns the answer of the user (filtering unnecesary content). The robot asks the question, so it's not necessary to ask a second time with self.tm.talk
+        self.tm.q_a(question)->str: Allows the robot to ASK a question and returns the answer of the user (filtering unnecesary content). The input of this function is the question the robot asks, and the return the answer of the person
         self.tm.answer_question(question)->bool: Returns a string with an answer to the question
 
         Navigation functions:

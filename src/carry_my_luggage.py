@@ -246,14 +246,14 @@ class CARRY_MY_LUGGAGE(object):
             self.tm.go_to_pose("close_left_hand")
             rospy.sleep(1)
             self.tm.go_to_pose("small_object_left_high_2")
-            rospy.sleep(2)
+            rospy.sleep(4)
             self.tm.go_to_pose("small_object_left_high_3")
             
         else:
             self.tm.go_to_pose("close_right_hand")
             rospy.sleep(1)
             self.tm.go_to_pose("small_object_right_high_2")
-            rospy.sleep(2)
+            rospy.sleep(4)
             self.tm.go_to_pose("small_object_right_high_3")
             
         # Thanking the user
@@ -291,18 +291,19 @@ class CARRY_MY_LUGGAGE(object):
         # Openning hand to release the bag
         if self.bag_place=="right":
             self.tm.go_to_pose("small_object_left_high_2")
-            rospy.sleep(2)
+            rospy.sleep(4)
             self.tm.go_to_pose("small_object_left_hand")
             rospy.sleep(2)
             self.tm.go_to_pose("open_left_hand")
             
         else:
             self.tm.go_to_pose("small_object_right_high_2")
-            rospy.sleep(2)
+            rospy.sleep(4)
             self.tm.go_to_pose("small_object_right_hand")
             rospy.sleep(2)
             self.tm.go_to_pose("open_right_hand")
             
+        rospy.sleep(5)
         # Thanking the user 
         self.tm.talk("Thank you for using my services, have a nice day!",wait=False)
         self.setMoveArms_srv.call(True, True)
@@ -391,7 +392,8 @@ class CARRY_MY_LUGGAGE(object):
     def look_4_bag(self):
         print(self.consoleFormatter.format("LOOK4BAG", "HEADER"))
         gpt_vision_prompt = f"Is the person in the center of the picture pointing to their Left or to their Right? Answer only with Left or Right"
-        answer = self.tm.img_description(gpt_vision_prompt,camera_name="both")["message"].lower()
+        answer = self.tm.img_description(gpt_vision_prompt,camera_name="front_camera")["message"].lower()
+        print("gpt answer:",answer)
         if "right" in answer or "left" in answer:
             self.gpt_bag_place = answer
                 

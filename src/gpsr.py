@@ -79,6 +79,7 @@ class GPSR(object):
         self.tm.look_for_object("")
         self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. You can talk to me when my eyes are blue: ","English")
         task = self.tm.speech2text_srv(0)
+        self.generated_code = ""
         code_gen_thread = threading.Thread(target=self.code_gen_t,args=[task])
         code_gen_thread.start()
         self.tm.talk(f"Your command is {task}","English", wait=True)

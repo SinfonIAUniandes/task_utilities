@@ -1609,7 +1609,7 @@ class Task_module:
                 start_time = rospy.get_time()
                 print("Started following")
                 while (not self.head_touched):
-                    if rospy.get_time()-last_talk_time > 10:
+                    if rospy.get_time()-last_talk_time > 15:
                         self.talk("Remember to touch my head when we arrive","English",wait=True)
                         last_talk_time = rospy.get_time()
                 self.waiting_touch = False
@@ -1811,6 +1811,10 @@ class Task_module:
                         rospy.sleep(0.2)
                         # Stop rotating but keeping moving forward
                         self.start_moving(self.linear_vel, 0, 0)
+                    else:
+                        self.start_moving(0, 0, angular_vel)
+                        rospy.sleep(0.2)
+                        self.stop_moving()
                 if self.stopped_for_safety:
                     self.stopped_for_safety = False
                     # Try to run over the obstacle again
