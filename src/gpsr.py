@@ -69,9 +69,7 @@ class GPSR(object):
         self.tm.talk("I am going to do the  "+ self.task_name + " task","English")
         self.tm.talk("I am going to the GPSR location","English")
         print("gpsr_location:", self.gpsr_location )
-        print(self.tm.last_place)
-        if self.tm.last_place != self.gpsr_location:
-            self.tm.go_to_place(self.gpsr_location)
+        self.tm.go_to_place(self.gpsr_location)
         self.beggining()
 
     def on_enter_GPSR(self):
@@ -82,9 +80,10 @@ class GPSR(object):
         self.generated_code = ""
         code_gen_thread = threading.Thread(target=self.code_gen_t,args=[task])
         code_gen_thread.start()
-        self.tm.talk(f"Your command is {task}","English", wait=True)
-        self.tm.talk(f"If that is correct, please touch my head. If not, please wait until my eyes are blue again ","English", wait=False)
+        self.tm.talk(f"Your command is {task}. If that is correct, please touch my head. If not, please wait until my eyes are blue again ","English", wait=False)
+        print("antes de touch")
         correct = self.tm.wait_for_head_touch(message="", message_interval=100, timeout=13)
+        print("despues de touch")
         while not correct:
             self.tm.talk("I am sorry, please repeat your command","English", wait=True)
             task = self.tm.speech2text_srv(0)
@@ -92,7 +91,7 @@ class GPSR(object):
             code_gen_thread.start()
             self.tm.talk(f"Your command is {task}. If that is correct, please touch my head","English", wait=True)
             correct = self.tm.wait_for_head_touch(message="", message_interval=13, timeout=13)
-        
+        print("processing your request")
         self.tm.talk("Processing your request")
         while self.generated_code == "":
             rospy.sleep(0.1)
@@ -108,8 +107,7 @@ class GPSR(object):
 
         print(self.consoleFormatter.format("GO2GPSR", "HEADER"))
         self.tm.talk("I am going to the GPSR location","English", wait=False)
-        if self.tm.last_place != self.gpsr_location:
-            self.tm.go_to_place(self.gpsr_location)
+        self.tm.go_to_place(self.gpsr_location)
         self.go_to_gpsr()
 
     def on_enter_WAIT4GUEST(self):

@@ -915,7 +915,7 @@ class Task_module:
         # spins until the object is found or timeout
         if self.perception and self.navigation and self.manipulation:
             try:
-                angles_to_check = [0]
+                angles_to_check = [0,-60,60]
                 self.setRPosture_srv("stand")
                 self.look_for_object(object_name, ignore_already_seen=ignore_already_seen)
                 found = False
@@ -1484,7 +1484,7 @@ class Task_module:
             try:
                 self.set_move_arms_enabled(False)
                 approved = self.go_to_place_proxy(place_name, graph)
-                if wait:
+                if wait and not "same-place" in approved.answer:
                     self.wait_go_to_place()
                 self.last_place = self.current_place
                 self.current_place = place_name
