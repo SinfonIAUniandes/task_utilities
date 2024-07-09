@@ -46,6 +46,7 @@ class EGPSR(object):
         self.angles_to_check = self.head_angles
         self.last_checked_angle = None
         
+        self.last_angle_checked = 0
 
     def on_enter_INIT(self):
         self.tm.initialize_pepper()
@@ -134,7 +135,9 @@ class EGPSR(object):
             self.tm.labels = dict()
             rospy.sleep(2)
             persons = self.tm.labels.get("person", [])
-            self.last_checked_angle = angle
+
+            # Updating the last checked angle to return to it after completing a task
+            self.last_angle_checked = angle
             
             # Erasing the angle to check when only ONE person was detected
             if len(persons)<=1:
