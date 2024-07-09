@@ -21,7 +21,7 @@ from manipulation_msgs.srv import go_to_pose, move_head
 
 from speech_msgs.srv import q_a_srv, talk_srv, speech2text_srv , talk_srvRequest, speech2text_srvRequest, answer_srv, hot_word_srv
 
-from perception_msgs.srv import img_description_with_gpt_vision_srv, get_first_clothes_color_srv, get_clothes_color_srv, start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest, filter_labels_by_distance_srv, filter_labels_by_distance_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv, get_person_description_srv, add_recognition_model_srv, add_recognition_model_srvRequest, remove_recognition_model_srv, remove_recognition_model_srvRequest, remove_faces_data_srv
+from perception_msgs.srv import img_description_with_gpt_vision_srv, get_first_clothes_color_srv, get_clothes_color_srv, start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest, filter_labels_by_distance_srv, filter_labels_by_distance_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv, get_person_description_srv, add_recognition_model_srv, add_recognition_model_srvRequest, remove_recognition_model_srv, remove_recognition_model_srvRequest, remove_faces_data_srv, calculate_depth_of_label_srv
 
 from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, add_place_with_coordinates_srv ,add_place_with_coordinates_srvRequest,follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
@@ -66,6 +66,7 @@ class Task_module:
         self.avoiding_obstacle = False
         self.center_active = False
         self.head_thread = False
+        self.posture_thread = False
         self.linear_vel = 0
         self.closest_person = [0,0,0,0,0]
         self.closest_label = [0,0,0,0,0]
@@ -121,6 +122,16 @@ class Task_module:
             rospy.wait_for_service("/perception_utilities/get_labels_srv")
             self.get_labels_proxy = rospy.ServiceProxy(
                 "/perception_utilities/get_labels_srv", get_labels_srv
+            )
+            
+            print(
+                self.consoleFormatter.format(
+                    "Waiting for perception_utilities/calculate_depth_of_label_srv...", "WARNING"
+                )
+            )
+            rospy.wait_for_service("/perception_utilities/calculate_depth_of_label_srv")
+            self.calculate_depth_of_label_proxy = rospy.ServiceProxy(
+                "/perception_utilities/calculate_depth_of_label_srv", calculate_depth_of_label_srv
             )
             
             print(
@@ -192,17 +203,6 @@ class Task_module:
             self.recognize_face_proxy = rospy.ServiceProxy(
                 "/perception_utilities/recognize_face_srv", recognize_face_srv
             )
-            
-            print(
-                self.consoleFormatter.format(
-                    "Waiting for perception_utilities/remove_faces_data...", "WARNING"
-                )
-            )
-            rospy.wait_for_service("/perception_utilities/remove_faces_data_srv")
-            self.remove_faces_data_proxy = rospy.ServiceProxy(
-                "/perception_utilities/remove_faces_data_srv", remove_faces_data_srv
-            )
-            
             print(
                 self.consoleFormatter.format(
                     "Waiting for perception_utilities/read_qr...", "WARNING"
@@ -624,22 +624,6 @@ class Task_module:
             print("perception as false")
             return False
 
-    def remove_faces_data(self):
-        """
-        Removes all the faces data from the perception utilities 'resources/data' directory
-        """
-        if self.perception:
-            try:
-                approved = self.remove_faces_data_proxy()
-                print("approved", approved)
-                return approved.approved
-            except rospy.ServiceException as e:
-                print("Service call failed: %s" % e)
-                return False
-        else:
-            print("perception as false")
-            return False
-
     def publish_filtered_image(self, filter_name: str, camera_name: str) -> bool:
         """
         Input:
@@ -689,6 +673,22 @@ class Task_module:
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
             return ""
+        
+    def calculate_depth_of_label(self, x, y, w, h):
+        """
+        Input:
+        x, y, w, h: x, y and width and height of label
+        Output: float: distance in meters of the label corresponding to the given coordinates
+        """
+        if self.perception:
+            try:
+                return self.calculate_depth_of_label_proxy(x, y, w, h)
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return 0
+        else:
+            print("perception as false")
+            return 0
             
     def look_for_object(self, object_name: str, ignore_already_seen=False) -> bool:
         """
@@ -1022,7 +1022,6 @@ class Task_module:
         if self.perception:
             try:
                 approved = self.remove_faces_data_proxy()
-                print("approved", approved)
                 return approved.approved
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -1822,7 +1821,7 @@ class Task_module:
                     self.stop_moving()
                     self.talk("Please wait!", wait=True, animated=False)
                     self.start_moving(0, 0, angular_vel)
-                    rospy.sleep(0.2)
+                    rospy.sleep(0.5)
                     self.start_moving(self.linear_vel/3, 0, angular_vel)
                     rospy.sleep(0.2)
                     # Stop rotating but keeping moving forward
@@ -2174,6 +2173,18 @@ class Task_module:
         """
         while self.head_thread: 
             self.setMoveHead_srv.call(head_position)
+            rospy.sleep(8)
+    
+    def posture_srv_thread(self, posture="stand") -> None:
+        """
+        Input: 
+        posture: the different head postures the robot can take. Options are : "stand","rest"
+        Output: None
+        ---------
+        Thread dedicated to keeping the robot's posture
+        """
+        while self.posture_thread: 
+            self.setRPosture_srv("stand")
             rospy.sleep(8)
              
 

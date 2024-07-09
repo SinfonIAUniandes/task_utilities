@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
+
+# --------------------------- GENERAL LIBRARIES IMPORTS ------------------------------
 from transitions import Machine
 from task_module import Task_module as tm
 import ConsoleFormatter
-import time
 import threading
 import rospy
-import os
-import re
 import math
 import ast
 from code_generation import ls_generate as gen
@@ -18,12 +17,18 @@ class EGPSR(object):
         self.gen = gen.LongStringGenerator()
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
-        # Definir los estados posibles del semáforo
-        self.task_name = "EGPSR"
-        states = ['INIT', 'SEARCH4GUEST', 'EGPSR']
-        self.tm = tm(perception = True,speech=True,manipulation=True, navigation=True, pytoolkit=True)
+        
+        # Task name
+        self.task_name = "egpsr"
+        
+        # Possible states for the states machine
+        states = ['INIT', 'LOOK4PERSON', 'EGPSR', 'GO2NEXT']
+        
+        # Initialization of the task module
+        self.tm = tm(perception = True,speech=True, navigation=True, pytoolkit=True, manipulation=True)
         self.tm.initialize_node(self.task_name)
-        # Definir las transiciones permitidas entre los estados
+        
+        # Definition of the permitted transitions between states
         transitions = [
             {'trigger': 'start', 'source': 'EGPSR', 'dest': 'INIT'},
             {'trigger': 'beggining', 'source': 'INIT', 'dest': 'SEARCH4GUEST'},
@@ -43,8 +48,13 @@ class EGPSR(object):
         self.head_angles = [60,0,-60]
         self.task_counter = 0 
         
-
+    
+    # --------------------------- STATES FUNCTIONS ------------------------------
+    
+    # --------------------------- FIRST STATE: INIT ------------------------------
     def on_enter_INIT(self):
+        
+        
         self.tm.initialize_pepper()
         self.tm.turn_camera("bottom_camera","custom",1,15)
         # CAMBIAR EN LA COMPETENCIA, EL ROBOT NO INICIA EN GPSR_LOCATION DEBE NAVEGAR ALLA TODO
@@ -52,6 +62,11 @@ class EGPSR(object):
         self.tm.set_current_place(self.init_place)
         self.tm.turn_camera("depth_camera","custom",1,15)
         self.tm.toggle_filter_by_distance(True,2,["person"])
+        
+        self.tm.set_current_place(self.initial_place)
+        self.checked_places.append(self.initial_place)
+        self.last_place = self.initial_place
+        
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.talk("I am going to do the  "+ self.task_name + " task","English")
         self.beggining()
@@ -174,25 +189,84 @@ class EGPSR(object):
             self.generated_code = "impossible"
             self.tm.talk("I cannot the following task: " + task,"English")
         
-    def check_rospy(self):
-        while not rospy.is_shutdown():
-            time.sleep(0.1)
-        print(self.consoleFormatter.format("Shutting down", "FAIL"))
+        for place_num in range(len(self.list_places)):
+            
+            place = self.list_places[place_num]
+            
+            if place not in self.checked_places:
+                
+                self.tm.talk("I'm gonna check " + self.places_names[place_num],"English", wait=False)
+                self.tm.setRPosture_srv("stand")
+                self.tm.go_to_place(place)
+                print("Next Place: " + place)
+                self.checked_places.append(place)
+                self.last_place = place
+                self.arrive_next()
+                
+        self.tm.talk("But i have checked all of the rooms! Yipee","English")
+        
+        # Finishing the task
         os._exit(os.EX_OK)
 
-    def run(self):
+    # --------------------- Complementary function 5: Check the rules --------------------------
+    def check_rules(self):
+        
+        
+        # Threads to check the rules related to wearing shoes
+        shoes_check_thread = threading.Thread(target=self.check_shoes)
+        shoes_check_thread.start()
+        
+        # Threads to check the rules related to having a drink
+        drink_check_thread = threading.Thread(target=self.check_drink)
+        drink_check_thread.start()
+        
+        is_in_forbidden = self.check_forbidden()
+        
+        self.tm.talk("Please wait while i check if you're breaking more rules",wait=False)
+        
+        while self.has_drink==2 or self.has_shoes==2:
+            
+            rospy.sleep(0.1)
+            
+        if self.has_drink == 0:
+            self.ASK4DRINK()
+            
+        if self.has_shoes == 1:
+            self.ASK4SHOES()
+            
+        elif self.has_shoes == 3:
+            self.tm.talk("I can't see your feet, but remember you can't use shoes in the house.","English", wait=True)
+        
+        if is_in_forbidden or self.has_drink==0 or self.has_shoes==1:
+            
+            print("persona rompiendo una regla")
+            self.breakers_found += 1
+            
+        else:
+            if self.has_drink != 4 and self.has_shoes != 4 and (not is_in_forbidden):
+                self.tm.talk("Congratulations! You're not breaking any rule","English", wait=True)
+                        
+        self.has_drink = 2
+        self.has_shoes = 2
+        
+
+    # --------------------------- ROSPY CHECK FUNCTION ------------------------------
+    def check_rospy(self):
+        
+        # Ends all processes if rospy is not running
         while not rospy.is_shutdown():
-            self.start()
-    
-    def is_valid_syntax(self, code):
-        try:
-            ast.parse(code)
-            return True
-        except SyntaxError:
-            return False
-    
-# Crear una instancia de la maquina de estados
+            rospy.sleep(0.1)
+            
+        print(self.consoleFormatter.format("Shutting down", "FAIL"))
+        
+        os._exit(os.EX_OK)
+
+    # --------------------------- RUN FUNCTION TO START THE TASK CLASS CONSTRUCTOR ------------------------------
+    def run(self):
+        self.start()
+
+# --------------------------- MAIN FUNCTION OF THE STICKLER TASK CLASS ------------------------------
 if __name__ == "__main__":
-    sm = EGPSR()
+    sm = STICKLER_RULES()
     sm.run()
     rospy.spin()
