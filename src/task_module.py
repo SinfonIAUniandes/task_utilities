@@ -21,7 +21,7 @@ from manipulation_msgs.srv import go_to_pose, move_head
 
 from speech_msgs.srv import q_a_srv, talk_srv, speech2text_srv , talk_srvRequest, speech2text_srvRequest, answer_srv, hot_word_srv
 
-from perception_msgs.srv import img_description_with_gpt_vision_srv, get_first_clothes_color_srv, get_clothes_color_srv, start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest, filter_labels_by_distance_srv, filter_labels_by_distance_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv, get_person_description_srv, add_recognition_model_srv, add_recognition_model_srvRequest, remove_recognition_model_srv, remove_recognition_model_srvRequest
+from perception_msgs.srv import img_description_with_gpt_vision_srv, get_first_clothes_color_srv, get_clothes_color_srv, start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest, filter_labels_by_distance_srv, filter_labels_by_distance_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv, get_person_description_srv, add_recognition_model_srv, add_recognition_model_srvRequest, remove_recognition_model_srv, remove_recognition_model_srvRequest, remove_faces_data_srv, calculate_depth_of_label_srv
 
 from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, add_place_with_coordinates_srv ,add_place_with_coordinates_srvRequest,follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
@@ -58,12 +58,15 @@ class Task_module:
             3: (1280, 960),
             4: (2560, 1920)
         }
+        self.last_place = ""
+        self.current_place = ""
         self.angles = 0
         self.navigating = False
         self.stopped_for_safety = False
         self.avoiding_obstacle = False
         self.center_active = False
         self.head_thread = False
+        self.posture_thread = False
         self.linear_vel = 0
         self.closest_person = [0,0,0,0,0]
         self.closest_label = [0,0,0,0,0]
@@ -83,6 +86,16 @@ class Task_module:
                 self.consoleFormatter.format(
                     "Waiting for PERCEPTION services...", "WARNING"
                 )
+            )
+            
+            print(
+                self.consoleFormatter.format(
+                    "Waiting for perception_utilities/remove_faces_data...", "WARNING"
+                )
+            )
+            rospy.wait_for_service("/perception_utilities/remove_faces_data_srv")
+            self.remove_faces_data_proxy = rospy.ServiceProxy(
+                "/perception_utilities/remove_faces_data_srv", remove_faces_data_srv
             )
 
             print(
@@ -109,6 +122,16 @@ class Task_module:
             rospy.wait_for_service("/perception_utilities/get_labels_srv")
             self.get_labels_proxy = rospy.ServiceProxy(
                 "/perception_utilities/get_labels_srv", get_labels_srv
+            )
+            
+            print(
+                self.consoleFormatter.format(
+                    "Waiting for perception_utilities/calculate_depth_of_label...", "WARNING"
+                )
+            )
+            rospy.wait_for_service("/perception_utilities/calculate_depth_of_label_srv")
+            self.calculate_depth_of_label_proxy = rospy.ServiceProxy(
+                "/perception_utilities/calculate_depth_of_label_srv", calculate_depth_of_label_srv
             )
             
             print(
@@ -180,7 +203,6 @@ class Task_module:
             self.recognize_face_proxy = rospy.ServiceProxy(
                 "/perception_utilities/recognize_face_srv", recognize_face_srv
             )
-
             print(
                 self.consoleFormatter.format(
                     "Waiting for perception_utilities/read_qr...", "WARNING"
@@ -651,6 +673,22 @@ class Task_module:
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
             return ""
+        
+    def calculate_depth_of_label(self, x, y, w, h):
+        """
+        Input:
+        x, y, w, h: x, y and width and height of label
+        Output: float: distance in meters of the label corresponding to the given coordinates
+        """
+        if self.perception:
+            try:
+                return self.calculate_depth_of_label_proxy(x, y, w, h).depth
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return 0
+        else:
+            print("perception as false")
+            return 0
             
     def look_for_object(self, object_name: str, ignore_already_seen=False) -> bool:
         """
@@ -675,6 +713,44 @@ class Task_module:
             print("perception as false")
             return False
 
+    def get_all_items(self, place="") -> list:
+        """
+        Input:
+        place: The specific place the robot is looking for the item.
+        Output: List of items the robot saw
+        ----------
+        Aks chatgpt vision for the items in front of the robot
+        """
+        if self.perception:
+            try:
+                angles_to_check = [0]
+                self.setRPosture_srv("stand")
+                for angle in angles_to_check:
+                    print("angulo actual:",angle)
+                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), 0],0.1)
+                    if angle==0:
+                        rospy.sleep(1)
+                    elif angle==-60:
+                        rospy.sleep(3)
+                    elif angle==60:
+                        rospy.sleep(5)
+                    place_prompt = ""
+                    if place != "":
+                        place_prompt = f" in the {place}"
+                    gpt_vision_prompt = f"Answer in a comma separated string (ie: 'bowl,cup,bottle'): give me a list of all the items you see{place_prompt} in the image."
+                    answer = self.img_description(gpt_vision_prompt,camera_name="both")["message"]
+                    if not "none" in answer.lower():
+                        break
+                self.setRPosture_srv("stand")
+                return answer.split(",")
+                
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return "None"
+        else:
+            print("perception as false")
+            return "error"
+
     def find_item_with_characteristic(self, class_type,characteristic,place="") -> str:
         """
         Input:
@@ -687,21 +763,35 @@ class Task_module:
         """
         if self.perception:
             try:
-                place_prompt = ""
-                if place != "":
-                    place_prompt = f" in the {place}"
-                rospy.sleep(1)
-                if class_type == "color":
-                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture has these colors: {characteristic}. Answer only with one word, either the item name or None"
-                elif class_type == "size" or class_type == "weight":
-                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is the {characteristic}. Answer only with one word, either the item name or None"
-                elif class_type == "position":
-                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is positioned {characteristic}most. Answer only with one word, either the item name or None"
-                elif class_type == "description":
-                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is {characteristic}. Answer only with one word, either the item name or None"
-                answer = self.img_description(gpt_vision_prompt,camera_name="bottom_camera")["message"]
-                print(answer)
+                angles_to_check = [0]
+                self.setRPosture_srv("stand")
+                found = False
+                for angle in angles_to_check:
+                    print("angulo actual:",angle)
+                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), 0],0.1)
+                    if angle==0:
+                        rospy.sleep(1)
+                    elif angle==-60:
+                        rospy.sleep(3)
+                    elif angle==60:
+                        rospy.sleep(5)
+                    place_prompt = ""
+                    if place != "":
+                        place_prompt = f" in the {place}"
+                    if class_type == "color":
+                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture has these colors: {characteristic}. Answer only with one word, either the item name or None"
+                    elif class_type == "size" or class_type == "weight":
+                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is the {characteristic}. Answer only with one word, either the item name or None"
+                    elif class_type == "position":
+                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is positioned {characteristic}most. Answer only with one word, either the item name or None"
+                    elif class_type == "description":
+                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is {characteristic}. Answer only with one word, either the item name or None"
+                    answer = self.img_description(gpt_vision_prompt,camera_name="bottom_camera")["message"]
+                    if not "none" in answer.lower():
+                        break
+                self.setRPosture_srv("stand")
                 return answer
+                
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return "None"
@@ -709,52 +799,103 @@ class Task_module:
             print("perception as false")
             return "error"
 
-    def search_for_specific_person(self, class_type: str, specific_characteristic: str, timeout = 24, true_check=False) -> bool:
+    def get_person_gesture(self)->str:
         """
         Input:
-        class_type: The characteristic to search for (name, pointing, raised_hands or breaking rules or TODO colors)
-        specific_characteristic: The specific thing to search for (example: David, Right hand up, Pointing right, shoes, drink, forbidden, garbage, blue (shirt,coat,etc))
-        timeout: Timeout in seconds || -1 for infinite
+        Output: True if person was found
+        ----------
+        Looks for a specific person. This person is pointing, raising a hand, has a specific name, is breaking a particular rule or TODO is wearing a color
+        """
+        if self.perception and self.manipulation:
+            self.setRPosture_srv("stand")
+            gpt_vision_prompt = f"Answer about the person centered in the image. What gesture is the person doing. Answer only with one word or 'None' if you couldn't determine the gesture"
+            answer = self.img_description(gpt_vision_prompt, camera_name="both")["message"]
+            return answer
+        else:
+            print("perception or manipulation as false")
+            return "None"
+
+    def wait_for_head_touch(self, timeout = 15, message = "", message_interval = 5):
+        """
+        Input:
+        timeout: The time until the robot stops waiting
+        message: The message the robot should repeat every x seconds
+        message_interval: The time the robot should wait between talks
+        Output: True if the robot head was touched, False if timeout
+        ----------
+        Waits until the robots head is touched or a timeout
+        """
+        first_time = True
+        self.head_touched = False
+        self.waiting_touch = True
+        start_time = rospy.get_time()
+        last_talk_time = rospy.get_time()
+        while (not self.head_touched) and rospy.get_time() - start_time < timeout:
+            rospy.sleep(0.1)
+            if rospy.get_time()-last_talk_time > message_interval and not first_time:
+                self.talk(message,"English",wait=True)
+                last_talk_time = rospy.get_time()
+            if first_time:
+                first_time = False
+        result = self.head_touched
+        self.waiting_touch = False
+        return result
+
+    def search_for_specific_person(self, class_type: str, specific_characteristic: str,true_check=False) -> bool:
+        """
+        Input:
+        class_type: The characteristic to search for (name, pointing, raised_hands or colors)
+        specific_characteristic: The specific thing to search for (example: David, Right hand up, Pointing right, blue (shirt,coat,etc))
         Output: True if person was found
         ----------
         Looks for a specific person. This person is pointing, raising a hand, has a specific name, is breaking a particular rule or TODO is wearing a color
         """
         if self.perception and self.manipulation:
             try:
-                self.go_to_pose("head_up")
-                self.constant_spin_srv(15)
+                angles_to_check = [0]
+                self.setRPosture_srv("stand")
                 self.look_for_object("person", ignore_already_seen=True)
                 specific_person_found = False
-                start_time = time.time()
-                self.head_thread = True
-                head_thread = Thread(target=self.head_srv_thread, args=(["up"]))
-                head_thread.start()
-                while not specific_person_found and (time.time()-start_time) < timeout:
-                    self.wait_for_object(24)
-                    self.robot_stop_srv()
-                    if true_check:
-                        if class_type=="name":
-                            name = self.q_a("name")
-                            specific_characteristic = specific_characteristic.lower().replace(".","").replace("!","").replace("?","")
-                            if specific_characteristic in name:
-                                specific_person_found = True 
-                        elif class_type=="pointing":
-                            if self.pointing == specific_characteristic:
-                                specific_person_found = True 
-                        elif class_type=="raised_hand":
-                            if self.hand_up == specific_characteristic:
-                                specific_person_found = True
-                        elif class_type=="breaking_rule":
-                            if specific_characteristic == "drink":
-                                gpt_vision_prompt = f"Is there a person without a drink in this picture? Answer only with True or False"
+                for angle in angles_to_check:
+                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
+                    if angle==0:
+                        rospy.sleep(1)
+                    elif angle==-60:
+                        rospy.sleep(3)
+                    elif angle==60:
+                        rospy.sleep(5)
+                    persons = self.labels.get("person", [])
+                    for person in persons:
+                        self.center_head_with_label(person)
+                        if true_check:
+                            if class_type=="name":
+                                name = self.q_a("name")
+                                specific_characteristic = specific_characteristic.lower().replace(".","").replace("!","").replace("?","")
+                                if specific_characteristic in name:
+                                    specific_person_found = True 
+                                    break
+                            elif class_type=="pointing":
+                                if self.pointing == specific_characteristic:
+                                    specific_person_found = True 
+                                    break
+                            elif class_type=="raised_hand":
+                                if self.hand_up == specific_characteristic:
+                                    specific_person_found = True
+                                    break
+                            elif class_type=="colors":
+                                gpt_vision_prompt = f"Answer about the person centered in the image: Is the person wearing {specific_characteristic}? Answer only with True or False"
                                 answer = self.img_description(gpt_vision_prompt)["message"]
                                 if "True" in answer:
                                     specific_person_found = True
-                    else:
-                        specific_person_found = True
-                    rospy.sleep(1)
-                    self.constant_spin_srv(15)
-                self.robot_stop_srv()
+                                    break
+                        else:
+                            specific_person_found = True
+                            break
+                        # Despues de centrar la cabeza, devolverla al punto inicial para centrar a otra persona
+                        self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
+                    if specific_person_found:
+                        break
+                self.setRPosture_srv("stand")
                 return specific_person_found
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -812,11 +953,26 @@ class Task_module:
         # spins until the object is found or timeout
         if self.perception and self.navigation and self.manipulation:
             try:
-                self.go_to_pose("default_head")
+                angles_to_check = [0,-60,60]
+                self.setRPosture_srv("stand")
                 self.look_for_object(object_name, ignore_already_seen=ignore_already_seen)
-                self.constant_spin_srv(15)
-                found = self.wait_for_object(timeout)
-                self.robot_stop_srv()
+                found = False
+                for angle in angles_to_check:
+                    print("angulo actual:",angle)
+                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), 0],0.1)
+                    if angle==0:
+                        rospy.sleep(1)
+                    elif angle==-60:
+                        rospy.sleep(3)
+                    elif angle==60:
+                        rospy.sleep(5)
+                    labels = self.labels.get(object_name, [])
+                    if len(labels)>0:
+                        label_found = labels[0]
+                        self.center_head_with_label(label_found)
+                        found = True
+                        break
+                self.setRPosture_srv("stand")
                 return found
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -839,10 +995,17 @@ class Task_module:
                 counter = 0
                 for angle in angles_to_check:
                     self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.2)
-                    rospy.sleep(5)
+                    if angle==0:
+                        rospy.sleep(1)
+                    elif angle==-60:
+                        rospy.sleep(3)
+                    elif angle==60:
+                        rospy.sleep(5)
                     answer = self.img_description(gpt_vision_prompt, camera_name="both")["message"]
+                    print(answer)
                     if answer.isdigit():
                         counter+= int(answer)
+                self.setRPosture_srv("stand")
                 return counter
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -889,6 +1052,21 @@ class Task_module:
         else:
             print("perception as false")
             return ""
+    
+    def remove_faces_data(self):
+        """
+        Removes all the faces data from the perception utilities 'resources/data' directory
+        """
+        if self.perception:
+            try:
+                approved = self.remove_faces_data_proxy()
+                return approved.approved
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("perception as false")
+            return False
 
     def get_person_description(self) -> dict:
         """
@@ -941,11 +1119,12 @@ class Task_module:
         return self.clothes_color
         
         
-    def img_description(self, prompt: str, camera_name="front_camera") -> dict:
+    def img_description(self, prompt: str, camera_name="front_camera", distance=0.0) -> dict:
         """
         Input:
         camera_name: "front_camera" || "bottom_camera" || "depth_camera" || "Both
         prompt: A string that indicates what gpt vision must do with the image. example: "Describe this image:"
+        distance: distance threshold if camera_name is "depth_camera"
         Output: Dictionary containing the answer from gpt vision.
         ----------
         Make a call to the gpt vision api with an image of what the robot is currently seeing.
@@ -953,7 +1132,7 @@ class Task_module:
         attributes = {}
         if self.perception:
             try:
-                response = self.img_description_proxy(camera_name, prompt)
+                response = self.img_description_proxy(camera_name, prompt, distance)
                 attributes = {
                     "status": response.approved,
                     "message": response.message
@@ -1290,6 +1469,8 @@ class Task_module:
             try:
                 self.set_move_arms_enabled(False)
                 approved = self.set_current_place_proxy(place_name)
+                self.last_place = self.current_place
+                self.current_place = place_name
                 if approved == "approved":
                     return True
                 else:
@@ -1340,11 +1521,13 @@ class Task_module:
             try:
                 self.set_move_arms_enabled(False)
                 approved = self.go_to_place_proxy(place_name, graph)
-                if wait:
+                if wait and not "same-place" in approved.answer:
                     self.wait_go_to_place()
+                self.last_place = self.current_place
+                self.current_place = place_name
                 if lower_arms:
                     self.setRPosture_srv("stand")
-                if approved=="approved":
+                if approved == "approved":
                     return True
                 else:
                     return False
@@ -1464,8 +1647,8 @@ class Task_module:
                 start_time = rospy.get_time()
                 print("Started following")
                 while (not self.head_touched):
-                    if rospy.get_time()-last_talk_time > 5:
-                        self.talk("Remember to touch my head when we arrive","English",wait=False)
+                    if rospy.get_time()-last_talk_time > 15:
+                        self.talk("Remember to touch my head when we arrive","English",wait=True)
                         last_talk_time = rospy.get_time()
                 self.waiting_touch = False
                 self.start_yolo_awareness(False)
@@ -1527,9 +1710,15 @@ class Task_module:
         self.iterations=0
 
     def go_back(self) -> None:
-        self.go_to_place(place_name="house_door")
+        """
+        Input: None
+        Output: None
+        ----------
+        Service to make the robot return to its last place.
+        """
+        self.go_to_place(place_name = self.last_place)
 
-    def center_head_with_label(self, label_info) -> None:   
+    def center_head_with_label(self, label_info,height=-0.3,resolution=1) -> None:   
         """
         Input:
         label_info: tuple that represents the label to center
@@ -1544,10 +1733,16 @@ class Task_module:
         self.toggle_get_angles_topic_srv(toggle_msg)
         label_width = label_info[3]
         label_center = (label_info[1] + label_width/2)
-        label_degree_yolo = (label_center*0.16875) - 27
+        # 54 grados caben en la camara y hay 320 pixeles en resolution 1
+        factor = 54 / 320
+        if resolution == 2:
+            # 54 grados caben en la camara y hay 640 pixeles en resolution 2
+            factor = 54 / 640
+        label_degree_yolo = (label_center*factor) - 27
+        rospy.sleep(1)
         current_head_angle = self.angles
         label_degree = math.radians(label_degree_yolo - current_head_angle)
-        self.set_angles_srv(["HeadYaw","HeadPitch"],[-label_degree, -0.3],0.1)
+        self.set_angles_srv(["HeadYaw","HeadPitch"],[-label_degree, height],0.1)
         toggle_msg =  set_angle_srvRequest()
         toggle_msg.name = ["None"]
         toggle_msg.angle = []
@@ -1652,12 +1847,17 @@ class Task_module:
                         rospy.sleep(0.2)
                         # Stop rotating but keeping moving forward
                         self.start_moving(self.linear_vel, 0, 0)
+                    else:
+                        self.start_moving(0, 0, angular_vel)
+                        rospy.sleep(0.2)
+                        self.stop_moving()
                 if self.stopped_for_safety:
                     self.stopped_for_safety = False
                     # Try to run over the obstacle again
                     self.stop_moving()
-                    rospy.sleep(1.5)
-                    self.talk("Please wait!", wait=False, animated=False)
+                    self.talk("Please wait!", wait=True, animated=False)
+                    self.start_moving(0, 0, angular_vel)
+                    rospy.sleep(0.5)
                     self.start_moving(self.linear_vel/3, 0, angular_vel)
                     rospy.sleep(0.2)
                     # Stop rotating but keeping moving forward
@@ -2010,6 +2210,18 @@ class Task_module:
         while self.head_thread: 
             self.setMoveHead_srv.call(head_position)
             rospy.sleep(8)
+    
+    def posture_srv_thread(self, posture="stand") -> None:
+        """
+        Input: 
+        posture: the different head postures the robot can take. Options are : "stand","rest"
+        Output: None
+        ---------
+        Thread dedicated to keeping the robot's posture
+        """
+        while self.posture_thread: 
+            self.setRPosture_srv("stand")
+            rospy.sleep(8)
              
 
     def saveState(self, name: str) -> bool:
@@ -2249,7 +2461,7 @@ class Task_module:
                 self.stopped_for_safety = True
 
     def callback_get_angles(self, msg):
-        self.angles = math.degrees(msg.angles[0])     
+        self.angles = math.degrees(msg.angles[0]) 
             
     def callback_get_labels_subscriber(self, msg):
         self.labels = {}
