@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-
-# --------------------------- GENERAL LIBRARIES IMPORTS ------------------------------
 from transitions import Machine
 from task_module import Task_module as tm
 import ConsoleFormatter
+import time
 import threading
 import rospy
+import os
+import re
 import math
 import ast
 from code_generation import ls_generate as gen
@@ -17,29 +18,22 @@ class EGPSR(object):
         self.gen = gen.LongStringGenerator()
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
-        
-        # Task name
-        self.task_name = "egpsr"
-        
-        # Possible states for the states machine
-        states = ['INIT', 'LOOK4PERSON', 'EGPSR', 'GO2NEXT']
-        
-        # Initialization of the task module
-        self.tm = tm(perception = True,speech=True, navigation=True, pytoolkit=True, manipulation=True)
+        # Definir los estados posibles del semáforo
+        self.task_name = "EGPSR"
+        states = ['INIT', 'SEARCH4GUEST', 'EGPSR']
+        self.tm = tm(perception = True,speech=True,manipulation=True, navigation=True, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
-        
-        # Definition of the permitted transitions between states
+        # Definir las transiciones permitidas entre los estados
         transitions = [
             {'trigger': 'start', 'source': 'EGPSR', 'dest': 'INIT'},
-            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'GO2NEXT'},
-            {'trigger': 'arrive_next', 'source': 'GO2NEXT', 'dest': 'LOOK4PERSON'},
-            {'trigger': 'GPSR_done', 'source': 'LOOK4PERSON', 'dest': 'GO2NEXT'},
+            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'SEARCH4GUEST'},
+            {'trigger': 'person_raised_hand', 'source': 'SEARCH4GUEST', 'dest': 'EGPSR'},
+            {'trigger': 'again', 'source': 'SEARCH4GUEST', 'dest': 'SEARCH4GUEST'},
+            {'trigger': 'GPSR_done', 'source': 'EGPSR', 'dest': 'SEARCH4GUEST'}
         ]
         
-        # Creation of the states machine
+        # State machine creation
         self.machine = Machine(model=self, states=states, transitions=transitions, initial='EGPSR')
-
-        # Thread to check if rospy is running
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
         
@@ -49,13 +43,8 @@ class EGPSR(object):
         self.head_angles = [60,0,-60]
         self.task_counter = 0 
         
-    
-    # --------------------------- STATES FUNCTIONS ------------------------------
-    
-    # --------------------------- FIRST STATE: INIT ------------------------------
+
     def on_enter_INIT(self):
-        
-        
         self.tm.initialize_pepper()
         self.tm.turn_camera("bottom_camera","custom",1,15)
         # CAMBIAR EN LA COMPETENCIA, EL ROBOT NO INICIA EN GPSR_LOCATION DEBE NAVEGAR ALLA TODO
@@ -63,44 +52,49 @@ class EGPSR(object):
         self.tm.set_current_place(self.init_place)
         self.tm.turn_camera("depth_camera","custom",1,15)
         self.tm.toggle_filter_by_distance(True,2,["person"])
-        
-        self.tm.set_current_place(self.initial_place)
-        self.checked_places.append(self.initial_place)
-        self.last_place = self.initial_place
-        
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.talk("I am going to do the  "+ self.task_name + " task","English")
         self.beggining()
         
-        
-
+    
     def on_enter_EGPSR(self):
         print(self.consoleFormatter.format("EGPSR", "HEADER"))
-        self.tm.look_for_object("")
+        self.tm.look_for_object("person")
         self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. You can talk to me when my eyes are blue: ","English")
         task = self.tm.speech2text_srv(0)
         self.generated_code = ""
+
+        # Thread to call the method that generates code according to a task request
         code_gen_thread = threading.Thread(target=self.code_gen_t,args=[task])
         code_gen_thread.start()
+
         self.tm.talk(f"Your command is {task}","English", wait=True)
         self.tm.talk(f"If that is correct, please touch my head. If not, please wait until my eyes are blue again ","English", wait=False)
+        
         correct = self.tm.wait_for_head_touch(message="", message_interval=100, timeout=13)
+        
         while not correct:
-            self.tm.talk("I am sorry, please repeat your command","English", wait=True)
+            self.tm.talk("I am sorry, may you please repeat your command?","English", wait=True)
             task = self.tm.speech2text_srv(0)
+
+            # Thread to call the method that generates code according to a task request after having failed in the first attempt
             code_gen_thread = threading.Thread(target=self.code_gen_t,args=[task])
             code_gen_thread.start()
+
             self.tm.talk(f"Your command is {task}. If that is correct, please touch my head","English", wait=True)
             correct = self.tm.wait_for_head_touch(message="", message_interval=13, timeout=13)
         
-        self.tm.talk("Processing your request")
+        self.tm.talk("I am processing your request")
+
         while self.generated_code == "":
             rospy.sleep(0.1)
+
+        # Execution of the generated code if it is possible
         if self.generated_code != "impossible":
             exec(self.generated_code)
+
         print(f"Task: {task}")
         self.GPSR_done()
-        
         
 
     def on_enter_SEARCH4GUEST(self):
@@ -108,12 +102,12 @@ class EGPSR(object):
         self.tm.go_to_pose("default_head")
         self.tm.go_to_pose("standard")
         self.current_place = self.places_names[0]
-        self.tm.talk(f"I'm going to search a guest in {self.current_place}","English")
+        self.tm.talk(f"I am going to search a guest in the {self.current_place}","English", False)
         self.tm.go_to_place(self.current_place)
             
-        for angle in self.places_names:
+        for angle in self.head_angles:
             
-            print("angulo actual:",angle)
+            print("\nCurrent Angle:",angle,"\n")
             self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
             
             if angle==0:
@@ -131,152 +125,74 @@ class EGPSR(object):
             
             for person in persons:
                 
+                # Centering the robot camera with the person
                 self.tm.center_head_with_label(person)
+
                 person_response = self.tm.img_description(
-                        "Observe the person in front of you and respond only with True if the person is raising their hand. Otherwise, respond False. Here is an example output: False",
+                        "Observe the person in front of you and respond only with True if the person is raising their hand. Otherwise, respond only with False. Here is an example output: False",
                         "front_camera")
+                
                 is_raisin = True if person_response["message"] == "True" else False
+
                 self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
+                
                 if is_raisin:
-                    self.person_arrived()
+                    # Going to the EGPSR state
+                    self.person_raised_hand()
         
         self.places_names.pop(0)
-        self.tm.talk("I'm done checkin this room'!","English", wait=False)
-        
-        # Allowed angle range
-        angulo_minimo = -1.39  # Given in radians
-        angulo_maximo = 1.39   # Given in radians
-        
-        distancia = abs(angulo_actual - angulo_anterior)
-        
-        distancia_normalizada = distancia / (angulo_maximo - angulo_minimo)
-        
-        tiempo_minimo = 0 
-        tiempo_maximo = 9 
-        
-        tiempo_espera = tiempo_minimo + distancia_normalizada * (tiempo_maximo - tiempo_minimo)
-        
-        return tiempo_espera
-    
+        self.tm.talk("I have finished checking this room!","English", wait=False)
 
-    # --------------------------- THIRD STATE: ASK FOR SHOES ------------------------------
-    def ASK4SHOES(self):
-        
-        print(self.consoleFormatter.format("ASK4SHOES", "HEADER"))
-        
-        self.tm.talk("You must not wear shoes in this place!. Please, go to the entrance and take them off!","English", wait=True)
+        # Returning to this same state
+        self.again()
 
-    # --------------------------- FOURTH STATE: ASK FOR DRINK ------------------------------
-    def ASK4DRINK(self):
         
-        print(self.consoleFormatter.format("ASK4DRINK", "HEADER"))
+    # Thread to generate code
+    def code_gen_t(self, task):
         
-        self.tm.talk("You must have a Drink in your hand. Please, go to the kitchen and grab a drink, you must keep it in your hand!","English", wait=True)
+        print(self.consoleFormatter.format("GEN CODE THREAD", "HEADER"))
+        
+        contador = 0
+        code = ""
 
-    # --------------------------- FIFTH STATE: ASK TO LEAVE ------------------------------
-    def ASK2FOLLOW(self):
-        
-        print(self.consoleFormatter.format("ASK4SHOES", "HEADER"))
-        self.tm.setRPosture_srv("stand")
-        self.tm.talk("Follow me to the other party guests please","English", wait=False)
-        self.tm.go_to_place(self.party_place)
-        self.tm.go_to_relative_point(0,0,180)
-        gpt_vision_prompt = f"Are the people in the picture close to camera (within 1 to 2 meters of the camera)? Answer only with True or False. If there is no one in the picture answer False"
-        answer = self.tm.img_description(prompt=gpt_vision_prompt,camera_name="both")["message"]
-        print("followed?:",answer)
-        if "true" in answer.lower():
-            self.tm.talk("Thank you for following me. Now, please stay here and do not come back to the forbidden room","English", wait=False)
-        else:
-            self.tm.talk("I see you did not comply but i must keep looking for the other guests. But please remember you must not be in the forbidden room","English", wait=False)
-            
-            
-    # --------------------------- SIXTH STATE: GO TO THE NEXT ROOM ------------------------------
-    def on_enter_GO2NEXT(self):
-        
-        print("Current Place: " + self.last_place)
-        
-        self.tm.talk("I'm going to check another room!","English", wait=False)
-        
-        print(self.consoleFormatter.format("GO2NEXT", "HEADER"))
-        
-        for place_num in range(len(self.list_places)):
-            
-            place = self.list_places[place_num]
-            
-            if place not in self.checked_places:
-                
-                self.tm.talk("I'm gonna check " + self.places_names[place_num],"English", wait=False)
-                self.tm.setRPosture_srv("stand")
-                self.tm.go_to_place(place)
-                print("Next Place: " + place)
-                self.checked_places.append(place)
-                self.last_place = place
-                self.arrive_next()
-                
-        self.tm.talk("But i have checked all of the rooms! Yipee","English")
-        
-        # Finishing the task
-        os._exit(os.EX_OK)
+        while contador<1:
+            code = self.gen.generate_code(task, Model.GPT4).replace("`","").replace("python","")
+            pattern = r'self\.tm\.go_to_place\((.*?)\)'
+            code = re.sub(pattern, r'self.tm.go_to_place(\1, lower_arms=False)', code)
+            print(code)
 
-    # --------------------- Complementary function 5: Check the rules --------------------------
-    def check_rules(self):
-        
-        
-        # Threads to check the rules related to wearing shoes
-        shoes_check_thread = threading.Thread(target=self.check_shoes)
-        shoes_check_thread.start()
-        
-        # Threads to check the rules related to having a drink
-        drink_check_thread = threading.Thread(target=self.check_drink)
-        drink_check_thread.start()
-        
-        is_in_forbidden = self.check_forbidden()
-        
-        self.tm.talk("Please wait while i check if you're breaking more rules",wait=False)
-        
-        while self.has_drink==2 or self.has_shoes==2:
-            
-            rospy.sleep(0.1)
-            
-        if self.has_drink == 0:
-            self.ASK4DRINK()
-            
-        if self.has_shoes == 1:
-            self.ASK4SHOES()
-            
-        elif self.has_shoes == 3:
-            self.tm.talk("I can't see your feet, but remember you can't use shoes in the house.","English", wait=True)
-        
-        if is_in_forbidden or self.has_drink==0 or self.has_shoes==1:
-            
-            print("persona rompiendo una regla")
-            self.breakers_found += 1
-            
-        else:
-            if self.has_drink != 4 and self.has_shoes != 4 and (not is_in_forbidden):
-                self.tm.talk("Congratulations! You're not breaking any rule","English", wait=True)
-                        
-        self.has_drink = 2
-        self.has_shoes = 2
-        
+            if not "I am sorry but I cannot complete this task" in code:
+                print("\nIt is possible to execute the request")
 
-    # --------------------------- ROSPY CHECK FUNCTION ------------------------------
+                if self.is_valid_syntax(code):
+                    self.generated_code = code
+                    self.task_counter += 1
+                    contador = 5
+            contador += 1
+
+        if contador==1:
+            self.generated_code = "impossible"
+            self.tm.talk("I cannot the following task: " + task,"English")
+        
     def check_rospy(self):
-        
-        # Ends all processes if rospy is not running
         while not rospy.is_shutdown():
-            rospy.sleep(0.1)
-            
+            time.sleep(0.1)
         print(self.consoleFormatter.format("Shutting down", "FAIL"))
-        
         os._exit(os.EX_OK)
 
-    # --------------------------- RUN FUNCTION TO START THE TASK CLASS CONSTRUCTOR ------------------------------
     def run(self):
-        self.start()
-
-# --------------------------- MAIN FUNCTION OF THE STICKLER TASK CLASS ------------------------------
+        while not rospy.is_shutdown():
+            self.start()
+    
+    def is_valid_syntax(self, code):
+        try:
+            ast.parse(code)
+            return True
+        except SyntaxError:
+            return False
+    
+# Crear una instancia de la maquina de estados
 if __name__ == "__main__":
-    sm = STICKLER_RULES()
+    sm = EGPSR()
     sm.run()
     rospy.spin()
