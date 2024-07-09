@@ -33,7 +33,7 @@ class EGPSR(object):
         ]
         
         # State machine creation
-        self.machine = Machine(model=self, states=states, transitions=transitions, initial='INIT')
+        self.machine = Machine(model=self, states=states, transitions=transitions, initial='EGPSR')
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
         
@@ -105,7 +105,7 @@ class EGPSR(object):
         self.tm.talk(f"I am going to search a guest in the {self.current_place}","English", False)
         self.tm.go_to_place(self.current_place)
             
-        for angle in self:
+        for angle in self.head_angles:
             
             print("\nCurrent Angle:",angle,"\n")
             self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
@@ -138,7 +138,7 @@ class EGPSR(object):
                 
                 if is_raisin:
                     # Going to the EGPSR state
-                    self.person_arrived()
+                    self.person_raised_hand()
         
         self.places_names.pop(0)
         self.tm.talk("I have finished checking this room!","English", wait=False)

@@ -126,12 +126,12 @@ class Task_module:
             
             print(
                 self.consoleFormatter.format(
-                    "Waiting for perception_utilities/calculate_depth_of_label_srv...", "WARNING"
+                    "Waiting for perception_utilities/calculate_depth_of_label...", "WARNING"
                 )
             )
-            rospy.wait_for_service("/perception_utilities/calculate_depth_of_label_srv")
+            rospy.wait_for_service("/perception_utilities/calculate_depth_of_label")
             self.calculate_depth_of_label_proxy = rospy.ServiceProxy(
-                "/perception_utilities/calculate_depth_of_label_srv", calculate_depth_of_label_srv
+                "/perception_utilities/calculate_depth_of_label", calculate_depth_of_label_srv
             )
             
             print(
@@ -712,6 +712,44 @@ class Task_module:
         else:
             print("perception as false")
             return False
+
+    def get_all_items(self, place="") -> str:
+        """
+        Input:
+        place: The specific place the robot is looking for the item.
+        Output: List of items the robot saw
+        ----------
+        Aks chatgpt vision for the items in front of the robot
+        """
+        if self.perception:
+            try:
+                angles_to_check = [0]
+                self.setRPosture_srv("stand")
+                for angle in angles_to_check:
+                    print("angulo actual:",angle)
+                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), 0],0.1)
+                    if angle==0:
+                        rospy.sleep(1)
+                    elif angle==-60:
+                        rospy.sleep(3)
+                    elif angle==60:
+                        rospy.sleep(5)
+                    place_prompt = ""
+                    if place != "":
+                        place_prompt = f" in the {place}"
+                    gpt_vision_prompt = f"Answer in a comma separated string (ie: 'bowl,cup,bottle'): give me a list of all the items you see in the table in the image."
+                    answer = self.img_description(gpt_vision_prompt,camera_name="both")["message"]
+                    if not "none" in answer.lower():
+                        break
+                self.setRPosture_srv("stand")
+                return answer
+                
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return "None"
+        else:
+            print("perception as false")
+            return "error"
 
     def find_item_with_characteristic(self, class_type,characteristic,place="") -> str:
         """
