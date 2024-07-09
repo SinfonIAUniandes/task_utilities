@@ -737,7 +737,7 @@ class Task_module:
                     place_prompt = ""
                     if place != "":
                         place_prompt = f" in the {place}"
-                    gpt_vision_prompt = f"Answer in a comma separated string (ie: 'bowl,cup,bottle'): give me a list of all the items you see in the table in the image."
+                    gpt_vision_prompt = f"Answer in a comma separated string (ie: 'bowl,cup,bottle'): give me a list of all the items you see{place_prompt} in the image."
                     answer = self.img_description(gpt_vision_prompt,camera_name="both")["message"]
                     if not "none" in answer.lower():
                         break
