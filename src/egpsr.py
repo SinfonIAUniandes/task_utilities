@@ -13,16 +13,9 @@ from code_generation import ls_generate as gen
 from code_generation import generate_utils 
 from code_generation.database.models import Model
 class EGPSR(object):
+
     def __init__(self):
         self.gen = gen.LongStringGenerator()
-        # TODO
-        """
-        - Revisar si se meten los servicios de interface o del pytoolkit directamente (ojala nodo de interface)
-        - Falta meter todos los servicios del pytoolkit al modulo para que se puedan llamar facilmente desde la maquina de estados.
-        - Falta crear behaviours como el spin_until_object que es usado varias veces en varios tasks.
-        - Falta revisar todos los angulos de navegacion al hacer look_4_something y la velocidad de giro 
-        - Poner una redundancia para cuando el robot asigna un nuevo a id a una misma persona para que no la presente (lista con los nombres de los que ya presento, incluyendo el actual)
-        """
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
@@ -43,11 +36,12 @@ class EGPSR(object):
         self.machine = Machine(model=self, states=states, transitions=transitions, initial='EGPSR')
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
+        
         ############################# GLOBAL VARIABLES #############################
-        self.gpsr_location = "house_door"
         self.init_place = "house_door"
-        self.places_names = ["kitchen","living_room","main room","dining","bedroom"]
-        self.head_angles = [60,-60]
+        self.places_names = ["kitchen","living_room","dining","bedroom"] #TODO: Change if there are more places
+        self.head_angles = [60,0,-60]
+        self.task_counter = 0 
         
 
     def on_enter_INIT(self):
@@ -56,16 +50,10 @@ class EGPSR(object):
         # CAMBIAR EN LA COMPETENCIA, EL ROBOT NO INICIA EN GPSR_LOCATION DEBE NAVEGAR ALLA TODO
         self.tm.current_place = "house_door"
         self.tm.set_current_place(self.init_place)
-        print("initial position: ",self.init_place)
         self.tm.turn_camera("depth_camera","custom",1,15)
         self.tm.toggle_filter_by_distance(True,2,["person"])
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.talk("I am going to do the  "+ self.task_name + " task","English")
-        self.tm.talk("I am going to the EGPSR location","English")
-        print("gpsr_location:", self.gpsr_location )
-        print(self.tm.last_place)
-        if self.tm.last_place != self.gpsr_location:
-            self.tm.go_to_place(self.gpsr_location)
         self.beggining()
         
         
@@ -106,20 +94,38 @@ class EGPSR(object):
         self.current_place = self.places_names[0]
         self.tm.talk(f"I'm going to search a guest in {self.current_place}","English")
         self.tm.go_to_place(self.current_place)
-        self.tm.look_for_object("person")
-        for angle in self.head_angles:
-            self.tm.set_angles_srv(["HeadYaw"], [math.radians(angle)],0.05)
-            person_response = self.tm.img_description(
-                    "Observe the person in front of you and respond only with True if the person is raising their hand. Otherwise, respond False. Here is an example output: False",
-                    "front_camera"
-                    )
-            is_raisin = True if person_response["message"] == "True" else False
+            
+        for angle in self.places_names:
+            
+            print("angulo actual:",angle)
+            self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
+            
+            if angle==0:
+                rospy.sleep(3)
+                
+            elif angle==-60:
+                rospy.sleep(3)
+                
+            elif angle==60:
+                rospy.sleep(5)
+                
+            self.tm.labels = dict()
+            rospy.sleep(2)
+            persons = self.tm.labels.get("person", [])
+            
+            for person in persons:
+                
+                self.tm.center_head_with_label(person)
+                person_response = self.tm.img_description(
+                        "Observe the person in front of you and respond only with True if the person is raising their hand. Otherwise, respond False. Here is an example output: False",
+                        "front_camera")
+                is_raisin = True if person_response["message"] == "True" else False
+                self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
+                if is_raisin:
+                    self.person_arrived()
+        
         self.places_names.pop(0)
-        if is_raisin:
-            self.person_arrived()
-        else:
-            self.tm.talk(f"I didn't find a guest raising their hand in {self.current_place}","English")
-            self.again()
+        self.tm.talk("I'm done checkin this room'!","English", wait=False)
         
     
     def code_gen_t(self, task):
