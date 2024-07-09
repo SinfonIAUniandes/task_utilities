@@ -315,18 +315,10 @@ class CARRY_MY_LUGGAGE(object):
         while self.following:
             
             if not self.tm.avoiding_obstacle:
-                current_position = self.tm.get_absolute_position_proxy()
-                current_x = current_position.x
-                current_y = current_position.y
-                current_angle = current_position.theta
                 print("adding place:","place" + str(self.place_counter))
                 self.tm.add_place(
                     "place" + str(self.place_counter),
-                    edges=["place" + str(self.place_counter - 1)],
-                    with_coordinates=True,
-                    x=current_x,
-                    y=current_y,
-                    theta=current_angle
+                    edges=["place" + str(self.place_counter - 1)]
                 )
                 
                 self.place_counter += 1

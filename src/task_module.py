@@ -682,7 +682,7 @@ class Task_module:
         """
         if self.perception:
             try:
-                return self.calculate_depth_of_label_proxy(x, y, w, h)
+                return self.calculate_depth_of_label_proxy(x, y, w, h).depth
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return 0
@@ -713,7 +713,7 @@ class Task_module:
             print("perception as false")
             return False
 
-    def get_all_items(self, place="") -> str:
+    def get_all_items(self, place="") -> list:
         """
         Input:
         place: The specific place the robot is looking for the item.
@@ -742,7 +742,7 @@ class Task_module:
                     if not "none" in answer.lower():
                         break
                 self.setRPosture_srv("stand")
-                return answer
+                return answer.split(",")
                 
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -1735,15 +1735,13 @@ class Task_module:
         label_center = (label_info[1] + label_width/2)
         # 54 grados caben en la camara y hay 320 pixeles en resolution 1
         factor = 54 / 320
-        if resolution==2:
+        if resolution == 2:
             # 54 grados caben en la camara y hay 640 pixeles en resolution 2
             factor = 54 / 640
         label_degree_yolo = (label_center*factor) - 27
         rospy.sleep(1)
         current_head_angle = self.angles
-        print("current_head_angle: ", self.angles)
         label_degree = math.radians(label_degree_yolo - current_head_angle)
-        print("label_degree: ",-label_degree)
         self.set_angles_srv(["HeadYaw","HeadPitch"],[-label_degree, height],0.1)
         toggle_msg =  set_angle_srvRequest()
         toggle_msg.name = ["None"]
