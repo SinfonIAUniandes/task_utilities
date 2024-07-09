@@ -129,9 +129,9 @@ class Task_module:
                     "Waiting for perception_utilities/calculate_depth_of_label...", "WARNING"
                 )
             )
-            rospy.wait_for_service("/perception_utilities/calculate_depth_of_label")
+            rospy.wait_for_service("/perception_utilities/calculate_depth_of_label_srv")
             self.calculate_depth_of_label_proxy = rospy.ServiceProxy(
-                "/perception_utilities/calculate_depth_of_label", calculate_depth_of_label_srv
+                "/perception_utilities/calculate_depth_of_label_srv", calculate_depth_of_label_srv
             )
             
             print(
