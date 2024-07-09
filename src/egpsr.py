@@ -27,13 +27,13 @@ class EGPSR(object):
         transitions = [
             {'trigger': 'start', 'source': 'EGPSR', 'dest': 'INIT'},
             {'trigger': 'beggining', 'source': 'INIT', 'dest': 'SEARCH4GUEST'},
-            {'trigger': 'person_arrived', 'source': 'SEARCH4GUEST', 'dest': 'EGPSR'},
+            {'trigger': 'person_raised_hand', 'source': 'SEARCH4GUEST', 'dest': 'EGPSR'},
             {'trigger': 'again', 'source': 'SEARCH4GUEST', 'dest': 'SEARCH4GUEST'},
             {'trigger': 'GPSR_done', 'source': 'EGPSR', 'dest': 'SEARCH4GUEST'}
         ]
         
-        # Crear la máquina de estados
-        self.machine = Machine(model=self, states=states, transitions=transitions, initial='EGPSR')
+        # State machine creation
+        self.machine = Machine(model=self, states=states, transitions=transitions, initial='INIT')
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
         
@@ -56,35 +56,45 @@ class EGPSR(object):
         self.tm.talk("I am going to do the  "+ self.task_name + " task","English")
         self.beggining()
         
-        
-
+    
     def on_enter_EGPSR(self):
         print(self.consoleFormatter.format("EGPSR", "HEADER"))
-        self.tm.look_for_object("")
+        self.tm.look_for_object("person")
         self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. You can talk to me when my eyes are blue: ","English")
         task = self.tm.speech2text_srv(0)
         self.generated_code = ""
+
+        # Thread to call the method that generates code according to a task request
         code_gen_thread = threading.Thread(target=self.code_gen_t,args=[task])
         code_gen_thread.start()
+
         self.tm.talk(f"Your command is {task}","English", wait=True)
         self.tm.talk(f"If that is correct, please touch my head. If not, please wait until my eyes are blue again ","English", wait=False)
+        
         correct = self.tm.wait_for_head_touch(message="", message_interval=100, timeout=13)
+        
         while not correct:
-            self.tm.talk("I am sorry, please repeat your command","English", wait=True)
+            self.tm.talk("I am sorry, may you please repeat your command?","English", wait=True)
             task = self.tm.speech2text_srv(0)
+
+            # Thread to call the method that generates code according to a task request after having failed in the first attempt
             code_gen_thread = threading.Thread(target=self.code_gen_t,args=[task])
             code_gen_thread.start()
+
             self.tm.talk(f"Your command is {task}. If that is correct, please touch my head","English", wait=True)
             correct = self.tm.wait_for_head_touch(message="", message_interval=13, timeout=13)
         
-        self.tm.talk("Processing your request")
+        self.tm.talk("I am processing your request")
+
         while self.generated_code == "":
             rospy.sleep(0.1)
+
+        # Execution of the generated code if it is possible
         if self.generated_code != "impossible":
             exec(self.generated_code)
+
         print(f"Task: {task}")
         self.GPSR_done()
-        
         
 
     def on_enter_SEARCH4GUEST(self):
@@ -92,12 +102,12 @@ class EGPSR(object):
         self.tm.go_to_pose("default_head")
         self.tm.go_to_pose("standard")
         self.current_place = self.places_names[0]
-        self.tm.talk(f"I'm going to search a guest in {self.current_place}","English")
+        self.tm.talk(f"I am going to search a guest in the {self.current_place}","English", False)
         self.tm.go_to_place(self.current_place)
             
         for angle in self.places_names:
             
-            print("angulo actual:",angle)
+            print("\nCurrent Angle:",angle,"\n")
             self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
             
             if angle==0:
@@ -115,37 +125,51 @@ class EGPSR(object):
             
             for person in persons:
                 
+                # Centering the robot camera with the person
                 self.tm.center_head_with_label(person)
+
                 person_response = self.tm.img_description(
-                        "Observe the person in front of you and respond only with True if the person is raising their hand. Otherwise, respond False. Here is an example output: False",
+                        "Observe the person in front of you and respond only with True if the person is raising their hand. Otherwise, respond only with False. Here is an example output: False",
                         "front_camera")
+                
                 is_raisin = True if person_response["message"] == "True" else False
+
                 self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
+                
                 if is_raisin:
+                    # Going to the EGPSR state
                     self.person_arrived()
         
         self.places_names.pop(0)
-        self.tm.talk("I'm done checkin this room'!","English", wait=False)
+        self.tm.talk("I have finished checking this room!","English", wait=False)
+
+        # Returning to this same state
+        self.again()
+
         
-    
+    # Thread to generate code
     def code_gen_t(self, task):
         
         print(self.consoleFormatter.format("GEN CODE THREAD", "HEADER"))
         
         contador = 0
         code = ""
+
         while contador<1:
             code = self.gen.generate_code(task, Model.GPT4).replace("`","").replace("python","")
             pattern = r'self\.tm\.go_to_place\((.*?)\)'
             code = re.sub(pattern, r'self.tm.go_to_place(\1, lower_arms=False)', code)
             print(code)
+
             if not "I am sorry but I cannot complete this task" in code:
                 print("\nIt is possible to execute the request")
+
                 if self.is_valid_syntax(code):
                     self.generated_code = code
                     self.task_counter += 1
                     contador = 5
             contador += 1
+
         if contador==1:
             self.generated_code = "impossible"
             self.tm.talk("I cannot the following task: " + task,"English")

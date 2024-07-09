@@ -52,9 +52,9 @@ class ServeBreakfast(object):
         
         # Izquierda positivo - Derecha negativo
         self.drop_and_serve_position = {
-            "bowl": 0.5,
+            "bowl": 0.0,
             "milk_carton": 0.2,
-            "cereal_box": 0.7
+            "cereal_box": 0.2
         }
         
         
@@ -72,7 +72,7 @@ class ServeBreakfast(object):
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         
         # Positivo adelante - Negativo atras
-        self.relative_drop_position=0.76
+        self.relative_drop_position=0.3
         
         self.crouch_4_drop = -0.3 # Cambiar segun la altura de la mesa de dining
         
