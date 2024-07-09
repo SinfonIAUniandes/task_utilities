@@ -217,26 +217,6 @@ class STICKLER_RULES(object):
             return True
         
         return False
-    
-
-    # --------------------- Complementary function 4: Calculate the waiting time --------------------------
-    def calcular_tiempo_espera(self, angulo_actual, angulo_anterior):
-        
-        # Allowed angle range
-        angulo_minimo = -1.39  # Given in radians
-        angulo_maximo = 1.39   # Given in radians
-        
-        distancia = abs(angulo_actual - angulo_anterior)
-        
-        distancia_normalizada = distancia / (angulo_maximo - angulo_minimo)
-        
-        tiempo_minimo = 0 
-        tiempo_maximo = 9 
-        
-        tiempo_espera = tiempo_minimo + distancia_normalizada * (tiempo_maximo - tiempo_minimo)
-        
-        return tiempo_espera
-    
 
     # --------------------------- THIRD STATE: ASK FOR SHOES ------------------------------
     def ASK4SHOES(self):

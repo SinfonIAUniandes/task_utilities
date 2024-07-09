@@ -21,14 +21,6 @@ from robot_toolkit_msgs.msg import speech_recognition_status_msg
 class GPSR(object):
     def __init__(self):
         self.gen = gen.LongStringGenerator()
-        # TODO
-        """
-        - Revisar si se meten los servicios de interface o del pytoolkit directamente (ojala nodo de interface)
-        - Falta meter todos los servicios del pytoolkit al modulo para que se puedan llamar facilmente desde la maquina de estados.
-        - Falta crear behaviours como el spin_until_object que es usado varias veces en varios tasks.
-        - Falta revisar todos los angulos de navegacion al hacer look_4_something y la velocidad de giro 
-        - Poner una redundancia para cuando el robot asigna un nuevo a id a una misma persona para que no la presente (lista con los nombres de los que ya presento, incluyendo el actual)
-        """
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
@@ -39,7 +31,7 @@ class GPSR(object):
         # Definir las transiciones permitidas entre los estados
         transitions = [
             {'trigger': 'start', 'source': 'GPSR', 'dest': 'INIT'},
-            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'WAIT4GUEST'},
+            {'trigger': 'beggining', 'source': 'INIT', 'dest': 'GO2GPSR'},
             {'trigger': 'go_to_gpsr', 'source': 'GO2GPSR', 'dest': 'WAIT4GUEST'},
             {'trigger': 'person_arrived', 'source': 'WAIT4GUEST', 'dest': 'GPSR'},
             {'trigger': 'GPSR_done', 'source': 'GPSR', 'dest': 'GO2GPSR'}
@@ -63,13 +55,8 @@ class GPSR(object):
         self.tm.current_place = "house_door"
         self.tm.set_current_place(self.init_place)
         print("initial position: ",self.init_place)
-        self.tm.turn_camera("depth_camera","custom",1,15)
-        self.tm.toggle_filter_by_distance(True,2,["person"])
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.talk("I am going to do the  "+ self.task_name + " task","English")
-        self.tm.talk("I am going to the GPSR location","English")
-        print("gpsr_location:", self.gpsr_location )
-        self.tm.go_to_place(self.gpsr_location)
         self.beggining()
 
     def on_enter_GPSR(self):

@@ -51,7 +51,8 @@ class RECEPTIONIST(object):
         # --------------------------- Task Parameters ------------------------------
         
         # The angles of the chairs the robot must check to introduce the people
-        self.chair_angles = [30,-40,-67,-90]
+        self.chair_angles = [-10,10,40]
+        self.chair_distances = [1.9,1.9,2.1]
         
 
         self.host = {
@@ -71,14 +72,14 @@ class RECEPTIONIST(object):
         
         self.second_guest = {}
         # TODO If room is big, use 2, else use 1
-        self.resolution = 1
+        self.resolution = 2
         self.saved_face = False
         self.host_saved = False
         self.guest_1_saved = False
         self.waiting_host = True
         self.guests_count = 1
         # Where the robot must introduce the guests
-        self.seating_place = "see_faces"
+        self.seating_place = "living_room"
         self.initial_place = "init_stickler"
         self.greeting_place = "guests_door"
         self.last_place = self.initial_place
@@ -88,13 +89,13 @@ class RECEPTIONIST(object):
     def on_enter_INIT(self):
         
         self.tm.initialize_pepper()
-        #self.tm.turn_camera("front_camera","custom",2,10)
-        self.tm.turn_camera("depth_camera","custom",1,10)
-        if self.resolution != 1:
-            self.tm.toggle_filter_by_distance(True,2,["person"])
+        if self.resolution == 2:
+            self.tm.turn_camera("front_camera","custom",2,10)
+            self.tm.turn_camera("depth_camera","custom",1,10)
+        else:
+            self.tm.turn_camera("depth_camera","custom",1,15)
         self.tm.remove_faces_data()
         self.tm.publish_filtered_image("face", "front_camera")
-        self.tm.remove_faces_data()
         self.tm.set_current_place(self.initial_place)
         
         self.tm.show_topic("/perception_utilities/filtered_image")
@@ -135,9 +136,8 @@ class RECEPTIONIST(object):
         
         print(self.consoleFormatter.format("SAVE_GUEST", "WARNING"))
         
-        self.tm.set_angles_srv(["HeadYaw", "HeadPitch"],[0, -0.45],0.1)
+        self.tm.set_angles_srv(["HeadYaw", "HeadPitch"],[0, -0.35],0.1)
         
-        print("guests:",self.guests_count)
         if self.guests_count == 1:
             self.tm.talk("Hi guest! please center your face in the circle in my tablet to register you!","English", wait=True)
 
@@ -150,15 +150,16 @@ class RECEPTIONIST(object):
             age_gender_thread = threading.Thread(target=self.age_gender_t)
             age_gender_thread.start()
 
-            self.tm.talk("I will ask you a couple of questions while i get a good look at your face.","English", wait=True)
-            self.tm.talk("Please answer them when my eyes turn blue!","English", wait=True)
+            self.tm.talk("I will ask you a couple of questions while i get a good look at your face. Please answer them when my eyes turn blue!","English", wait=False)
+            print("empieza sleep")
+            rospy.sleep(10)
         else:
-            self.tm.talk("Hi guest! I will ask you a couple of questions.","English", wait=True)
-            self.tm.talk("Please answer them when my eyes turn blue!","English", wait=True)
-        
-        rospy.sleep(2)
-        name = self.tm.q_a("name").lower()
-        drink = self.tm.q_a("drink")
+            self.tm.talk("Hi guest! I will ask you a couple of questions. Please answer them when my eyes turn blue!","English", wait=False)
+            print("empieza sleep")
+            rospy.sleep(8)
+        print("acaba sleep")
+        name = self.tm.q_a("What is your name?").lower()
+        drink = self.tm.q_a("What is your favorite drink?")
         
         if self.guests_count == 1:
             self.first_guest["name"] = name
@@ -205,12 +206,16 @@ class RECEPTIONIST(object):
             self.tm.talk(f'Hello everyone, this is {self.first_guest["name"]}, {self.first_guest["pronoun"]} is a {self.first_guest["gender"]}.  {self.first_guest["pronoun"]} is {self.first_guest["age"]}, and {self.first_guest["pronoun"]} likes to drink {self.first_guest["drink"]}.',"English", wait=False)
             current_guest = self.first_guest
         else:
-            self.tm.talk(f'Hello everyone, this is {self.second_guest["name"]} and {self.first_guest["pronoun"]} likes to drink {self.second_guest["drink"]}.',"English", wait=False)
+            self.tm.talk(f'Hello everyone, this is {self.second_guest["name"]} and they like to drink {self.second_guest["drink"]}.',"English", wait=False)
             current_guest = self.second_guest
-                
+             
+        found_guests = []   
         occupied_chairs = []
         
-        for angle in self.chair_angles:
+        for angle_number in range(len(self.chair_angles)):
+            angle = self.chair_angles[angle_number]
+            distance = self.chair_distances[angle_number]
+            self.tm.toggle_filter_by_distance(True,distance,["person"])
             
             print("Angulo actual:",angle)
 
@@ -230,8 +235,8 @@ class RECEPTIONIST(object):
                 upper_bound = 260
                 
             elif self.resolution == 2:
-                lower_bound = 120
-                upper_bound = 520
+                lower_bound = 180
+                upper_bound = 460
                 
             wait_time=2
             initial_time=time.time()
@@ -253,6 +258,7 @@ class RECEPTIONIST(object):
             occupied_chairs.append(angle)
             
             self.tm.talk("Recognizing person!","English", wait=False)
+            print("guests:",self.guests_count)
             if self.guests_count == 1:
                 self.saved_face = False
                 save_face_thread = threading.Thread(target=self.save_face_t,args=["charlie"])
@@ -265,6 +271,8 @@ class RECEPTIONIST(object):
             else:
                 guest_name = self.tm.recognize_face(3)
                 print("guest:",guest_name)
+                if not guest_name in found_guests:
+                    found_guests.append(guest_name)
                 if guest_name == "guest1":
                     self.tm.talk(f"Hey {self.second_guest['name']}! I introduce to you {self.first_guest['name']} is a {self.first_guest['gender']}. {self.first_guest['pronoun']} is {self.first_guest['age']}, and {self.first_guest['pronoun']} likes to drink {self.first_guest['drink']}.", "English", wait=True)
                 elif guest_name == self.host["name"]:
@@ -277,7 +285,7 @@ class RECEPTIONIST(object):
                     else:
                         choice = random.choice([f"{self.second_guest['name']}! I introduce to you {self.first_guest['name']} is a {self.first_guest['gender']}. {self.first_guest['pronoun']} is {self.first_guest['age']}, and {self.first_guest['pronoun']} likes to drink {self.first_guest['drink']}.",f"Hey {self.second_guest['name']}! I introduce to you {self.host['name']} is a {self.host['gender']}. {self.host['pronoun']} is {self.host['age']}, and {self.host['pronoun']} likes to drink {self.host['drink']}."])
                         self.tm.talk(choice,"English",wait=True)
-            if len(occupied_chairs) == 2: 
+            if len(found_guests) == 2: 
                 break
 
         self.tm.setRPosture_srv("stand")
@@ -388,7 +396,7 @@ class RECEPTIONIST(object):
             self.tm.go_to_pose("point_there_right",0.1)
             joint = "RElbowRoll"
         rospy.sleep(2)
-        self.tm.set_angles_srv([joint], [math.radians(angle)], 0.1)
+        self.tm.set_angles_srv([joint], [math.radians(angle-10)], 0.1)
             
         
     # --------------------------- ROSPY CHECK THREAD ------------------------------

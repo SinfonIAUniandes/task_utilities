@@ -3,6 +3,7 @@
 # --------------- GENERAL LIBRARIES IMPORTS ---------------
 import os
 import time
+import math
 import rospy
 import threading
 import ConsoleFormatter
@@ -12,36 +13,37 @@ from task_module import Task_module as tm
 # --------------- MESSAGES AND SERVICES IMPORTS ---------------
 from std_msgs.msg import String
 
-# --------------- CARRY MY LUGGAGE TASK CLASS DEFINITION ---------------
-class CARRY_MY_LUGGAGE(object):
+# --------------- RESTAURANT TASK CLASS DEFINITION ---------------
+class RESTAURANT(object):
     
     # --------------- Constructor ---------------    
     def __init__(self) -> None:
         self.consoleFormatter = ConsoleFormatter.ConsoleFormatter()
         self.tm = tm(navigation=True, manipulation=True, perception=True, speech=True, pytoolkit=True)
-        self.tm.initialize_node("carry_my_luggage")
+        self.tm.initialize_node("restaurant")
 
         # --------------- Machine States ---------------
 
         self.STATES = [
             "INIT",
-            "LOOK_FOR_BAG",
-            "GRAB_BAG",
-            "FOLLOW_YOU",
+            "LOOK_FOR_CUSTOMER",
+            "GO2CUSTOMER",
+            "TAKE_ORDER",
             "GO_BACK",
+            "SERVE_ORDER"
             "END",
         ]
         
         # --------------- Machine Transitions ---------------
         
         self.TRANSITIONS = [
-            {"trigger": "zero", "source": "CARRY_MY_LUGGAGE", "dest": "INIT"},
-            {"trigger": "start", "source": "INIT", "dest": "LOOK_FOR_BAG"},
-            {"trigger": "grab_bag", "source": "LOOK_FOR_BAG", "dest": "GRAB_BAG"},
-            {"trigger": "grab_bag_again", "source": "GRAB_BAG", "dest": "GRAB_BAG"},
-            {"trigger": "follow_you", "source": "GRAB_BAG", "dest": "FOLLOW_YOU"},
-            {"trigger": "go_back", "source": "FOLLOW_YOU", "dest": "GO_BACK"},
-            {"trigger": "end", "source": "GO_BACK", "dest": "END"},
+            {"trigger": "zero", "source": "RESTAURANT", "dest": "INIT"},
+            {"trigger": "start", "source": "INIT", "dest": "LOOK_FOR_CUSTOMER"},
+            {"trigger": "found_customer()", "source": "LOOK_FOR_CUSTOMER", "dest": "GO2CUSTOMER"},
+            {"trigger": "arrived_customer", "source": "GO2CUSTOMER", "dest": "TAKE_ORDER"},
+            {"trigger": "order_taken()", "source": "TAKE_ORDER", "dest": "GO_BACK"},
+            {"trigger": "arrived_bar", "source": "GO_BACK", "dest": "SERVE_ORDER"},
+            {"trigger": "end", "source": "SERVE_ORDER", "dest": "END"},
         ]
         
         # --------------- Machine Declaration ---------------
@@ -50,12 +52,13 @@ class CARRY_MY_LUGGAGE(object):
             model=self,
             states=self.STATES,
             transitions=self.TRANSITIONS,
-            initial="CARRY_MY_LUGGAGE",
+            initial="RESTAURANT",
         )
         
         # --------------- Robot State Variables ---------------
         
         self.choosing = False
+        
         
         # --------------- Subscribers ---------------
         
@@ -65,13 +68,9 @@ class CARRY_MY_LUGGAGE(object):
         
         # --------------- Absolute Variables ---------------
         
-        self.bag_place = "none"
-        self.gpt_bag_place = "right"
-        self.tm.waiting_touch = False
-        self.following = False
-        self.place_counter = 0
-        self.pose = ""
-        self.tm.head_touched = False
+        self.angles_to_check = [0,-60,60]
+        self.hand_raised = False
+        self.gpt_hand_raised_id = -1
         
         # --------------- ROSPY Check ---------------
         
@@ -86,31 +85,19 @@ class CARRY_MY_LUGGAGE(object):
     def on_enter_INIT(self):
         
         self.tm.initialize_pepper()
-        
-        # --------------- PARAMETERS ---------------
-        
-        self.tm.set_orthogonal_security_srv(0.1)
-        self.tm.set_tangential_security_srv(0.01)
+        self.tm.turn_camera("depth_camera","custom",1,15)
         
         # --------------- INIT STATE PROCCEDURE ---------------
         
-        self.tm.pose_srv("front_camera", True)
         current_position = self.tm.get_absolute_position_proxy()
         current_angle = current_position.theta
-        print("adding place:arena_outside")
-        self.tm.add_place("arena_outside",with_coordinates=True,x=20,y=20,theta=current_angle)
-        self.tm.set_current_place("arena_outside")
+        print("adding place:bar_table")
+        self.tm.add_place("bar_table",with_coordinates=True,x=20,y=20,theta=current_angle)
+        self.tm.set_current_place("bar_table")
         rospy.sleep(1)
-        
-        print("adding place:place0")
-        self.tm.add_place("place0")
-        self.place_counter += 1
 
-        # Schedule the function to be called after 4:30 minutes
-        timer = threading.Timer((4 * 60 ) + 45, self.execute_after_delay)
-        timer.start()
         print(self.consoleFormatter.format("INIT", "HEADER"))
-        self.tm.talk("Hello, I am ready to carry your luggage", wait=True)
+        self.tm.talk("Hello i am ready to help the restaurant", wait=True)
         
         # Moving to LOOK_FOR_BAG state
         self.start()
@@ -119,46 +106,70 @@ class CARRY_MY_LUGGAGE(object):
 
     # --------------- SECOND STATE: LOOK FOR BAG ---------------
     
-    def on_enter_LOOK_FOR_BAG(self):
+    def on_enter_LOOK_FOR_CUSTOMER(self):
         
-        print(self.consoleFormatter.format("LOOK_FOR_BAG", "HEADER"))
-        
-        self.bag_place = "none"
-        self.choosing = True
-        self.tm.show_image("https://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/cml2.png")
-        self.tm.setMoveHead_srv("up")
-        self.tm.talk("I am looking for the bag you want me to carry, please point to it, raise your hand clearly. Just like you see in my tablet",wait=False)
-        
-        look_4_bag_thread = threading.Thread(target=self.look_4_bag)
-        look_4_bag_thread.start()
-        
-        start_time = rospy.get_time()
-        
-        while self.bag_place=="none" and rospy.get_time() - start_time < 10:
-            rospy.sleep(0.1)
+        print(self.consoleFormatter.format("LOOK_FOR_CUSTOMER", "HEADER"))
+        self.tm.talk("I am looking for calling customers",wait=False)
+        self.tm.setRPosture_srv("stand")
             
         print("Signaled")
-        print(f"bag at {self.bag_place}")
         
         self.choosing = False
         
-        if self.bag_place == "none":
-            self.bag_place = self.gpt_bag_place
-        self.tm.talk(f"I found your bag to your {self.bag_place}",wait=True)
+        for angle in self.angles_to_check:
+            
+            print("angulo actual:",angle)
+            self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
+            
+            if angle==0:
+                rospy.sleep(1)
+                
+            elif angle==-60:
+                rospy.sleep(3)
+                
+            elif angle==60:
+                rospy.sleep(5)
+                
+            self.tm.labels = dict()
+            
+            rospy.sleep(2)
+                
+            persons = self.tm.labels.get("person", [])
+            
+            for person in persons:
+                
+                print("centrando persona:",person)
+                self.tm.center_head_with_label(person)
+                
+                print("revisando si esta la mano levantada")
+                
+                self.choosing = True
+                
+                verify_raised_hand_thread = threading.Thread(target=self.verify_raised_hand)
+                verify_raised_hand_thread.start()
+                self.hand_raised = False
+                start_time = rospy.get_time()
         
-
-        # The pose is relative to the robot, so the opposite arm is used
+                while not self.hand_raised and rospy.get_time() - start_time < 5:
+                    rospy.sleep(0.1)
+                    
+                self.choosing = False
         
-        if self.bag_place=="right":
-            self.pose = "small_object_left_high_3"
-            self.tm.go_to_pose("small_object_left_hand", 0.1)
+                if self.hand_raised or self.gpt_hand_raised_id == person[0]:
+                    self.tm.talk(f"I found a calling customer",wait=False)
+                    current_position = self.tm.get_absolute_position_proxy()
+                    current_angle = current_position.theta
+                    person_x = person[1]
+                    
+                    self.tm.add_place("customer",with_coordinates=True,x=20,y=20,theta=current_angle)
+                    
+                print("calling customer found")
+                self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
             
-        else:
-            self.pose = "small_object_right_high_3"
-            self.tm.go_to_pose("small_object_right_hand", 0.1)
-            
-            
-        # Moving to GRAB_BAG state
+        self.tm.setRPosture_srv("stand")
+        
+        # Moving to the GO2NEXT state
+        self.rules_checked()
         self.grab_bag()
         
 
@@ -176,9 +187,9 @@ class CARRY_MY_LUGGAGE(object):
                 
         # The pose is relative to the robot, so the opposite arm is used
         
-        print("close hand:",self.bag_place )
+        print("close hand:",self.hand_raised )
         
-        if self.bag_place=="right":
+        if self.hand_raised=="right":
             self.tm.go_to_pose("close_left_hand")
             rospy.sleep(1)
             self.tm.go_to_pose("small_object_left_high_2")
@@ -225,7 +236,7 @@ class CARRY_MY_LUGGAGE(object):
         self.tm.robot_stop_srv()
         
         # Openning hand to release the bag
-        if self.bag_place=="right":
+        if self.hand_raised=="right":
             self.tm.go_to_pose("small_object_left_high_2")
             rospy.sleep(4)
             self.tm.go_to_pose("small_object_left_hand")
@@ -338,20 +349,18 @@ class CARRY_MY_LUGGAGE(object):
     # --------------- POSE PUBLISHER CALLBACK FUNCTION ---------------
     def pose_publisher_callback(self, msg):
         if self.choosing:
-            if "left" in msg.data.lower():
-                self.bag_place = "left"
-            elif "right" in msg.data.lower():
-                self.bag_place = "right"
+            if "left" in msg.data.lower() or "right" in msg.data.lower():
+                self.hand_raised = True
                 
                 
-    # --------------- GPTVISION LOOK4BAG THREAD ---------------
-    def look_4_bag(self):
-        print(self.consoleFormatter.format("LOOK4BAG", "HEADER"))
-        gpt_vision_prompt = f"Is the person in the center of the picture pointing to their Left or to their Right? Answer only with Left or Right"
-        answer = self.tm.img_description(gpt_vision_prompt,camera_name="front_camera")["message"].lower()
+    # --------------- GPTVISION VERIFY RAISED HAND THREAD ---------------
+    def verify_raised_hand(self):
+        print(self.consoleFormatter.format("VERIFY RAISED HAND", "HEADER"))
+        gpt_vision_prompt = f"If the person in the center is raising their hand return their ID as a single integer number"
+        answer = self.tm.img_description(gpt_vision_prompt,camera_name="yolo")["message"].lower()
         print("gpt answer:",answer)
-        if "right" in answer or "left" in answer:
-            self.gpt_bag_place = answer
+        if answer.isdigit():
+            self.gpt_hand_raised_id = int(answer)
                 
     # --------------- MACHINE INITIALIZATION FUNCTION ---------------            
     def run(self):
