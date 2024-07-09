@@ -97,7 +97,7 @@ class STORING_GROCERIES(object):
     def on_enter_ANALIZE_OBJECTS(self):
         print(self.consoleFormatter.format("ANALIZE_OBJECTS", "HEADER"))
         self.tm.set_security_distance(False)
-        self.tm.go_to_pose("down_head_more")
+        self.tm.go_to_pose("down_head_storing")
         self.tm.talk("I arrived at the table, I will need your valuable help please!", language="English", wait=False)
         objets_prompt = "I am going to show you a series of objects on a table. Only consider the nearest table. Provide me with a list of the objects you observe, using simple names separated by commas. Additionally, the names should use underscores instead of spaces. An example output would be: 'orange, water_bottle, apple, milk.'"
         objects = self.tm.img_description(objets_prompt, "depth_camera", 2.0)
@@ -108,6 +108,7 @@ class STORING_GROCERIES(object):
 
     def on_enter_ASK_E_GRAB_OBJECT(self):
         print(self.consoleFormatter.format("ASK_E_GRAB_OBJECT", "HEADER"))
+        print(f"Items: {self.objects_list}")
         self.actual_item = self.objects_list[0]
         print(f"Actual item: {self.actual_item}")
 
@@ -147,7 +148,7 @@ class STORING_GROCERIES(object):
     def on_enter_GO_2_CABINET(self):
         print(self.consoleFormatter.format("GO_2_CABINET", "HEADER"))
         self.tm.go_to_relative_point(0.0, 0.0, self.cabinet_angle)
-        self.tm.go_to_pose("up_head")
+        self.tm.go_to_pose("up_head_storing")
         rospy.sleep(2)
         self.tm.go_to_relative_point(self.cabinet_approach_distance, 0.0, 0.0)
         self.tm.talk(f"Now I can see the cabinet", "English", wait=False)

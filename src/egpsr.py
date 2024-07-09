@@ -14,7 +14,7 @@ from code_generation import generate_utils
 from code_generation.database.models import Model
 class EGPSR(object):
 
-    def _init_(self):
+    def __init__(self):
         self.gen = gen.LongStringGenerator()
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
@@ -43,6 +43,7 @@ class EGPSR(object):
         self.head_angles = [60,0,-60]
         self.task_counter = 0 
         
+        self.last_angle_checked = 0
 
     def on_enter_INIT(self):
         self.tm.initialize_pepper()
@@ -122,6 +123,9 @@ class EGPSR(object):
             self.tm.labels = dict()
             rospy.sleep(2)
             persons = self.tm.labels.get("person", [])
+
+            # Updating the last checked angle to return to it after completing a task
+            self.last_angle_checked = angle
             
             for person in persons:
                 

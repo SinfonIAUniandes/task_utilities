@@ -53,8 +53,8 @@ class ServeBreakfast(object):
         # Izquierda positivo - Derecha negativo
         self.drop_and_serve_position = {
             "bowl": 0.0,
-            "milk_carton": 0.3,
-            "cereal_box": 0.3
+            "milk_carton": 0.25,
+            "cereal_box": -0.25
         }
         
         
@@ -72,9 +72,11 @@ class ServeBreakfast(object):
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         
         # Positivo adelante - Negativo atras
-        self.relative_drop_position=0.3
+        self.relative_drop_position=0.27
         
         self.crouch_4_drop = -0.3 # Cambiar segun la altura de la mesa de dining
+        
+        self.is_first = True
         
         # ---------------------------------------------------------------------------
         #                       SERVICES
@@ -115,11 +117,14 @@ class ServeBreakfast(object):
         self.set_orthogonal_security_srv(0.3)
         self.set_tangential_security_srv(0.05)
         self.tm.go_to_place("kitchen", lower_arms=False)
-        response = self.tm.img_description(
-                f"Describe the positions, sizes, and colors of the spoon, bowl, cereal box, and milk that you see in front of you on the table. Make your description detailed but concise.",
-                "front_camera")
-        res = response["message"]
-        self.tm.talk(f"{res}", "English", wait=False)
+        self.tm.go_to_place("down_head", lower_arms=False)
+        if self.is_first:
+            response = self.tm.img_description(
+                    f"Describe the positions, sizes, and colors of the spoon, bowl, cereal box, and milk that you see in front of you on the table. Make your description detailed but concise.",
+                    "front_camera")
+            res = response["message"]
+            self.tm.talk(f"{res}", "English", wait=True)
+            self.is_first = False
         self.scan_for_objects()
 
     
@@ -165,7 +170,7 @@ class ServeBreakfast(object):
             print(action)
             if action == "prepare_2_bowl" :
                 self.tm.go_to_pose(action, self.slow_movement)
-                self.tm.talk("Please place the bowl in my hands just like the image in my tablet shows until I say you Thank you and have my hands closed!", wait=False)
+                self.tm.talk("Please place the bowl in my hands just like the image in my tablet shows! Please hold it until I tell you: Thank you and close my hands.", wait=False)
                 rospy.sleep(7)
                 self.tm.talk("Make sure that the spoon is above one of my fingers please", wait=False)
                 rospy.sleep(3)
