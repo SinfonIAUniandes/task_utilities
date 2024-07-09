@@ -14,7 +14,7 @@ from code_generation import generate_utils
 from code_generation.database.models import Model
 class EGPSR(object):
 
-    def __init__(self):
+    def _init_(self):
         self.gen = gen.LongStringGenerator()
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
