@@ -7,13 +7,14 @@ import ConsoleFormatter
 import threading
 import rospy
 import math
-import os
+import ast
+from code_generation import ls_generate as gen
+from code_generation import generate_utils 
+from code_generation.database.models import Model
+class EGPSR(object):
 
-# --------------------------- STICKLER FOR THE RULES TASK CLASS  ------------------------------
-class STICKLER_RULES(object):
-    
-    # --------------------------- Class Constructor ------------------------------
     def __init__(self):
+        self.gen = gen.LongStringGenerator()
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         
@@ -41,25 +42,12 @@ class STICKLER_RULES(object):
         # Thread to check if rospy is running
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
- 
-        # --------------------------- Task Parameters ------------------------------
         
-        # The robot starts at 0 and then moves to these angles
-        self.angles_to_check = [0,-60,60]
-        
-        # Where the other guests are located, it is for the forbidden room
-        self.gpsr_location = "living_room"
-        self.initial_place = "init_stickler"
+        ############################# GLOBAL VARIABLES #############################
+        self.init_place = "house_door"
+        self.places_names = ["kitchen","living_room","dining","bedroom"] #TODO: Change if there are more places
+        self.head_angles = [60,0,-60]
         self.task_counter = 0 
-        self.generated_code = ""
-
-        
-        # List of places to check
-        self.list_places = ["kitchen","living_room","intermed_door","dining","bedroom"]
-        self.places_names = ["kitchen","living_room","main room","dining","bedroom"]
-        
-        # List of checked places
-        self.checked_places = []
         
     
     # --------------------------- STATES FUNCTIONS ------------------------------
@@ -69,7 +57,10 @@ class STICKLER_RULES(object):
         
         
         self.tm.initialize_pepper()
-        
+        self.tm.turn_camera("bottom_camera","custom",1,15)
+        # CAMBIAR EN LA COMPETENCIA, EL ROBOT NO INICIA EN GPSR_LOCATION DEBE NAVEGAR ALLA TODO
+        self.tm.current_place = "house_door"
+        self.tm.set_current_place(self.init_place)
         self.tm.turn_camera("depth_camera","custom",1,15)
         self.tm.toggle_filter_by_distance(True,2,["person"])
         
@@ -78,28 +69,55 @@ class STICKLER_RULES(object):
         self.last_place = self.initial_place
         
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        
-        self.tm.talk("I am going to do the " + self.task_name + " task","English", wait=False)
-        
-        # Moving to the LOOK4PERSON state
+        self.tm.talk("I am going to do the  "+ self.task_name + " task","English")
         self.beggining()
         
+        
 
-    # --------------------------- SECOND STATE: LOOK FOR PERSON ------------------------------
-    def on_enter_LOOK4PERSON(self):
+    def on_enter_EGPSR(self):
+        print(self.consoleFormatter.format("EGPSR", "HEADER"))
+        self.tm.look_for_object("")
+        self.tm.talk("Hello guest, please tell me what you want me to do, I will try to execute the task you give me. Please talk loud and say the task once. You can talk to me when my eyes are blue: ","English")
+        task = self.tm.speech2text_srv(0)
+        self.generated_code = ""
+        code_gen_thread = threading.Thread(target=self.code_gen_t,args=[task])
+        code_gen_thread.start()
+        self.tm.talk(f"Your command is {task}","English", wait=True)
+        self.tm.talk(f"If that is correct, please touch my head. If not, please wait until my eyes are blue again ","English", wait=False)
+        correct = self.tm.wait_for_head_touch(message="", message_interval=100, timeout=13)
+        while not correct:
+            self.tm.talk("I am sorry, please repeat your command","English", wait=True)
+            task = self.tm.speech2text_srv(0)
+            code_gen_thread = threading.Thread(target=self.code_gen_t,args=[task])
+            code_gen_thread.start()
+            self.tm.talk(f"Your command is {task}. If that is correct, please touch my head","English", wait=True)
+            correct = self.tm.wait_for_head_touch(message="", message_interval=13, timeout=13)
         
-        print(self.consoleFormatter.format("LOOK4PERSON", "WARNING"))
+        self.tm.talk("Processing your request")
+        while self.generated_code == "":
+            rospy.sleep(0.1)
+        if self.generated_code != "impossible":
+            exec(self.generated_code)
+        print(f"Task: {task}")
+        self.GPSR_done()
         
-        self.tm.talk("I am looking for guests with requests!","English", wait=False)
-        self.tm.setRPosture_srv("stand")
         
-        for angle in self.angles_to_check:
+
+    def on_enter_SEARCH4GUEST(self):
+        print(self.consoleFormatter.format("SEARCH4GUEST", "HEADER"))
+        self.tm.go_to_pose("default_head")
+        self.tm.go_to_pose("standard")
+        self.current_place = self.places_names[0]
+        self.tm.talk(f"I'm going to search a guest in {self.current_place}","English")
+        self.tm.go_to_place(self.current_place)
+            
+        for angle in self.places_names:
             
             print("angulo actual:",angle)
             self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
             
             if angle==0:
-                rospy.sleep(1)
+                rospy.sleep(3)
                 
             elif angle==-60:
                 rospy.sleep(3)
@@ -108,91 +126,22 @@ class STICKLER_RULES(object):
                 rospy.sleep(5)
                 
             self.tm.labels = dict()
-            
             rospy.sleep(2)
-                
             persons = self.tm.labels.get("person", [])
             
             for person in persons:
                 
-                print("centrando persona:",person)
                 self.tm.center_head_with_label(person)
-                
-                print("checkeando reglas")
-                self.check_rules()
-                
-                print("reglas checkeadas")
+                person_response = self.tm.img_description(
+                        "Observe the person in front of you and respond only with True if the person is raising their hand. Otherwise, respond False. Here is an example output: False",
+                        "front_camera")
+                is_raisin = True if person_response["message"] == "True" else False
                 self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
-            
-        self.tm.setRPosture_srv("stand")
+                if is_raisin:
+                    self.person_arrived()
+        
+        self.places_names.pop(0)
         self.tm.talk("I'm done checkin this room'!","English", wait=False)
-        
-        # Moving to the GO2NEXT state
-        self.rules_checked()
-        
-    # --------------------------- Complementary function 1: Check shoes ------------------------------
-    def check_shoes(self):
-        
-        print(self.consoleFormatter.format("LOOK4SHOES", "HEADER"))
-        
-        self.tm.robot_stop_srv()
-        
-        gpt_vision_prompt = f"Is the person in the center of the picture barefooted or in socks? Answer only with True or False. If you can't see their feet answer only with 'None'. If the person you see is behind a wall answer only with 'Wall' and don't check the other rules. If you are not at least 70% sure that a person is wearing shoes answer True"
-        
-        answer = self.tm.img_description(prompt=gpt_vision_prompt,camera_name="both")["message"]
-        
-        print("Esta descalza:"+answer)
-        
-        if "true" in answer.lower():
-            # Esta descalso o con medias
-            self.has_shoes = 0
-            
-        elif "none" in answer.lower():
-            # No se sabe
-            self.has_shoes = 3
-            
-        elif "wall" in answer.lower():
-            # Detras de una pared
-            self.has_shoes = 4
-            
-        else:
-            # Tiene zapatos
-            self.has_shoes = 1
-
-    # --------------------------- Complementary function 2: Check drink ------------------------------
-    def check_drink(self):
-        print(self.consoleFormatter.format("LOOK4DRINK", "HEADER"))
-        self.tm.robot_stop_srv()
-        gpt_vision_prompt = f"Is the person in the center of the picture holding a bottle,a juice box, a cup, a can, or any kind of drink in their hand? Answer only with True or False. If the person you see is behind a wall answer only with 'Wall' and don't check the other rules"
-        answer = self.tm.img_description(gpt_vision_prompt,camera_name="both")["message"]
-        print("Tiene bebida:"+answer)
-        if "true" in answer.lower():
-            # Tiene una bebida
-            self.has_drink = 1
-        elif "wall" in answer.lower():
-            # Detras de una pared
-            self.has_drink = 4
-        else:
-            # No tiene una bebida
-            self.has_drink = 0
-            
-    
-    # --------------------- Complementary function 3: Check if a person is in the Forbidden room --------------------------
-    def check_forbidden(self):
-        
-        self.tm.robot_stop_srv()
-        
-        if self.last_place == self.forbidden:
-            
-            self.tm.talk("You should not be here, because this room is forbidden.","English", wait=True)
-            self.someone_in_forbidden = True
-            return True
-        
-        return False
-    
-
-    # --------------------- Complementary function 4: Calculate the waiting time --------------------------
-    def calcular_tiempo_espera(self, angulo_actual, angulo_anterior):
         
         # Allowed angle range
         angulo_minimo = -1.39  # Given in radians

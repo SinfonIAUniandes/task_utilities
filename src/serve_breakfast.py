@@ -72,9 +72,9 @@ class ServeBreakfast(object):
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         
         # Positivo adelante - Negativo atras
-        self.relative_drop_position=0.66
+        self.relative_drop_position=0.76
         
-        self.crouch_4_drop = -0.4 # Cambiar segun la altura de la mesa de dining
+        self.crouch_4_drop = -0.3 # Cambiar segun la altura de la mesa de dining
         
         # ---------------------------------------------------------------------------
         #                       SERVICES
