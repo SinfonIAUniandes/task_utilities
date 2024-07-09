@@ -53,8 +53,8 @@ class ServeBreakfast(object):
         # Izquierda positivo - Derecha negativo
         self.drop_and_serve_position = {
             "bowl": 0.0,
-            "milk_carton": 0.2,
-            "cereal_box": 0.2
+            "milk_carton": 0.3,
+            "cereal_box": 0.3
         }
         
         
@@ -115,6 +115,11 @@ class ServeBreakfast(object):
         self.set_orthogonal_security_srv(0.3)
         self.set_tangential_security_srv(0.05)
         self.tm.go_to_place("kitchen", lower_arms=False)
+        response = self.tm.img_description(
+                f"Describe the positions, sizes, and colors of the spoon, bowl, cereal box, and milk that you see in front of you on the table. Make your description detailed but concise.",
+                "front_camera")
+        res = response["message"]
+        self.tm.talk(f"{res}", "English", wait=False)
         self.scan_for_objects()
 
     
