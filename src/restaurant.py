@@ -210,7 +210,7 @@ class RESTAURANT(object):
         
         print(self.consoleFormatter.format("SERVER ORDER", "HEADER"))
         
-        self.tm.talk("I'm back at the bar",wait=True)
+        self.tm.talk("I am back at the bar",wait=True)
         
         self.tm.go_to_relative_point(0,0,180)
         
@@ -225,6 +225,7 @@ class RESTAURANT(object):
             pose = "small_object_left_hand"
             list_foods = self.obtener_lista_de_alimentos(order,self.menu)
             for food in list_foods:
+                list_foods.pop()
                 self.tm.talk(f"Listen carefully. Please hand me an {food}. Keep it in my hand until you've touched my head and then i will close my hand",wait=True)
                 self.tm.wait_for_head_touch(message="Touch my head to get going!")
                 self.tm.go_to_pose("close_both_hands")
@@ -237,9 +238,10 @@ class RESTAURANT(object):
                 self.tm.talk(f"I need you to grab the item and touch my head once you've got a good grip on it, Then i will let go and you can keep it",wait=True)
                 self.tm.wait_for_head_touch(message="")
                 self.tm.talk("Thank you! I will now return to the bar", "English",wait=True)
-                self.tm.setRPosture_srv("stand")
                 self.carrying = False
-                self.tm.go_to_place("bar_table",graph=1)
+                self.tm.setRPosture_srv("stand")
+                if len(list_foods)>0:
+                    self.tm.go_to_place("bar_table",graph=1)
             self.delivering = False
                 
                 
@@ -289,8 +291,8 @@ class RESTAURANT(object):
             for person in persons:
                 self.tm.talk(f"I am checking if you are calling",wait=False)
                 person_id = person[0]
-                self.tm.center_head_with_label(person,resolution = self.resolution, height=0)
-                rospy.sleep(1)
+                self.tm.center_head_with_label(person,resolution = self.resolution, height=0, desfase=3)
+                rospy.sleep(3)
                 
                 self.choosing = True
                 
@@ -299,40 +301,38 @@ class RESTAURANT(object):
                 self.hand_raised = False
                 start_time = rospy.get_time()
         
-                while not self.hand_raised and rospy.get_time() - start_time < 10:
-                    rospy.sleep(0.1)
-                    
-                self.choosing = False
-        
-                if self.hand_raised or self.gpt_hand_raised_id == person[0]:
-                    self.tm.talk(f"I found a calling customer",wait=False)
-                    toggle_msg =  set_angle_srvRequest()
-                    toggle_msg.name = ["HeadYaw"]
-                    toggle_msg.angle = []
-                    toggle_msg.speed = 0
-                    self.tm.toggle_get_angles_topic_srv(toggle_msg)
-                    self.tm.labels = dict()
-                    rospy.sleep(3)
-                    persons = self.tm.labels.get("person", [])
-                    person_x = 0
-                    person_y = 0
-                    person_width = 0
-                    person_height = 0
-                    for person in persons:
-                        if person[0] == person_id:
-                            print("no se perdio el id")
-                            person_x = person[1]
-                            person_y = person[2]
-                            person_width = person[3]
-                            person_height = person[4]
-                            break
-                    if person_x == 0 and person_y == 0 and person_width == 0 and person_height == 0:
-                        print("se perdio el id")
-                        person = self.encontrar_label_mas_centrado(persons, self.resolution)
+                self.tm.labels = dict()
+                rospy.sleep(5)
+                persons = self.tm.labels.get("person", [])
+                person_x = 0
+                person_y = 0
+                person_width = 0
+                person_height = 0
+                for person in persons:
+                    if person[0] == person_id:
+                        print("no se perdio el id")
                         person_x = person[1]
                         person_y = person[2]
                         person_width = person[3]
                         person_height = person[4]
+                        break
+                if person_x == 0 and person_y == 0 and person_width == 0 and person_height == 0:
+                    print("se perdio el id")
+                    person_center = self.encontrar_label_mas_centrado(persons, self.resolution)
+                    if not person_center is None:
+                        person = person_center
+                        person_x = person[1]
+                        person_y = person[2]
+                        person_width = person[3]
+                        person_height = person[4]
+                self.gpt_hand_raised_id = -2
+                while not self.hand_raised and self.gpt_hand_raised_id==-2 and rospy.get_time() - start_time < 30:
+                    rospy.sleep(0.1)
+                    
+                self.choosing = False
+                print("centered person id:", int(person[0]))
+                if self.hand_raised or self.gpt_hand_raised_id == int(person[0]):
+                    self.tm.talk(f"I found a calling customer",wait=False)
                     start_time = rospy.get_time()
                     depth_from_current_place = self.tm.calculate_depth_of_label(person_x, person_y, person_width, person_height)
                     while depth_from_current_place == 0 and rospy.get_time() - start_time < 10:
@@ -384,6 +384,11 @@ class RESTAURANT(object):
                         save_place_thread.start()
                         self.tm.Navigate_to_srv(nav_x-moved_x,-nav_y+moved_y)
                         self.tm.go_to_defined_angle_srv(start_angle)
+                        current_position = self.tm.get_absolute_position_proxy()
+                        current_x = current_position.x
+                        current_y = current_position.y
+                        print("final_x:",current_x)
+                        print("final_y:",current_y)
                         #while abs(navstack_goal_x-current_x)>3 or abs(navstack_goal_y-current_y)>3 and rospy.get_time() - start_time < 60:
                         #    self.tm.Navigate_to_srv(nav_x-moved_x,-nav_y+moved_y)
                         #    self.tm.go_to_defined_angle_srv(start_angle)
@@ -445,7 +450,7 @@ class RESTAURANT(object):
                 self.customer1_counter += 1
                 
                 # Saving each 2 seconds
-                rospy.sleep(2)
+                rospy.sleep(3)
                 
 
     # --------------- POSE PUBLISHER CALLBACK FUNCTION ---------------
@@ -458,12 +463,13 @@ class RESTAURANT(object):
     # --------------- GPTVISION VERIFY RAISED HAND THREAD ---------------
     def verify_raised_hand(self):
         print(self.consoleFormatter.format("VERIFY RAISED HAND", "HEADER"))
-        gpt_vision_prompt = f"If the person in the center is raising their hand return only their ID as an integer number, otherwise return none"
+        gpt_vision_prompt = f"If the person in the center is raising their hand return only their ID otherwise return -1, do NOT respond with any words.  for example: 10"
         rospy.sleep(1)
         answer = self.tm.img_description(gpt_vision_prompt,camera_name="yolo")["message"].lower()
         print("gpt answer:",answer)
-        if answer.isdigit():
-            self.gpt_hand_raised_id = int(answer)
+        resultado = re.search(r'\d+',answer)
+        if resultado:
+            self.gpt_hand_raised_id = int(resultado.group())
     
     # --------------- CARRY THREAD FUNCTION --------------- 
     def carry_thread(self, pose):

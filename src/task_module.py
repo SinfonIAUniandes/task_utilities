@@ -1718,7 +1718,7 @@ class Task_module:
         """
         self.go_to_place(place_name = self.last_place)
 
-    def center_head_with_label(self, label_info,height=-0.3,resolution=1) -> None:   
+    def center_head_with_label(self, label_info,height=-0.3,resolution=1, desfase = 0) -> None:   
         """
         Input:
         label_info: tuple that represents the label to center
@@ -1738,7 +1738,7 @@ class Task_module:
         if resolution == 2:
             # 54 grados caben en la camara y hay 640 pixeles en resolution 2
             factor = 54 / 640
-        label_degree_yolo = (label_center*factor) - 27
+        label_degree_yolo = (label_center*factor) - 27 - desfase
         rospy.sleep(1)
         current_head_angle = self.angles
         label_degree = math.radians(label_degree_yolo - current_head_angle)
