@@ -51,7 +51,7 @@ class RECEPTIONIST(object):
         # --------------------------- Task Parameters ------------------------------
         
         # The angles of the chairs the robot must check to introduce the people
-        self.chair_angles = [-10,10,40]
+        self.chair_angles = [-30,0,30]
         self.chair_distances = [1.9,1.9,2.1]
         
 
@@ -79,9 +79,9 @@ class RECEPTIONIST(object):
         self.waiting_host = True
         self.guests_count = 1
         # Where the robot must introduce the guests
-        self.seating_place = "living_room"
-        self.initial_place = "init_stickler"
-        self.greeting_place = "guests_door"
+        self.seating_place = "guests_place"
+        self.initial_place = "house_door"
+        self.greeting_place = "house_door"
         self.last_place = self.initial_place
         
 
