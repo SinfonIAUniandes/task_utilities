@@ -52,7 +52,7 @@ class RECEPTIONIST(object):
         
         # The angles of the chairs the robot must check to introduce the people
         self.chair_angles = [50,25,0,-30]
-        self.chair_distances = [1.9,1.9,2.1]
+        self.chair_distances = [2,2,2,2]
         
 
         self.host = {
@@ -79,6 +79,9 @@ class RECEPTIONIST(object):
         self.waiting_host = True
         self.guests_count = 1
         # Where the robot must introduce the guests
+        self.seating_place = "guests_place"
+        self.initial_place = "house_door"
+        self.greeting_place = "house_door"
         self.seating_place = "guests_place"
         self.initial_place = "house_door"
         self.greeting_place = "house_door"
@@ -158,8 +161,11 @@ class RECEPTIONIST(object):
             print("empieza sleep")
             rospy.sleep(8)
         print("acaba sleep")
-        name = self.tm.q_a("name").lower()
-        drink = self.tm.q_a("drink")
+        # NO GPT q_a version:
+        #name = self.tm.q_a("name").lower()
+        #drink = self.tm.q_a("drink")
+        name = self.tm.q_a("What is your name?").lower()
+        drink = self.tm.q_a("What is your favorite drink?")
         
         if self.guests_count == 1:
             self.first_guest["name"] = name

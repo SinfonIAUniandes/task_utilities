@@ -67,7 +67,9 @@ class GPSR(object):
             generate_utils.load_code_gen_config() 
             contador = 0
             while contador<3:
-                code = self.gen.generate_code(task,Model.GPT4).replace("`","").replace("python","")
+                code = self.gen.generate_code(task,Model.GPT4)
+                print(code)
+                code = code[1].replace("`","").replace("python","")
                 print(code)
                 if not "I am sorry but I cannot complete this task" in code:
                     print("\nIt is possible to execute the request")

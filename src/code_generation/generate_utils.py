@@ -1,5 +1,6 @@
 
 from openai import AzureOpenAI
+import ollama
 import tiktoken
 import re
 import os
@@ -81,21 +82,11 @@ def generate_response(text_prompt, system_message=None, is_code=True, model="gpt
             print("Error decoding json response from LLAMA2, please check that the server is running and that the model is loaded correctly")
             return None
     else:
-        clientGPT = AzureOpenAI(
-            azure_endpoint= "https://sinfonia.openai.azure.com/",
-            api_key= os.getenv("GPT_API"),
-            api_version="2024-02-01",
-        )
-        try:
-            prediction = clientGPT.chat.completions.create(
-                model="GPT-4o", 
-                messages=messages, 
-                temperature=temperature
-            )
-        except:
-            return "self.tm.talk('I am sorry but I cannot complete this task')"
-    if model_type != Model.LLAMA2:
-        answer = prediction.choices[0].message.content
+        message = ollama.generate(model="mistral", prompt=text_prompt)["response"]
+
+        approved = True
+
+        return approved, message
     if is_code:
         pattern = r'```python(.*?)```'
         try:
