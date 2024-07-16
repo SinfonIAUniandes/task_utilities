@@ -324,7 +324,7 @@ class CARRY_MY_LUGGAGE(object):
                 self.place_counter += 1
                 
                 # Saving each 2 seconds
-                rospy.sleep(2)
+                rospy.sleep(3)
                 
 
     # --------------- POSE PUBLISHER CALLBACK FUNCTION ---------------
