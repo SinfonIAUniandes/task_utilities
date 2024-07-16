@@ -42,8 +42,8 @@ class GPSR(object):
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
         ############################# GLOBAL VARIABLES #############################
-        self.gpsr_location = "living_room"
-        self.init_place = "init_stickler"
+        self.gpsr_location = "house_door"
+        self.init_place = "house_door"
         self.task_counter = 0 
         self.generated_code = ""
 

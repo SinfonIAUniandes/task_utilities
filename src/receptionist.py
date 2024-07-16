@@ -51,7 +51,7 @@ class RECEPTIONIST(object):
         # --------------------------- Task Parameters ------------------------------
         
         # The angles of the chairs the robot must check to introduce the people
-        self.chair_angles = [-10,10,40]
+        self.chair_angles = [50,25,0,-30]
         self.chair_distances = [1.9,1.9,2.1]
         
 
@@ -79,9 +79,9 @@ class RECEPTIONIST(object):
         self.waiting_host = True
         self.guests_count = 1
         # Where the robot must introduce the guests
-        self.seating_place = "living_room"
-        self.initial_place = "init_stickler"
-        self.greeting_place = "guests_door"
+        self.seating_place = "guests_place"
+        self.initial_place = "house_door"
+        self.greeting_place = "house_door"
         self.last_place = self.initial_place
         
 
@@ -150,16 +150,16 @@ class RECEPTIONIST(object):
             age_gender_thread = threading.Thread(target=self.age_gender_t)
             age_gender_thread.start()
 
-            self.tm.talk("I will ask you a couple of questions while i get a good look at your face. Please answer them when my eyes turn blue!","English", wait=False)
+            self.tm.talk("I will ask you a couple of questions while i get a good look at your face. Please talk loudly while looking at me and answer when my eyes turn blue!","English", wait=False)
             print("empieza sleep")
             rospy.sleep(10)
         else:
-            self.tm.talk("Hi guest! I will ask you a couple of questions. Please answer them when my eyes turn blue!","English", wait=False)
+            self.tm.talk("Hi guest! I will ask you a couple of questions. Please talk loudly while looking at me and answer when my eyes turn blue!","English", wait=False)
             print("empieza sleep")
             rospy.sleep(8)
         print("acaba sleep")
-        name = self.tm.q_a("What is your name?").lower()
-        drink = self.tm.q_a("What is your favorite drink?")
+        name = self.tm.q_a("name").lower()
+        drink = self.tm.q_a("drink")
         
         if self.guests_count == 1:
             self.first_guest["name"] = name
@@ -189,7 +189,9 @@ class RECEPTIONIST(object):
             self.tm.talk("Please follow me to the living room. I will introduce you to the other guests and give you a place to sit!","English", wait=False)
 
         elif  self.guests_count == 2:
-            self.tm.talk(f"Please follow me to the living room! The host {self.host['name']} is waiting for you! Our guest {self.first_guest['name']} has already arrived. {self.first_guest['pronoun']} is a {self.first_guest['gender']} and {self.first_guest['pronoun']} is {self.first_guest['age']}. {self.first_guest['pronoun']} is wearing {self.first_guest['clothes']}, and has {self.first_guest['hair']} hair.", "English", wait=False)
+            self.tm.talk(f"Please follow me to the living room! The host {self.host['name']} is waiting for you! Our guest {self.first_guest['name']} has already arrived. {self.first_guest['pronoun']} is a {self.first_guest['gender']} and {self.first_guest['pronoun']} is {self.first_guest['age']}.", "English", wait=False)
+            if not "empty" in self.first_guest["clothes"].lower() and not "empty" in self.first_guest["hair"].lower() :
+                self.tm.talk(f"{self.first_guest['pronoun']} is wearing {self.first_guest['clothes']}, and has {self.first_guest['hair']} hair.", "English", wait=True)
         
         # Going to the living room
         self.tm.go_to_place(self.seating_place)
@@ -257,6 +259,8 @@ class RECEPTIONIST(object):
 
             occupied_chairs.append(angle)
             
+            self.tm.talk("Please look at me!","English", wait=True)
+            rospy.sleep(1)
             self.tm.talk("Recognizing person!","English", wait=False)
             print("guests:",self.guests_count)
             if self.guests_count == 1:
