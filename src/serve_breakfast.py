@@ -45,16 +45,16 @@ class ServeBreakfast(object):
         }
                 
         self.grab_items_poses = {
-            "bowl": ["open_both_hands", "prepare_2_bowl", "grab_bowl", "bowl_hands", "grab_bowl_up" ], # DONE
-            "cereal_box": ["open_both_hands", "prepare_2_grab_mid", "grab_mid","close_both_hands" , "grab_mid_up", "carry_cereal"], # DONE
-            "milk_carton": ["open_both_hands", "prepare_2_grab_big", "grab_big", "close_both_hands" ,"grab_big_up" "carry_milk"] # DONE
+            "bowl": ["open_both_hands", "prepare_2_bowl", "grab_bowl", "bowl_hands", "grab_bowl_up" ], # CHECK
+            "cereal_box": ["open_both_hands", "prepare_2_grab_big", "grab_mid","close_both_hands" , "grab_mid_up", "carry_cereal"], # CHECK
+            "milk_carton": ["open_both_hands", "prepare_2_grab_big", "grab_big", "close_both_hands" ,"grab_big_up" "carry_milk"] # TODO
         }
         
         # Izquierda positivo - Derecha negativo
         self.drop_and_serve_position = {
             "bowl": 0.0,
-            "milk_carton": 0.25,
-            "cereal_box": -0.25
+            "milk_carton": 0.1,
+            "cereal_box": -0.1
         }
         
         
