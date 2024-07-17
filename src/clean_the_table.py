@@ -83,12 +83,12 @@ class CLEAN_THE_TABLE(object):
         "spoon": ["open_both_hands"],
         "fork":["open_both_hands"]
         }
-        
+
         # Relatives positions from dishwasher to table
         self.dishwasher_2_table_rotation = -90
         self.dishwasher_table_approach = 0.6
         self.dishwasher_2_table_rotation_back = 180
-        
+
         # -------------------------------------------------------------------------------------------------------------------------------------------
         #                                                            ESTADOS / TRANSICIONES
         # -------------------------------------------------------------------------------------------------------------------------------------------
@@ -126,7 +126,7 @@ class CLEAN_THE_TABLE(object):
         else:
             self.tm.talk("I can't see any object to carry to the dishwasher", "English", wait=False)
             self.force_end()
-        
+
     def on_enter_GRAB_OBJECT(self):
         print(self.consoleFormatter.format("GRAB_OBJECT", "HEADER"))
         self.tm.go_to_pose("default_head", self.fast_movement)
@@ -139,9 +139,9 @@ class CLEAN_THE_TABLE(object):
                 self.tm.talk(f"Please give me and still holding the {self.actual_item} just like you can see in my tablet until I can grab propertly", "English", wait=False)
                 rospy.sleep(6)
             rospy.sleep(2)
-        
+    
         self.turn_around()
-                
+    
     def on_enter_GO_2_DISHWASHER(self):
         print(self.consoleFormatter.format("GO_2_DISHWASHER", "HEADER"))
         self.tm.go_to_relative_point(0.0,0.0,self.turn_around_2_dishwasher)

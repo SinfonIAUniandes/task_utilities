@@ -21,7 +21,7 @@ from manipulation_msgs.srv import go_to_pose, move_head
 
 from speech_msgs.srv import q_a_srv, talk_srv, speech2text_srv , talk_srvRequest, speech2text_srvRequest, answer_srv, hot_word_srv
 
-from perception_msgs.srv import img_description_with_gpt_vision_srv, get_first_clothes_color_srv, get_clothes_color_srv, start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest, filter_labels_by_distance_srv, filter_labels_by_distance_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv, get_person_description_srv, add_recognition_model_srv, add_recognition_model_srvRequest, remove_recognition_model_srv, remove_recognition_model_srvRequest, remove_faces_data_srv, calculate_depth_of_label_srv
+from perception_msgs.srv import img_description_srv, get_first_clothes_color_srv, get_clothes_color_srv, start_recognition_srv, get_labels_srv, start_recognition_srvRequest, look_for_object_srv, look_for_object_srvRequest, save_face_srv,save_face_srvRequest, recognize_face_srv, recognize_face_srvRequest, save_image_srv,save_image_srvRequest, set_model_recognition_srv,set_model_recognition_srvRequest,read_qr_srv,read_qr_srvRequest, filter_labels_by_distance_srv, filter_labels_by_distance_srvRequest,turn_camera_srv,turn_camera_srvRequest,filtered_image_srv,filtered_image_srvRequest,start_pose_recognition_srv, get_person_description_srv, add_recognition_model_srv, add_recognition_model_srvRequest, remove_recognition_model_srv, remove_recognition_model_srvRequest, remove_faces_data_srv, calculate_depth_of_label_srv
 
 from navigation_msgs.srv import set_current_place_srv, set_current_place_srvRequest, go_to_relative_point_srv, go_to_relative_point_srvRequest, go_to_place_srv, go_to_place_srvRequest, start_random_navigation_srv, start_random_navigation_srvRequest, add_place_srv, add_place_srvRequest, add_place_with_coordinates_srv ,add_place_with_coordinates_srvRequest,follow_you_srv, follow_you_srvRequest, robot_stop_srv, robot_stop_srvRequest, spin_srv, spin_srvRequest, go_to_defined_angle_srv, go_to_defined_angle_srvRequest, get_absolute_position_srv, get_absolute_position_srvRequest, get_route_guidance_srv, get_route_guidance_srvRequest, correct_position_srv, correct_position_srvRequest, constant_spin_srv, constant_spin_srvRequest
 from navigation_msgs.msg import simple_feedback_msg
@@ -176,12 +176,12 @@ class Task_module:
             
             print(
                 self.consoleFormatter.format(
-                    "Waiting for perception_utilities/img_description_with_gpt_vision...", "WARNING"
+                    "Waiting for perception_utilities/img_description_srv...", "WARNING"
                 )
             )
-            rospy.wait_for_service("perception_utilities/img_description_with_gpt_vision_srv")
+            rospy.wait_for_service("perception_utilities/img_description_srv")
             self.img_description_proxy = rospy.ServiceProxy(
-                "perception_utilities/img_description_with_gpt_vision_srv", img_description_with_gpt_vision_srv
+                "perception_utilities/img_description_srv", img_description_srv
             )
 
             print(
@@ -719,7 +719,7 @@ class Task_module:
         place: The specific place the robot is looking for the item.
         Output: List of items the robot saw
         ----------
-        Aks chatgpt vision for the items in front of the robot
+        Ask a vision model about the items in front of the robot
         """
         if self.perception:
             try:
@@ -737,8 +737,8 @@ class Task_module:
                     place_prompt = ""
                     if place != "":
                         place_prompt = f" in the {place}"
-                    gpt_vision_prompt = f"Answer in a comma separated string (ie: 'bowl,cup,bottle'): give me a list of all the items you see{place_prompt} in the image."
-                    answer = self.img_description(gpt_vision_prompt,camera_name="both")["message"]
+                    prompt = f"Answer in a comma separated string (ie: 'bowl,cup,bottle'): give me a list of all the items you see{place_prompt} in the image."
+                    answer = self.img_description(prompt, camera_name="both")["message"]
                     if not "none" in answer.lower():
                         break
                 self.setRPosture_srv("stand")
@@ -759,7 +759,7 @@ class Task_module:
         place: The specific place the robot is looking for the item.
         Output: String with the item with the characteristic name or "none" if it wasn't found
         ----------
-        Aks chatgpt vision which item in front of the robot has the characteristic
+        Aks a vision model which item in front of the robot has the characteristic
         """
         if self.perception:
             try:
@@ -779,14 +779,14 @@ class Task_module:
                     if place != "":
                         place_prompt = f" in the {place}"
                     if class_type == "color":
-                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture has these colors: {characteristic}. Answer only with one word, either the item name or None"
+                        prompt = f"Which item{place_prompt} shown in the picture has these colors: {characteristic}. Answer only with one word, either the item name or None"
                     elif class_type == "size" or class_type == "weight":
-                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is the {characteristic}. Answer only with one word, either the item name or None"
+                        prompt = f"Which item{place_prompt} shown in the picture is the {characteristic}. Answer only with one word, either the item name or None"
                     elif class_type == "position":
-                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is positioned {characteristic}most. Answer only with one word, either the item name or None"
+                        prompt = f"Which item{place_prompt} shown in the picture is positioned {characteristic}most. Answer only with one word, either the item name or None"
                     elif class_type == "description":
-                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is {characteristic}. Answer only with one word, either the item name or None"
-                    answer = self.img_description(gpt_vision_prompt,camera_name="bottom_camera")["message"]
+                        prompt = f"Which item{place_prompt} shown in the picture is {characteristic}. Answer only with one word, either the item name or None"
+                    answer = self.img_description(prompt, camera_name="bottom_camera")["message"]
                     if not "none" in answer.lower():
                         break
                 self.setRPosture_srv("stand")
@@ -808,8 +808,8 @@ class Task_module:
         """
         if self.perception and self.manipulation:
             self.setRPosture_srv("stand")
-            gpt_vision_prompt = f"Answer about the person centered in the image. What gesture is the person doing. Answer only with one word or 'None' if you couldn't determine the gesture"
-            answer = self.img_description(gpt_vision_prompt, camera_name="both")["message"]
+            prompt = f"Answer about the person centered in the image. What gesture is the person doing. Answer only with one word or 'None' if you couldn't determine the gesture"
+            answer = self.img_description(prompt, camera_name="both")["message"]
             return answer
         else:
             print("perception or manipulation as false")
@@ -883,8 +883,8 @@ class Task_module:
                                     specific_person_found = True
                                     break
                             elif class_type=="colors":
-                                gpt_vision_prompt = f"Answer about the person centered in the image: Is the person wearing {specific_characteristic}? Answer only with True or False"
-                                answer = self.img_description(gpt_vision_prompt)["message"]
+                                prompt = f"Answer about the person centered in the image: Is the person wearing {specific_characteristic}? Answer only with True or False"
+                                answer = self.img_description(prompt)["message"]
                                 if "True" in answer:
                                     specific_person_found = True
                                     break
@@ -991,7 +991,7 @@ class Task_module:
             try:
                 self.setRPosture_srv("stand")
                 angles_to_check = [0]
-                gpt_vision_prompt = f"How many {object_name} are there in the picture? Answer only with an Integer number of occurrrences"
+                prompt = f"How many {object_name} are there in the picture? Answer only with an Integer number of occurrrences"
                 counter = 0
                 for angle in angles_to_check:
                     self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.2)
@@ -1001,7 +1001,7 @@ class Task_module:
                         rospy.sleep(3)
                     elif angle==60:
                         rospy.sleep(5)
-                    answer = self.img_description(gpt_vision_prompt, camera_name="both")["message"]
+                    answer = self.img_description(prompt, camera_name="both")["message"]
                     print(answer)
                     if answer.isdigit():
                         counter+= int(answer)
@@ -1123,11 +1123,11 @@ class Task_module:
         """
         Input:
         camera_name: "front_camera" || "bottom_camera" || "depth_camera" || "Both
-        prompt: A string that indicates what gpt vision must do with the image. example: "Describe this image:"
+        prompt: A string that indicates what the vision model must do with the image. example: "Describe this image:"
         distance: distance threshold if camera_name is "depth_camera"
-        Output: Dictionary containing the answer from gpt vision.
+        Output: Dictionary containing the answer from the model.
         ----------
-        Make a call to the gpt vision api with an image of what the robot is currently seeing.
+        Make a call to the a model api with an image of what the robot is currently seeing.
         """
         attributes = {}
         if self.perception:
