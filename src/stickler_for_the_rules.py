@@ -26,6 +26,7 @@ class STICKLER_RULES(object):
         # Initialization of the task module
         self.tm = tm(perception = True,speech=True, navigation=True, pytoolkit=True, manipulation=True)
         self.tm.initialize_node(self.task_name)
+        self.tm.vision_model = "llava-phi3"
         
         # Definition of the permitted transitions between states
         transitions = [

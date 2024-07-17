@@ -51,6 +51,7 @@ class Task_module:
         self.person_attributes = {}
         self.frame_width = 0
         self.frame_height = 0
+        self.vision_model = "gpt-4o"
         self.resolutions_dict = {
             0: (160, 120),
             1: (320, 240),
@@ -1132,7 +1133,7 @@ class Task_module:
         attributes = {}
         if self.perception:
             try:
-                response = self.img_description_proxy(camera_name, prompt, distance)
+                response = self.img_description_proxy(camera_name, self.vision_model, prompt, distance)
                 attributes = {
                     "status": response.approved,
                     "message": response.message

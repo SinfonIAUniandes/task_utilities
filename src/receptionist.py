@@ -92,6 +92,7 @@ class RECEPTIONIST(object):
     def on_enter_INIT(self):
         
         self.tm.initialize_pepper()
+        self.tm.vision_model = "llava-phi3"
         if self.resolution == 2:
             self.tm.turn_camera("front_camera","custom",2,10)
             self.tm.turn_camera("depth_camera","custom",1,10)
