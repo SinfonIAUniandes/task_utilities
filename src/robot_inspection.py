@@ -13,6 +13,7 @@ from navigation_msgs.msg import simple_feedback_msg
 from robot_toolkit_msgs.srv import set_security_distance_srv, tablet_service_srv
 from robot_toolkit_msgs.msg import animation_msg, touch_msg
 from std_msgs.msg import Bool
+from sensor_msgs.msg import Range
 from std_srvs.srv import SetBool
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion
@@ -64,19 +65,32 @@ class ROBOT_INSPECTION(object):
         print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_tangential_security_distance_srv...", "WARNING"))
         rospy.wait_for_service("/pytoolkit/ALMotion/set_tangential_security_distance_srv")
         self.set_tangential_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_tangential_security_distance_srv",set_security_distance_srv)
-
+        
+        subscriber_sonar= rospy.Subscriber("/sonar/front", Range, self.callback_sonar)
         ##################### ROS CALLBACK VARIABLES #####################
+        self.touch = 0
+        self.sonar = False
         self.head_touched = False
     
     def callback_head_sensor_subscriber(self, msg: touch_msg):
         if "head" in msg.name:
             self.head_touched = msg.state
+
+    def callback_sonar(self,data):
+        if(data.range > 0.5):
+            self.sonar = True
+        else:
+            self.sonar = False
                 
     def on_enter_INIT(self):
         self.tm.initialize_pepper() 
         self.tm.talk("I am going to perform the "+ self.task_name,"English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.set_current_place(self.initial_place)
+        while not self.sonar:
+            print("Waiting for door to open ",self.sonar )
+            time.sleep(0.2)
+        self.tm.talk("The door has been opened","English")
         self.beggining()
                 
     def on_enter_GO2INSPECTION(self):
