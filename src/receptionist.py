@@ -355,7 +355,7 @@ class RECEPTIONIST(object):
         
         print(self.consoleFormatter.format("GET HAIR THREAD", "HEADER"))
         
-        gpt_vision_prompt = "Please answer about the person centered in the image: What is the hair color of the person? Answer only with the color for example: Black"
+        gpt_vision_prompt = "Please answer about the person in the center. What is the hair color of the person? Answer only with one word."
         answer = self.tm.img_description(gpt_vision_prompt)["message"]
         self.first_guest["hair"] = answer
         
@@ -365,7 +365,7 @@ class RECEPTIONIST(object):
         
         print(self.consoleFormatter.format("GET CLOTHES THREAD", "HEADER"))
         
-        gpt_vision_prompt = "Please answer about the person centered in the image: What is the main color of the clothes this person is wearing? Answer only with the color for example: Black"
+        gpt_vision_prompt = "Please answer about the person in the center: What is the main color of the clothes this person is wearing? Answer only with one word."
         answer = self.tm.img_description(gpt_vision_prompt)["message"]
         self.first_guest["clothes"] = answer
 
