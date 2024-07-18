@@ -125,9 +125,9 @@ class CARRY_MY_LUGGAGE(object):
         
         self.bag_place = "none"
         self.choosing = True
-        self.tm.show_image("https://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/cml2.png")
+        self.tm.show_image("http://198.18.0.1/apps/robot-page/img/cml2.png")
         self.tm.setMoveHead_srv("up")
-        self.tm.talk("I am looking for the bag you want me to carry, please point to it, raise your hand clearly. Just like you see in my tablet",wait=False)
+        self.tm.talk("I am looking for the bag you want me to carry, please point to it, raise your hand clearly just like you see in my tablet.",wait=False)
         
         look_4_bag_thread = threading.Thread(target=self.look_4_bag)
         look_4_bag_thread.start()
@@ -169,8 +169,7 @@ class CARRY_MY_LUGGAGE(object):
         print(self.consoleFormatter.format("GRAB_BAG", "HEADER"))
         
         self.tm.set_move_arms_enabled(False)
-        self.tm.show_image(f"https://raw.githubusercontent.com/SinfonIAUniandes/Image_repository/main/carry_bag.jpeg")
-        self.tm.talk("Please place the bag in my hand just like you can see in my tablet, when you have finished please touch my head!","English",wait=True)
+        self.tm.talk("Please place the bag in my hand. When you have finished please touch my head!","English",wait=True)
         
         self.tm.wait_for_head_touch(message="Touch my head to get going!")
                 
@@ -194,7 +193,6 @@ class CARRY_MY_LUGGAGE(object):
             
         # Thanking the user
         self.tm.show_words_proxy()
-        self.tm.show_topic("/perception_utilities/yolo_publisher")
         self.tm.talk("Thank you!", "English",wait=False)
         self.follow_you()
         
@@ -218,7 +216,7 @@ class CARRY_MY_LUGGAGE(object):
         save_place_thread.start()
         
         # Stopping the execution
-        self.tm.follow_you(rotate=False)
+        self.tm.follow_you(rotate=False,avoid_obstacles=True)
         self.following = False
         
         self.tm.talk("We have arrived! Could you pick up your bag?", "English")
@@ -339,7 +337,8 @@ class CARRY_MY_LUGGAGE(object):
     # --------------- GPTVISION LOOK4BAG THREAD ---------------
     def look_4_bag(self):
         print(self.consoleFormatter.format("LOOK4BAG", "HEADER"))
-        gpt_vision_prompt = f"Is the person in the center of the picture pointing to their Left or to their Right? Answer only with Left or Right"
+        gpt_vision_prompt = f"Is the person in the center of the picture pointing to their Left or to their Right? Answer only with one word: Left or Right"
+        self.tm.vision_model = "llava-phi3"
         answer = self.tm.img_description(gpt_vision_prompt,camera_name="front_camera")["message"].lower()
         print("gpt answer:",answer)
         if "right" in answer or "left" in answer:

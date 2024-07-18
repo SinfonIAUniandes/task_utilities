@@ -8,6 +8,7 @@ import rospy
 import os
 import numpy as np
 
+from std_srvs.srv import Empty
 from navigation_msgs.srv import constant_spin_srv
 from navigation_msgs.msg import simple_feedback_msg
 from robot_toolkit_msgs.srv import set_security_distance_srv, tablet_service_srv
@@ -31,14 +32,14 @@ class ROBOT_INSPECTION(object):
         """
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
-        self.initial_place = "init_ri"
-        self.inspector_place = "kitchen"
-        self.exit_place = "bedroom"
+        self.initial_place = "entrance"
+        self.inspector_place = "inspection"
+        self.exit_place = "exit"
         self.head_touched = True
         
         self.task_name = "robot inspection"
         states = ['INIT', 'GO2INSPECTION', 'WAIT4TOUCH', 'GO2EXIT']
-        self.tm = tm(perception=False, speech=True, navigation=True, pytoolkit=True)
+        self.tm = tm(perception=False, speech=True, navigation=True, pytoolkit=True, manipulation=False)
         self.tm.initialize_node("robot_inspection")
         # Definir las transiciones permitidas entre los estados
         transitions = [
@@ -65,6 +66,8 @@ class ROBOT_INSPECTION(object):
         print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_tangential_security_distance_srv...", "WARNING"))
         rospy.wait_for_service("/pytoolkit/ALMotion/set_tangential_security_distance_srv")
         self.set_tangential_security_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/set_tangential_security_distance_srv",set_security_distance_srv)
+
+        self.clearCostmapServiceClient = rospy.ServiceProxy('/move_base/clear_costmaps', Empty)
         
         subscriber_sonar= rospy.Subscriber("/sonar/front", Range, self.callback_sonar)
         ##################### ROS CALLBACK VARIABLES #####################
@@ -87,16 +90,23 @@ class ROBOT_INSPECTION(object):
         self.tm.talk("I am going to perform the "+ self.task_name,"English")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.set_current_place(self.initial_place)
-        while not self.sonar:
+        self.tm.talk("Please open the door to start","English",wait=False)
+        start_time = rospy.get_time()
+        while not self.sonar and rospy.get_time() - start_time < 20 :
             print("Waiting for door to open ",self.sonar )
             time.sleep(0.2)
+        self.clearCostmapServiceClient()
         self.tm.talk("The door has been opened","English")
         self.beggining()
-                
+
+
     def on_enter_GO2INSPECTION(self):
         print(self.consoleFormatter.format("GO2INSPECTION", "HEADER"))
         self.tm.talk("I am going to the inspection position","English",wait=False)
-        self.tm.go_to_place(self.inspector_place)
+        
+        # Following thread initialization
+        self.tm.go_to_place(self.inspector_place, graph=0)
+        self.tm.robot_stop_srv()
         self.tm.talk("I'm in the inspection position","English",wait=False)
         self.waiting()
     
@@ -110,9 +120,10 @@ class ROBOT_INSPECTION(object):
     def on_enter_GO2EXIT(self):
         print(self.consoleFormatter.format("GO2EXIT", "HEADER"))
         self.tm.talk("I am going to the exit position","English",wait=False)
-        # ask_for_robot_path_clearance_thread = Thread(target=self.ask_for_robot_path_clearance)
-        # ask_for_robot_path_clearance_thread.start()
-        self.tm.go_to_place(self.exit_place)
+        self.tm.go_to_place("kitchen_table", graph=0)
+        self.tm.go_to_place("mid_kitchen_office", graph=0)
+        self.tm.go_to_place("mid_office_kitchen", graph=0)
+        self.tm.go_to_place(self.exit_place, graph=0)
         self.tm.talk("Robot inspection completed","English", wait=False)
         os._exit(os.EX_OK)
         
@@ -122,6 +133,13 @@ class ROBOT_INSPECTION(object):
             time.sleep(0.1)
         print(self.consoleFormatter.format("Shutting down", "FAIL"))
         os._exit(os.EX_OK)
+    
+    # --------------- CARRY THREAD FUNCTION --------------- 
+    def carry_thread(self, pose):
+        while self.navigating:
+            self.tm.go_to_pose(pose)
+            rospy.sleep(3)
+
 
     def run(self):
         while not rospy.is_shutdown():

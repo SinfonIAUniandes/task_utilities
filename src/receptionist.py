@@ -51,12 +51,13 @@ class RECEPTIONIST(object):
         # --------------------------- Task Parameters ------------------------------
         
         # The angles of the chairs the robot must check to introduce the people
-        self.chair_angles = [50,25,0,-30]
+        self.chair_angles = [10,60,-10,-60]
         self.chair_distances = [2,2,2,2]
-        
+
+        self.colors = ["red", "green", "blue", "yellow", "purple", "orange", "black", "white", "brown", "pink", "gray", "cyan", "magenta", "beige", "ivory", "teal", "lavender", "maroon", "navy", "olive", "silver", "turquoise", "plum", "gold", "salmon", "coral", "khaki", "indigo", "azure", "tan", "violet", "crimson", "fuchsia", "lemon", "peach", "lime", "mint", "apricot", "cerulean", "slate", "sepia", "emerald", "ruby", "lavender", "pear", "sapphire", "rose", "copper", "bronze", "brass", "nickel",]
 
         self.host = {
-            "name": "charlie",
+            "name": "john",
             "age": self.categorize_age(21),
             "drink": "Milk",
             "gender": "Man",
@@ -79,9 +80,6 @@ class RECEPTIONIST(object):
         self.waiting_host = True
         self.guests_count = 1
         # Where the robot must introduce the guests
-        self.seating_place = "guests_place"
-        self.initial_place = "house_door"
-        self.greeting_place = "house_door"
         self.seating_place = "guests_place"
         self.initial_place = "house_door"
         self.greeting_place = "house_door"
@@ -143,7 +141,7 @@ class RECEPTIONIST(object):
         self.tm.set_angles_srv(["HeadYaw", "HeadPitch"],[0, -0.35],0.1)
         
         if self.guests_count == 1:
-            self.tm.talk("Hi guest! please center your face in the circle in my tablet to register you!","English", wait=True)
+            self.tm.talk("Hi guest! Please look at my eyes while i greet you!","English", wait=True)
 
             gpt_hair_thread = threading.Thread(target=self.gpt_hair_t)
             gpt_hair_thread.start()
@@ -154,19 +152,19 @@ class RECEPTIONIST(object):
             age_gender_thread = threading.Thread(target=self.age_gender_t)
             age_gender_thread.start()
 
-            self.tm.talk("I will ask you a couple of questions while i get a good look at your face. Please talk loudly while looking at me and answer when my eyes turn blue!","English", wait=False)
+            self.tm.talk("I will ask you a couple of questions. Please talk loudly while looking at me and answer when my eyes turn blue!","English", wait=False)
             print("empieza sleep")
             rospy.sleep(10)
         else:
             self.tm.talk("Hi guest! I will ask you a couple of questions. Please talk loudly while looking at me and answer when my eyes turn blue!","English", wait=False)
             print("empieza sleep")
-            rospy.sleep(8)
+            rospy.sleep(10)
         print("acaba sleep")
         # NO GPT q_a version:
-        #name = self.tm.q_a("name").lower()
-        #drink = self.tm.q_a("drink")
-        name = self.tm.q_a("What is your name?").lower()
-        drink = self.tm.q_a("What is your favorite drink?")
+        name = self.tm.q_a("name").lower()
+        drink = self.tm.q_a("drink")
+        #name = self.tm.q_a("What is your name?").lower()
+        #drink = self.tm.q_a("What is your favorite drink?")
         
         if self.guests_count == 1:
             self.first_guest["name"] = name
@@ -197,7 +195,7 @@ class RECEPTIONIST(object):
 
         elif  self.guests_count == 2:
             self.tm.talk(f"Please follow me to the living room! The host {self.host['name']} is waiting for you! Our guest {self.first_guest['name']} has already arrived. {self.first_guest['pronoun']} is a {self.first_guest['gender']} and {self.first_guest['pronoun']} is {self.first_guest['age']}.", "English", wait=False)
-            if not "empty" in self.first_guest["clothes"].lower() and not "empty" in self.first_guest["hair"].lower() :
+            if self.first_guest["clothes"]!="" and self.first_guest["hair"]!="":
                 self.tm.talk(f"{self.first_guest['pronoun']} is wearing {self.first_guest['clothes']}, and has {self.first_guest['hair']} hair.", "English", wait=True)
         
         # Going to the living room
@@ -272,7 +270,7 @@ class RECEPTIONIST(object):
             print("guests:",self.guests_count)
             if self.guests_count == 1:
                 self.saved_face = False
-                save_face_thread = threading.Thread(target=self.save_face_t,args=["charlie"])
+                save_face_thread = threading.Thread(target=self.save_face_t,args=["john"])
                 save_face_thread.start()
                 self.tm.talk(f"Hey {self.first_guest['name']}! I introduce to you {self.host['name']}, {self.host['pronoun']} is a {self.host['gender']}. {self.host['pronoun']} is {self.host['age']}, and {self.host['pronoun']} likes to drink {self.host['drink']}.", "English", wait=False)
                 while self.waiting_host:
@@ -286,6 +284,8 @@ class RECEPTIONIST(object):
                     found_guests.append(guest_name)
                 if guest_name == "guest1":
                     self.tm.talk(f"Hey {self.second_guest['name']}! I introduce to you {self.first_guest['name']} is a {self.first_guest['gender']}. {self.first_guest['pronoun']} is {self.first_guest['age']}, and {self.first_guest['pronoun']} likes to drink {self.first_guest['drink']}.", "English", wait=True)
+                    if self.first_guest["clothes"]!="" and self.first_guest["hair"]!="":
+                        self.tm.talk(f"{self.first_guest['pronoun']} is wearing {self.first_guest['clothes']}, and has {self.first_guest['hair']} hair.", "English", wait=True)
                 elif guest_name == self.host["name"]:
                     self.tm.talk(f"Hey {self.second_guest['name']}! I introduce to you {self.host['name']} is a {self.host['gender']}. {self.host['pronoun']} is {self.host['age']}, and {self.host['pronoun']} likes to drink {self.host['drink']}.", "English", wait=True)
                 else:
@@ -293,8 +293,10 @@ class RECEPTIONIST(object):
                         self.tm.talk(f"Hey {self.second_guest['name']}! I introduce to you {self.host['name']} is a {self.host['gender']}. {self.host['pronoun']} is {self.host['age']}, and {self.host['pronoun']} likes to drink {self.host['drink']}.", "English", wait=True)
                     elif not self.guest_1_saved:
                         self.tm.talk(f"{self.second_guest['name']}! I introduce to you {self.first_guest['name']} is a {self.first_guest['gender']}. {self.first_guest['pronoun']} is {self.first_guest['age']}, and {self.first_guest['pronoun']} likes to drink {self.first_guest['drink']}.", "English", wait=True)
+                        if self.first_guest["clothes"]!="" and self.first_guest["hair"]!="":
+                            self.tm.talk(f"{self.first_guest['pronoun']} is wearing {self.first_guest['clothes']}, and has {self.first_guest['hair']} hair.", "English", wait=True)
                     else:
-                        choice = random.choice([f"{self.second_guest['name']}! I introduce to you {self.first_guest['name']} is a {self.first_guest['gender']}. {self.first_guest['pronoun']} is {self.first_guest['age']}, and {self.first_guest['pronoun']} likes to drink {self.first_guest['drink']}.",f"Hey {self.second_guest['name']}! I introduce to you {self.host['name']} is a {self.host['gender']}. {self.host['pronoun']} is {self.host['age']}, and {self.host['pronoun']} likes to drink {self.host['drink']}."])
+                        choice = random.choice([f"{self.second_guest['name']}! I introduce to you {self.first_guest['name']} is a {self.first_guest['gender']}. {self.first_guest['pronoun']} is {self.first_guest['age']}, and {self.first_guest['pronoun']} likes to drink {self.first_guest['drink']}. {self.first_guest['pronoun']} is wearing {self.first_guest['clothes']}, and has {self.first_guest['hair']} hair.",f"Hey {self.second_guest['name']}! I introduce to you {self.host['name']} is a {self.host['gender']}. {self.host['pronoun']} is {self.host['age']}, and {self.host['pronoun']} likes to drink {self.host['drink']}."])
                         self.tm.talk(choice,"English",wait=True)
             if len(found_guests) == 2: 
                 break
@@ -330,7 +332,7 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("SAVE_FACE THREAD", "HEADER"))
         attempts = 0
         chances = 3
-        if name == "charlie":
+        if name == "john":
             self.host_saved = False
             self.waiting_host = True
             chances = 2
@@ -339,14 +341,14 @@ class RECEPTIONIST(object):
         while not self.saved_face and attempts<chances:
             self.saved_face  = self.tm.save_face(name, 3)
             if self.saved_face:
-                if name == "charlie":
+                if name == "john":
                     self.host_saved = True
                     self.waiting_host = False
                 elif name == "guest1":
                     self.guest_1_saved = True
             attempts+=1
         if attempts==3:
-            if name == "charlie":
+            if name == "john":
                 self.waiting_host = False
             
 
@@ -356,8 +358,12 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("GET HAIR THREAD", "HEADER"))
         
         gpt_vision_prompt = "Please answer about the person in the center. What is the hair color of the person? Answer only with one word."
-        answer = self.tm.img_description(gpt_vision_prompt)["message"]
-        self.first_guest["hair"] = answer
+        answer = self.tm.img_description(gpt_vision_prompt)["message"].lower()
+        for color in self.colors:
+            if color in answer:
+                self.first_guest["hair"] = color
+                break
+
         
 
     # --------------------------- Complementary thread 3: Get clothes color with gptvision ------------------------------
@@ -366,8 +372,11 @@ class RECEPTIONIST(object):
         print(self.consoleFormatter.format("GET CLOTHES THREAD", "HEADER"))
         
         gpt_vision_prompt = "Please answer about the person in the center: What is the main color of the clothes this person is wearing? Answer only with one word."
-        answer = self.tm.img_description(gpt_vision_prompt)["message"]
-        self.first_guest["clothes"] = answer
+        answer = self.tm.img_description(gpt_vision_prompt)["message"].lower()
+        for color in self.colors:
+            if color in answer:
+                self.first_guest["clothes"] = color
+                break
 
     # --------------------------- Complementary thread 4: Get the persons age and gender with perception ------------------------------
     def age_gender_t(self):
