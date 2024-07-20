@@ -55,7 +55,8 @@ class STICKLER_RULES(object):
         self.angles_to_check = [0,-60,60]
         
         # Where the other guests are located, it is for the forbidden room
-        self.party_place = "living_room"
+        self.party_place = ""
+        self.number_of_guests_in_party_place = 0
         # TODO create the initial place in NAVIGATION
         self.initial_place = "house_door"
         self.last_place = self.initial_place
@@ -117,7 +118,7 @@ class STICKLER_RULES(object):
         
         self.tm.talk("I am going to check if the guests are breaking the rules!","English", wait=False)
         self.tm.setRPosture_srv("stand")
-        
+        number_of_guests = 0
         for angle in self.angles_to_check:
             
             print("angulo actual:",angle)
@@ -137,6 +138,7 @@ class STICKLER_RULES(object):
             rospy.sleep(2)
                 
             people = self.tm.labels.get("person", [])
+            number_of_guests += len(people)
             
             for person in people:
                 
@@ -151,9 +153,13 @@ class STICKLER_RULES(object):
                 self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
             
         if self.confirm_compliance_forbidden and self.someone_in_forbidden:
-            if self.last_place == self.forbidden:
+            if (self.last_place == self.forbidden) and (self.party_place != ""):
                 # Moving to the ASK2FOLLOW state
                 self.ASK2FOLLOW()
+            
+        if (number_of_guests > 0) and (self.last_place != self.forbidden):
+            self.party_place = self.last_place
+            self.number_of_guests_in_party_place = number_of_guests
             
         self.tm.setRPosture_srv("stand")
         self.tm.talk("I'm done checking this room'!","English", wait=False)
@@ -168,9 +174,9 @@ class STICKLER_RULES(object):
         
         self.tm.robot_stop_srv()
         
-        gpt_vision_prompt = f"Is the person in the center of the picture barefooted or in socks? Answer only with True or False. If you can't see their feet answer only with 'None'. If the person you see is behind a wall answer only with 'Wall' and don't check the other rules. If you are not at least 70% sure that a person is wearing shoes answer True"
+        vision_prompt = f"Is the person in the center of the picture barefooted or in socks? Answer only with True or False. If you can't see their feet answer only with 'None'. If the person you see is behind a wall answer only with 'Wall' and don't check the other rules. If you are not at least 70% sure that a person is wearing shoes answer True"
         
-        answer = self.tm.img_description(prompt=gpt_vision_prompt,camera_name="both")["message"]
+        answer = self.tm.img_description(prompt=vision_prompt,camera_name="both")["message"]
         
         print("Esta descalza: "+answer)
         
@@ -194,9 +200,9 @@ class STICKLER_RULES(object):
     def check_drink(self):
         print(self.consoleFormatter.format("LOOK4DRINK", "HEADER"))
         self.tm.robot_stop_srv()
-        gpt_vision_prompt = f"Is the person in the center of the picture holding a bottle,a juice box, a cup, a can, or any kind of drink in their hand? Answer only with True or False. If the person you see is behind a wall answer only with 'Wall' and don't check the other rules"
-        answer = self.tm.img_description(gpt_vision_prompt,camera_name="both")["message"]
-        print("Tiene bebida:"+answer)
+        vision_prompt = f"Is the person in the center of the picture holding a bottle,a juice box, a cup, a can, or any kind of drink in their hand? Answer only with True or False. If the person you see is behind a wall answer only with 'Wall' and don't check the other rules"
+        answer = self.tm.img_description(vision_prompt,camera_name="both")["message"]
+        print("Tiene bebida: "+answer)
         if "true" in answer.lower():
             # Tiene una bebida
             self.has_drink = 1
@@ -243,14 +249,13 @@ class STICKLER_RULES(object):
         self.tm.talk("Follow me to the other party guests please","English", wait=False)
         self.tm.go_to_place(self.party_place)
         self.tm.go_to_relative_point(0,0,180)
-        gpt_vision_prompt = f"Are the people in the picture close to camera (within 1 to 2 meters of the camera)? Answer only with True or False. If there is no one in the picture answer False"
-        answer = self.tm.img_description(prompt=gpt_vision_prompt,camera_name="both")["message"]
+        vision_prompt = f"Are the people in the picture close to camera (within 1 to 2 meters of the camera)? Answer only with True or False. If there is no one in the picture answer False"
+        answer = self.tm.img_description(prompt=vision_prompt,camera_name="both")["message"]
         print("followed?:",answer)
         if "true" in answer.lower():
             self.tm.talk("Thank you for following me. Now, please stay here and do not come back to the forbidden room","English", wait=False)
         else:
-            self.tm.talk("I see you did not comply but i must keep looking for the other guests. But please remember you must not be in the forbidden room","English", wait=False)
-            
+            self.tm.talk("I see you did not comply but i must keep looking for the other guests. But please remember you must not be in the forbidden room","English", wait=False)    
             
     # --------------------------- SIXTH STATE: GO TO THE NEXT ROOM ------------------------------
     def on_enter_GO2NEXT(self):

@@ -74,7 +74,7 @@ class RESTAURANT(object):
         
         self.angles_to_check = [0,-30,-60,30,60]
         self.hand_raised = False
-        self.gpt_hand_raised_id = -1
+        self.raised_hand_id = -1
         self.customer_count = 0 
         self.current_customer = 0
         self.resolution = 2
@@ -273,13 +273,13 @@ class RESTAURANT(object):
                         person_y = person[2]
                         person_width = person[3]
                         person_height = person[4]
-                self.gpt_hand_raised_id = -2
-                while not self.hand_raised and self.gpt_hand_raised_id==-2 and rospy.get_time() - start_time < 10:
+                self.raised_hand_id = -2
+                while not self.hand_raised and self.raised_hand_id==-2 and rospy.get_time() - start_time < 10:
                     rospy.sleep(0.1)
                     
                 self.choosing = False
                 print("centered person id:", int(person[0]))
-                if self.hand_raised or self.gpt_hand_raised_id == int(person[0]):
+                if self.hand_raised or self.raised_hand_id == int(person[0]):
                     self.tm.talk(f"I found a calling customer",wait=False)
                     start_time = rospy.get_time()
                     depth_from_current_place = self.tm.calculate_depth_of_label(person_x, person_y, person_width, person_height)
@@ -393,16 +393,16 @@ class RESTAURANT(object):
                 self.hand_raised = True
                 
                 
-    # --------------- GPTVISION VERIFY RAISED HAND THREAD ---------------
+    # --------------- VISION MODEL VERIFY RAISED HAND THREAD ---------------
     def verify_raised_hand(self):
         print(self.consoleFormatter.format("VERIFY RAISED HAND", "HEADER"))
-        gpt_vision_prompt = f"If the person in the center is raising their hand return only their ID otherwise return -1, do NOT respond with any words.  for example: 10"
+        vision_prompt = f"If the person in the center is raising their hand return only their ID otherwise return -1, do NOT respond with any words.  for example: 10"
         rospy.sleep(1)
-        answer = self.tm.img_description(gpt_vision_prompt,camera_name="yolo")["message"].lower()
-        print("gpt answer:",answer)
+        answer = self.tm.img_description(vision_prompt,camera_name="yolo")["message"].lower()
+        print("Vision model answer:",answer)
         resultado = re.search(r'\d+',answer)
         if resultado:
-            self.gpt_hand_raised_id = int(resultado.group())
+            self.raised_hand_id = int(resultado.group())
                 
     # --------------- MACHINE INITIALIZATION FUNCTION ---------------            
     def run(self):
