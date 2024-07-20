@@ -47,7 +47,7 @@ class STICKLER_RULES(object):
         
         # Task parameter if the robot wants to confirm that the guests corrected the rule
         self.confirm_compliance = False
-        self.confirm_compliance_forbidden = True
+        self.confirm_compliance_forbidden = False
         
         self.someone_in_forbidden = False
         
@@ -57,7 +57,7 @@ class STICKLER_RULES(object):
         # Where the other guests are located, it is for the forbidden room
         self.party_place = "living_room"
         # TODO create the initial place in NAVIGATION
-        self.initial_place = "init_stickler"
+        self.initial_place = "house_door"
         self.last_place = self.initial_place
         
         # TODO Set total guests

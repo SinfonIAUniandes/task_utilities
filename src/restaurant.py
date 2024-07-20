@@ -46,8 +46,8 @@ class RESTAURANT(object):
             {"trigger": "arrived_customer", "source": "GO2CUSTOMER", "dest": "TAKE_ORDER"},
             {"trigger": "order_taken", "source": "TAKE_ORDER", "dest": "GO_BACK"},
             {"trigger": "arrived_bar", "source": "GO_BACK", "dest": "SERVE_ORDER"},
-            {"trigger": "delivered_order", "source": "SERVE_ORDER", "dest": "GO_BACK"},
-            {"trigger": "end", "source": "GO_BACK", "dest": "END"},
+            {"trigger": "delivered_order", "source": "SERVE_ORDER", "dest": "LOOK_FOR_CUSTOMER"},
+            {"trigger": "end", "source": "LOOK_FOR_CUSTOMER", "dest": "END"},
         ]
         
         # --------------- Machine Declaration ---------------
@@ -82,7 +82,6 @@ class RESTAURANT(object):
         self.customers_coordinates = []
         self.delivering = False
         self.taking_order = False
-        self.carrying = False
         self.menu = ["bottle of water", "orange", "apple", "pear"]
         self.customer1_counter = 0
         
@@ -105,12 +104,7 @@ class RESTAURANT(object):
         else:
             self.tm.turn_camera("depth_camera","custom",1,15)
         self.tm.pose_srv("front_camera", True)
-        self.carrying = True
-        #TODO TRAY POSE
-        self.tm.go_to_pose("carry")
-        pose = "carry"
-        carry_thread = threading.Thread(target=self.carry_thread,args=[pose])
-        carry_thread.start()
+        self.tm.toggle_filter_by_distance(True,3.5,["person"])
         
         # --------------- INIT STATE PROCCEDURE ---------------
         
@@ -122,9 +116,8 @@ class RESTAURANT(object):
         rospy.sleep(1)
 
         print(self.consoleFormatter.format("INIT", "HEADER"))
-        self.tm.talk("Hello i am ready to help the restaurant", wait=True)
         
-        # Moving to LOOK_FOR_BAG state
+        # Moving to LOOK_FOR_CUSTOMER state
         self.start()
 
 
@@ -134,7 +127,7 @@ class RESTAURANT(object):
     def on_enter_LOOK_FOR_CUSTOMER(self):
         
         print(self.consoleFormatter.format("LOOK_FOR_CUSTOMER", "HEADER"))
-        self.tm.talk("I am looking for calling customers",wait=False)
+        self.tm.talk("I am ready to help the restaurant",wait=False)
         
         self.choosing = False
         
@@ -172,6 +165,7 @@ class RESTAURANT(object):
             correct = self.tm.wait_for_head_touch(message="", message_interval=13, timeout=13)
         
         self.orders.append(order)
+        self.tm.talk("Got it. I will come back later with your order","English", wait=False)
         
         # Moving to GO_BACK state
         self.order_taken()
@@ -205,8 +199,6 @@ class RESTAURANT(object):
         print(self.consoleFormatter.format("SERVER ORDER", "HEADER"))
         
         self.tm.talk("I am back at the bar",wait=True)
-        
-        self.tm.go_to_relative_point(0,0,180)
         
         self.tm.talk(f"Hello! I have an order from a customer in the restaurant!",wait=True)
 
@@ -245,7 +237,7 @@ class RESTAURANT(object):
                 
             persons = self.tm.labels.get("person", [])
             for person in persons:
-                self.tm.talk(f"I am checking if you are calling",wait=False)
+                self.tm.talk(f"I am checking if you are calling, if you are, please keep your hand raised where i can see it",wait=False)
                 person_id = person[0]
                 self.tm.center_head_with_label(person,resolution = self.resolution, height=0, desfase=3)
                 rospy.sleep(3)
@@ -282,7 +274,7 @@ class RESTAURANT(object):
                         person_width = person[3]
                         person_height = person[4]
                 self.gpt_hand_raised_id = -2
-                while not self.hand_raised and self.gpt_hand_raised_id==-2 and rospy.get_time() - start_time < 30:
+                while not self.hand_raised and self.gpt_hand_raised_id==-2 and rospy.get_time() - start_time < 10:
                     rospy.sleep(0.1)
                     
                 self.choosing = False
@@ -298,7 +290,7 @@ class RESTAURANT(object):
                     if depth_from_current_place == 0 or depth_from_current_place == np.nan:
                         self.tm.talk(f"But they are too far away for me to accurately reach them.",wait=False)
                     else:
-                        self.tm.talk(f"I am navigating towards the customer with the id: {int(person[0])}",wait=False)
+                        self.tm.talk(f"I am navigating towards the customer",wait=False)
                         person_center = (person_x + person_width/2)
                         # 54 grados caben en la camara y hay 320 pixeles en resolution 1
                         factor = 54 / 320
@@ -411,12 +403,6 @@ class RESTAURANT(object):
         resultado = re.search(r'\d+',answer)
         if resultado:
             self.gpt_hand_raised_id = int(resultado.group())
-    
-    # --------------- CARRY THREAD FUNCTION --------------- 
-    def carry_thread(self, pose):
-        while self.carrying:
-            self.tm.go_to_pose(pose)
-            rospy.sleep(1)
                 
     # --------------- MACHINE INITIALIZATION FUNCTION ---------------            
     def run(self):
