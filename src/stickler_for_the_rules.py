@@ -42,20 +42,21 @@ class STICKLER_RULES(object):
         # Thread to check if rospy is running
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
- 
+
         # --------------------------- Task Parameters ------------------------------
         
         # Task parameter if the robot wants to confirm that the guests corrected the rule
-        self.confirm_comppliance = False
-        self.confirm_comppliance_forbidden = True
+        self.confirm_compliance = False
+        self.confirm_compliance_forbidden = True
         
         self.someone_in_forbidden = False
         
-        # The robot starts at 0 and then moves to these angles
+        # The robot starts at 0 and then moves head to these angles
         self.angles_to_check = [0,-60,60]
         
         # Where the other guests are located, it is for the forbidden room
         self.party_place = "living_room"
+        # TODO create the initial place in NAVIGATION
         self.initial_place = "init_stickler"
         self.last_place = self.initial_place
         
@@ -135,26 +136,27 @@ class STICKLER_RULES(object):
             
             rospy.sleep(2)
                 
-            persons = self.tm.labels.get("person", [])
+            people = self.tm.labels.get("person", [])
             
-            for person in persons:
+            for person in people:
                 
-                print("centrando persona:",person)
+                print("centrando persona:", person)
                 self.tm.center_head_with_label(person)
                 
                 print("checkeando reglas")
                 self.check_rules()
                 
                 print("reglas checkeadas")
+                # go back to initial check position before moving to the next person
                 self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
             
-        if self.confirm_comppliance_forbidden and self.someone_in_forbidden:
+        if self.confirm_compliance_forbidden and self.someone_in_forbidden:
             if self.last_place == self.forbidden:
                 # Moving to the ASK2FOLLOW state
                 self.ASK2FOLLOW()
             
         self.tm.setRPosture_srv("stand")
-        self.tm.talk("I'm done checkin this room'!","English", wait=False)
+        self.tm.talk("I'm done checking this room'!","English", wait=False)
         
         # Moving to the GO2NEXT state
         self.rules_checked()
@@ -170,7 +172,7 @@ class STICKLER_RULES(object):
         
         answer = self.tm.img_description(prompt=gpt_vision_prompt,camera_name="both")["message"]
         
-        print("Esta descalza:"+answer)
+        print("Esta descalza: "+answer)
         
         if "true" in answer.lower():
             # Esta descalso o con medias
@@ -255,7 +257,6 @@ class STICKLER_RULES(object):
         
         print("Current Place: " + self.last_place)
         
-        self.tm.talk("I'm going to check another room!","English", wait=False)
         
         print(self.consoleFormatter.format("GO2NEXT", "HEADER"))
         
@@ -273,7 +274,7 @@ class STICKLER_RULES(object):
                 self.last_place = place
                 self.arrive_next()
                 
-        self.tm.talk("But i have checked all of the rooms! Yipee","English")
+        self.tm.talk("I have checked all of the rooms! Yipee","English")
         
         # Finishing the task
         os._exit(os.EX_OK)
