@@ -24,7 +24,7 @@ class STICKLER_RULES(object):
         states = ['INIT', 'LOOK4PERSON', 'ASK4SHOES', 'ASK4DRINK', 'GO2NEXT']
         
         # Initialization of the task module
-        self.tm = tm(perception = True,speech=True, navigation=True, pytoolkit=True, manipulation=True)
+        self.tm = tm(perception = True,speech=True, navigation=False, pytoolkit=True, manipulation=True)
         self.tm.initialize_node(self.task_name)
         self.tm.vision_model = "llava-phi3"
         
@@ -69,11 +69,11 @@ class STICKLER_RULES(object):
         self.breakers_found = 0
         
         # TODO Set the forbidden room
-        self.forbidden = "dining"
+        self.forbidden = "office"
         
         # List of places to check
-        self.list_places = ["kitchen","living_room","intermed_door","dining","bedroom"]
-        self.places_names = ["kitchen","living_room","main room","dining","bedroom"]
+        self.list_places = ["hallway","office","kitchen","living_room"]
+        self.places_names = ["hallway","office","kitchen","living room"]
         
         # List of checked places
         self.checked_places = []

@@ -30,11 +30,13 @@ synonyms = {
     "identify": ["identify", "who is", "recognize", "determine"],
     "navigate": ["go", "go to", "navigate", "move to", "head to"],
     "wait": ["wait", "pause", "hold on", "delay"],
-    "inform": ["tell me", "inform", "advise", "notify"],
+    "inform": ["tell", "inform", "advise", "notify"],
     "locate": ["where is", "find location of", "locate", "position of", "who"],
     "ask": ("ask", "who", "name"),
     "color": ("color", "red", "blue", "yellow"),
 }
+
+possible_objects = ["soap","dishwasher_tab","washcloth","sponges","cola","ice_tea","water","milk","big_coke","fanta","dubbelfris","cornflakes","pea_soup","curry","pancake_mix","hagelslag","sausages","mayonaise","candle","pear","plum","peach","lemon","orange","strawberry","banana","apple","stroopwafel","candy","liquorice","crisps","pringles","tictac","spoon","plate","cup","fork","bowl","knife","cleaning_supply","drink","food","decoration","fruit","snack","dish","dishes","snacks","fruits","decorations","drinks","cleaning_supplies"]
 
 # Mapping related words to defined places
 place_mappings = {
@@ -67,6 +69,7 @@ place_mappings = {
 irrelevant_words = set(
     [
         "an",
+        "me",
         "a",
         "the",
         "and",
@@ -155,6 +158,7 @@ irrelevant_words = set(
         "yet",
     ]
 )
+
 
 action_keywords = {}
 
@@ -259,8 +263,12 @@ def robot_code_generator_aux(task):
         print(action)
         if action == "fetch":
             item = next_word
-            code += f"if self.tm.look_for_object('{item}'):\n"
-            code += f"    self.tm.talk('I have found {item}. Now I will bring it to you.', 'English', wait=False)\n"
+            for possible_object in possible_objects:
+                if possible_object in task:
+                    item = possible_object
+  
+            code += f"if True:\n"
+            code += f"    self.tm.talk('I have found the item. Now I will bring it to you.', 'English', wait=False)\n"
 
             best_place = determine_place(filtered_words)
             if best_place and "go_to_place" not in code:
@@ -280,6 +288,9 @@ def robot_code_generator_aux(task):
 
         elif action == "count":
             item = next_word
+            for possible_object in possible_objects:
+                if possible_object in task:
+                    item = possible_object
             count = 0
             code += f"count = self.tm.count_objects('{item}')\n"
             code += "self.tm.go_back()\n"
@@ -296,7 +307,6 @@ def robot_code_generator_aux(task):
             code += "self.tm.follow_you()\n"
             code += "self.tm.talk('Following you now. Please touch my head to stop.', 'English', wait=False)\n"
             code += "if self.tm.wait_for_head_touch():"
-            code += "   self.tm.stop_following()\n"
             code += "   self.tm.talk('I have finished following you, I will now come back.', 'English', wait=False)\n"
             code += "self.tm.go_back()\n"
 
@@ -318,6 +328,9 @@ def robot_code_generator_aux(task):
 
         elif action == "wait_for_object":
             item = next_word
+            for possible_object in possible_objects:
+                if possible_object in task:
+                    item = possible_object
             code += f"if self.tm.wait_for_object(timeout=10):t\n"
             code += "     self.tm.go_back()\n"
             code += f"    self.tm.talk('I have spotted the {item}.', 'English', wait=False)\n"
@@ -327,6 +340,8 @@ def robot_code_generator_aux(task):
 
         # Handling object search with characteristics
         elif action == "search":
+
+            characteristic = ''
 
             if "heaviest" in filtered_words:
                 characteristic = "heaviest"
@@ -410,6 +425,9 @@ def robot_code_generator_aux(task):
         # Handling the retrieval and manipulation of an object
         elif action == "pick_object":
             item = next_word
+            for possible_object in possible_objects:
+                if possible_object in task:
+                    item = possible_object
             code += f"if self.tm.ask_for_object('{item}'):\n"
             code += f"    self.tm.talk('I have picked up the {item}.', 'English', wait=False)\n"
             code += "else:\n"
@@ -422,7 +440,6 @@ def robot_code_generator_aux(task):
 
         # Handling commands to stop following a person
         elif action == "stop_following":
-            code += "self.tm.stop_following()\n"
             code += "self.tm.talk('I have stopped following you as requested.', 'English', wait=False)\n"
 
         # Handling commands to dynamically adjust robot posture based on environmental feedback
@@ -433,7 +450,7 @@ def robot_code_generator_aux(task):
         elif action == "ask":
             request = next_word
             answer = ""
-            code += f"answer = self.tm.q_a('Please tell me what is the {request}', 'English', wait=False)\n"
+            code += f"answer = self.tm.q_a('name', 'English', wait=False)\n"
             code += "self.tm.go_back()\n"
             code += f"self.tm.talk('The name is {answer}', 'English', wait=False)\n"
 

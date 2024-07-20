@@ -46,6 +46,7 @@ class GPSR(object):
         self.init_place = "house_door"
         self.task_counter = 0 
         self.generated_code = ""
+        self.tm.vision_model = "llava-phi3"
 
     def on_enter_INIT(self):
         generate_utils.load_code_gen_config() 

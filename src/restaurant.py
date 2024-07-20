@@ -85,7 +85,6 @@ class RESTAURANT(object):
         self.carrying = False
         self.menu = ["bottle of water", "orange", "apple", "pear"]
         self.customer1_counter = 0
-        self.customer2_counter = 0
         
         # --------------- ROSPY Check ---------------
         
@@ -106,6 +105,12 @@ class RESTAURANT(object):
         else:
             self.tm.turn_camera("depth_camera","custom",1,15)
         self.tm.pose_srv("front_camera", True)
+        self.carrying = True
+        #TODO TRAY POSE
+        self.tm.go_to_pose("carry")
+        pose = "carry"
+        carry_thread = threading.Thread(target=self.carry_thread,args=[pose])
+        carry_thread.start()
         
         # --------------- INIT STATE PROCCEDURE ---------------
         
@@ -133,13 +138,9 @@ class RESTAURANT(object):
         
         self.choosing = False
         
-        for attempt in [1,2,3]:
-            if self.customer_count == 1:
-                break
+        for attempt in range(5):
             self.look_around()
-            
-        self.tm.setRPosture_srv("stand")
-        self.found_customer()
+        
         
 
     # --------------- THIRD STATE: GO 2 CUSTOMER ---------------
@@ -147,7 +148,6 @@ class RESTAURANT(object):
     def on_enter_GO2CUSTOMER(self):
         print(self.consoleFormatter.format("GO2CUSTOMER", "HEADER"))
         self.current_customer += 1
-        self.tm.posture_thread = True
         self.arrived_customer()
         
     
@@ -182,9 +182,6 @@ class RESTAURANT(object):
         
         print(self.consoleFormatter.format("GO_BACK", "HEADER"))
         
-        self.tm.setRPosture_srv("stand")
-        self.tm.talk("I am going back to the bar",wait=False)
-        
         print("adding place:last_customer_place"+ str(self.customer_count))
         self.tm.add_place(
                     "last_customer_place"+ str(self.customer_count),
@@ -195,10 +192,7 @@ class RESTAURANT(object):
         self.tm.set_current_place("last_customer_place"+ str(self.customer_count))
         
         # Going back to the initial position
-        self.tm.go_to_place("bar_table",graph=1)
-        
-        self.tm.posture_thread = False
-        
+        self.tm.go_to_place("bar_table",graph=1, lower_arms=False)
         self.tm.setRPosture_srv("stand")
         
         self.arrived_bar()
@@ -214,53 +208,15 @@ class RESTAURANT(object):
         
         self.tm.go_to_relative_point(0,0,180)
         
-        self.tm.talk(f"Hello barman, my name is pepper! I have a couple of orders from customers in the restaurant!",wait=True)
-        
-        self.tm.talk("I am going to deliver these items one by one, please hand them to me and touch my head when you've placed them in my hand",wait=True)
-        
-        for order in self.orders:
-            self.orders.pop()
-            self.tm.talk(f"The order is: {order}",wait=True)
-            self.tm.go_to_pose("small_object_left_hand")
-            pose = "small_object_left_hand"
-            list_foods = self.obtener_lista_de_alimentos(order,self.menu)
-            for food in list_foods:
-                list_foods.pop()
-                self.tm.talk(f"Listen carefully. Please hand me an {food}. Keep it in my hand until you've touched my head and then i will close my hand",wait=True)
-                self.tm.wait_for_head_touch(message="Touch my head to get going!")
-                self.tm.go_to_pose("close_both_hands")
-                self.tm.talk("Thank you! I will now deliver this item", "English",wait=False)
-                self.carrying = True
-                carry_thread = threading.Thread(target=self.carry_thread,args=[pose])
-                carry_thread.start()
-                self.tm.go_to_place("last_customer_place"+ str(self.customer_count), lower_arms=False)
-                self.tm.talk(f"Here you go, please listen carefully",wait=True)
-                self.tm.talk(f"I need you to grab the item and touch my head once you've got a good grip on it, Then i will let go and you can keep it",wait=True)
-                self.tm.wait_for_head_touch(message="")
-                self.tm.talk("Thank you! I will now return to the bar", "English",wait=True)
-                self.carrying = False
-                self.tm.setRPosture_srv("stand")
-                if len(list_foods)>0:
-                    self.tm.go_to_place("bar_table",graph=1)
-            self.delivering = False
-                
-                
+        self.tm.talk(f"Hello! I have an order from a customer in the restaurant!",wait=True)
+
+        order = self.orders.pop()
+        self.tm.talk(f"The order is: {order}",wait=True)
+    
         self.delivered_order()
         
         
     # --------------------------------------------- ADITIONAL FUNCTIONS ---------------------------------------------
-
-    def obtener_lista_de_alimentos(self,transcripcion, alimentos):
-        # Lista para almacenar el resultado
-        transcripcion = transcripcion.lower().replace(".","")
-        print(transcripcion)
-        resultado = []
-        for alimento in alimentos:
-            print(alimento)
-            if alimento in transcripcion:
-                resultado.append(alimento)
-
-        return resultado
 
     def look_around(self):
         
@@ -340,9 +296,9 @@ class RESTAURANT(object):
                         rospy.sleep(0.1)
                     print(depth_from_current_place)
                     if depth_from_current_place == 0 or depth_from_current_place == np.nan:
-                        self.tm.talk(f"But they are too far away for me to accurately reach them, i might need some help",wait=False)
+                        self.tm.talk(f"But they are too far away for me to accurately reach them.",wait=False)
                     else:
-                        self.tm.talk(f"I am navigating towards the customer",wait=False)
+                        self.tm.talk(f"I am navigating towards the customer with the id: {int(person[0])}",wait=False)
                         person_center = (person_x + person_width/2)
                         # 54 grados caben en la camara y hay 320 pixeles en resolution 1
                         factor = 54 / 320
@@ -370,8 +326,12 @@ class RESTAURANT(object):
                         start_y = start_position.y
                         start_angle = start_position.theta
                         self.taking_order = True
-                        navstack_goal_x = 20+nav_x
-                        navstack_goal_y = 20-nav_y
+                        current_position = self.tm.get_absolute_position_proxy()
+                        current_x = current_position.x
+                        current_y = current_position.y
+                        navstack_goal_x = current_x+nav_x
+                        #TODO revisar frame navstack
+                        navstack_goal_y = current_y-nav_y
                         print(f"theoritical goal navstack x: {navstack_goal_x}, y: {navstack_goal_y}")
                         start_time = rospy.get_time()
                         current_x = start_x
@@ -384,30 +344,11 @@ class RESTAURANT(object):
                         save_place_thread.start()
                         self.tm.Navigate_to_srv(nav_x-moved_x,-nav_y+moved_y)
                         self.tm.go_to_defined_angle_srv(start_angle)
-                        current_position = self.tm.get_absolute_position_proxy()
-                        current_x = current_position.x
-                        current_y = current_position.y
                         print("final_x:",current_x)
                         print("final_y:",current_y)
-                        #while abs(navstack_goal_x-current_x)>3 or abs(navstack_goal_y-current_y)>3 and rospy.get_time() - start_time < 60:
-                        #    self.tm.Navigate_to_srv(nav_x-moved_x,-nav_y+moved_y)
-                        #    self.tm.go_to_defined_angle_srv(start_angle)
-                        #    current_position = self.tm.get_absolute_position_proxy()
-                        #    current_x = current_position.x
-                        #    current_y = current_position.y
-                        #    print("difference navstack x:",abs(navstack_goal_x-current_x))
-                        #    print("difference navstack y:",abs(navstack_goal_y-current_y))
-                        #    print("current_x:",current_x)
-                        #    print("current_y:",current_y)
-                        #    moved_x = abs(start_x-current_x)
-                        #    moved_y = abs(start_y-current_y)
                         self.taking_order = False
-                        #self.tm.go_to_place("customer" + str(self.customer_count),graph=1)
+                        self.found_customer()
                 self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), 0],0.1)
-                if self.customer_count == 1:
-                    break   
-            if self.customer_count == 1:
-                break   
 
 
     def calcular_centro(self,label):

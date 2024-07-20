@@ -52,7 +52,7 @@ class RECEPTIONIST(object):
         
         # The angles of the chairs the robot must check to introduce the people
         self.chair_angles = [10,60,-10,-60]
-        self.chair_distances = [2,2,2,2]
+        self.chair_distances = [3,2.5,3,2.5]
 
         self.colors = ["red", "green", "blue", "yellow", "purple", "orange", "black", "white", "brown", "pink", "gray", "cyan", "magenta", "beige", "ivory", "teal", "lavender", "maroon", "navy", "olive", "silver", "turquoise", "plum", "gold", "salmon", "coral", "khaki", "indigo", "azure", "tan", "violet", "crimson", "fuchsia", "lemon", "peach", "lime", "mint", "apricot", "cerulean", "slate", "sepia", "emerald", "ruby", "lavender", "pear", "sapphire", "rose", "copper", "bronze", "brass", "nickel",]
 
