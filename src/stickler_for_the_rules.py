@@ -26,7 +26,7 @@ class STICKLER_RULES(object):
         # Initialization of the task module
         self.tm = tm(perception = True,speech=True, navigation=False, pytoolkit=True, manipulation=True)
         self.tm.initialize_node(self.task_name)
-        self.tm.vision_model = "llava-phi3"
+        self.tm.vision_model = "gpt-4o"
         
         # Definition of the permitted transitions between states
         transitions = [
@@ -47,7 +47,7 @@ class STICKLER_RULES(object):
         
         # Task parameter if the robot wants to confirm that the guests corrected the rule
         self.confirm_compliance = False
-        self.confirm_compliance_forbidden = False
+        self.confirm_compliance_forbidden = True
         
         self.someone_in_forbidden = False
         
@@ -56,26 +56,16 @@ class STICKLER_RULES(object):
         
         # Where the other guests are located, it is for the forbidden room
         self.party_place = ""
-        self.number_of_guests_in_party_place = 0
         # TODO create the initial place in NAVIGATION
         self.initial_place = "house_door"
         self.last_place = self.initial_place
-        
-        # TODO Set total guests
-        self.number_guests = 5
-        
-        # TODO Set total rule breakers
-        self.total_rule_breakers = 4
-        
-        # Number of people found breaking the rules
-        self.breakers_found = 0
         
         # TODO Set the forbidden room
         self.forbidden = "office"
         
         # List of places to check
-        self.list_places = ["hallway","office","kitchen","living_room"]
-        self.places_names = ["hallway","office","kitchen","living room"]
+        self.list_places = ["hallway", "living_room", "office", "kitchen"]
+        self.places_names = ["hallway", "living room", "office", "kitchen"]
         
         # List of checked places
         self.checked_places = []
@@ -90,8 +80,6 @@ class STICKLER_RULES(object):
     
     # --------------------------- FIRST STATE: INIT ------------------------------
     def on_enter_INIT(self):
-        
-        
         self.tm.initialize_pepper()
         
         self.tm.turn_camera("bottom_camera","custom",1,15)
@@ -159,7 +147,6 @@ class STICKLER_RULES(object):
             
         if (number_of_guests > 0) and (self.last_place != self.forbidden):
             self.party_place = self.last_place
-            self.number_of_guests_in_party_place = number_of_guests
             
         self.tm.setRPosture_srv("stand")
         self.tm.talk("I'm done checking this room'!","English", wait=False)
@@ -314,9 +301,7 @@ class STICKLER_RULES(object):
             self.tm.talk("I can't see your feet, but remember you can't use shoes in the house.","English", wait=True)
         
         if is_in_forbidden or self.has_drink==0 or self.has_shoes==1:
-            
             print("persona rompiendo una regla")
-            self.breakers_found += 1
             
         else:
             if self.has_drink != 4 and self.has_shoes != 4 and (not is_in_forbidden):
