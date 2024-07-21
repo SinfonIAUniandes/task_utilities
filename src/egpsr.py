@@ -9,6 +9,8 @@ import os
 import re
 import math
 import ast
+from sensor_msgs.msg import Range
+from std_srvs.srv import Empty
 from code_generation import ls_generate as gen
 from code_generation import generate_utils 
 from code_generation.database.models import Model
@@ -38,15 +40,20 @@ class EGPSR(object):
         rospy_check.start()
         
         ############################# GLOBAL VARIABLES #############################
-        self.init_place = "house_door"
-        self.places_names = ["kitchen","living_room","dining","bedroom"] #TODO: Change if there are more places
+        self.init_place = "entrance"
+        self.places_names = ["living_room", "hallway", "office", "kitchen"]
         self.head_angles = [0,60,-60]
         self.task_counter = 0
+        self.generated_code = ""
+        self.entering_door = True
         
         self.angles_to_check = self.head_angles
         self.last_checked_angle = None
         
         self.last_angle_checked = 0
+        subscriber_sonar= rospy.Subscriber("/sonar/front", Range, self.callback_sonar)
+        self.clearCostmapServiceClient = rospy.ServiceProxy('/move_base/clear_costmaps', Empty)
+        self.tm.vision_model = "gpt-4o"
 
     def on_enter_INIT(self):
         self.tm.initialize_pepper()
@@ -55,15 +62,24 @@ class EGPSR(object):
         self.tm.current_place = "house_door"
         self.tm.set_current_place(self.init_place)
         self.tm.turn_camera("depth_camera","custom",1,15)
-        self.tm.toggle_filter_by_distance(True,2,["person"])
+        self.tm.toggle_filter_by_distance(True,3,["person"])
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.talk("I am going to do the  "+ self.task_name + " task","English")
+        self.tm.talk("Please open the door to start","English",wait=False)
+        start_time = rospy.get_time()
+        while not self.sonar and rospy.get_time() - start_time < 20 :
+            print("Waiting for door to open ",self.sonar )
+            time.sleep(0.2)
+        self.clearCostmapServiceClient()
+        self.tm.talk("The door has been opened","English")
+        self.tm.go_to_place("house_door")
+        self.entering_door = False
         self.beggining()
         
     def on_enter_EGPSR(self):
         print(self.consoleFormatter.format("EGPSR", "HEADER"))
         self.tm.look_for_object("person")
-        self.tm.talk("Hello! please tell me what do you want me to do. I will try to execute the task you give me. Please talk loud and say the task once. You can talk to me when my eyes are blue: ","English")
+        self.tm.talk("Please tell me what you want me to do. I will try to execute the task you give me. Please talk loud and say the task once. You can talk to me when my eyes are blue: ","English")
         task = self.tm.speech2text_srv(0)
         self.generated_code = ""
 
@@ -74,7 +90,7 @@ class EGPSR(object):
         self.tm.talk(f"Your command is {task}","English", wait=True)
         self.tm.talk("If that is correct, please touch my head. If not, please wait until my eyes are blue again","English", wait=False)
         
-        correct = self.tm.wait_for_head_touch(message="", message_interval=100, timeout=13)
+        correct = self.tm.wait_for_head_touch(message="", message_interval=100, timeout=10)
         
         while not correct:
             self.tm.talk("I am sorry, may you please repeat your command?","English", wait=True)
@@ -108,9 +124,18 @@ class EGPSR(object):
         self.tm.go_to_pose("standard")
         self.current_place = self.places_names[0]
         
-        self.tm.talk(f"I am going to search a guest in the {self.current_place}","English", False)
+        self.tm.talk(f"I am going to search for guests in the {self.current_place}","English", False)
         self.tm.go_to_place(self.current_place)
         
+        if self.current_place == "kitchen":
+                self.tm.toggle_filter_by_distance(True,5,["person"])
+        elif self.current_place == "lviing_room":
+            self.tm.toggle_filter_by_distance(True,5,["person"])
+        elif self.current_place == "office":
+            self.tm.toggle_filter_by_distance(True,3,["person"])
+        elif self.current_place == "hallway":
+            self.tm.toggle_filter_by_distance(True,3,["person"])
+
         self.tm.talk("I am now checking the whole room to see if there is any person who may need my help.","English", wait=False)
         
         # Stablishing the angles to check in the room
@@ -124,10 +149,10 @@ class EGPSR(object):
             self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
             
             if angle==0:
-                rospy.sleep(3)
+                rospy.sleep(4)
                 
             elif angle==-60:
-                rospy.sleep(3)
+                rospy.sleep(4)
                 
             elif angle==60:
                 rospy.sleep(5)
@@ -147,20 +172,28 @@ class EGPSR(object):
             for person in persons:
                 
                 # Centering the robot camera with the person
-                self.tm.talk("I will check if you are raising your hand to request my help","English", wait=False)
+                self.tm.talk("Hello! If you need my help please raise your hand!","English", wait=True)
                 self.tm.center_head_with_label(person)
 
                 self.tm.talk("Give me one moment please!","English", wait=False)
                 person_response = self.tm.img_description(
-                        "Observe the person in front of you and respond only with True if the person is raising their hand. Otherwise, respond only with False. Here is an example output: False",
-                        "front_camera")
+                    "Observe the person in front of you and respond only with True if the person is raising their hand. Otherwise, respond only with False. Here is an example output: False",
+                    "front_camera")["message"]
+
+                while person_response not in ["True", "False", "true", "false"]:
+                    person_response = self.tm.img_description(
+                    "Observe the person in front of you and respond only with True if the person is raising their hand. Otherwise, respond only with False. Here is an example output: False",
+                    "front_camera")["message"]
                 
-                is_raisin = True if person_response["message"] == "True" else False
+                print("\nperson raising hand:",person_response)
+
+                is_raisin = True if "true" in person_response.lower() else False
 
                 self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
                 
                 if is_raisin:
                     # Going to the EGPSR state to ask the person for the task
+                    self.tm.talk("I see you are raising your hand, that means you may have a problem and need my help!","English", wait=True)
                     self.person_raised_hand()
         
         self.places_names.pop(0)
@@ -203,6 +236,13 @@ class EGPSR(object):
             time.sleep(0.1)
         print(self.consoleFormatter.format("Shutting down", "FAIL"))
         os._exit(os.EX_OK)
+
+
+    def callback_sonar(self,data):
+        if(data.range > 0.5):
+            self.sonar = True
+        else:
+            self.sonar = False
 
     def run(self):
         while not rospy.is_shutdown():

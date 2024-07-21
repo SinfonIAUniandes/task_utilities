@@ -2257,9 +2257,12 @@ class Task_module:
         """
         if self.manipulation and self.speech:
             try:
-                self.talk("Could you place the "+object_name+" in my hands, please?","English",wait=False)
-                self.go_to_pose("generic_grasp")
-                self.go_to_pose("open_both_hands")
+                self.talk("I am going to grab the "+object_name,"English",wait=False)
+                self.go_to_pose("grab_one")
+                rospy.sleep(2)
+                self.go_to_pose("raise_grab_one")
+                rospy.sleep(2)
+                self.go_to_pose("close_right_hand")
                 self.set_move_arms_enabled(False)
                 # Sleep for the robot not to leave before taking the item
                 rospy.sleep(5)
@@ -2281,11 +2284,13 @@ class Task_module:
         """
         if self.manipulation and self.speech:
             try:
-                self.talk("Please pick up the "+object_name,"English",wait=False)
-                rospy.sleep(5)
+                self.talk("Here, i brought the: "+object_name,"English",wait=False)
+                self.go_to_pose("open_right_hand")
+                rospy.sleep(2)
+                self.go_to_pose("grab_one")
+                rospy.sleep(2)
                 self.set_move_arms_enabled(True)
-                self.setRPosture_srv("stand") 
-                self.talk("Thank you!","English",wait=False)     
+                self.setRPosture_srv("stand")   
                 return True
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)

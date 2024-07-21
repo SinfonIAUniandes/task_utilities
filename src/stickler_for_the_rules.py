@@ -24,7 +24,7 @@ class STICKLER_RULES(object):
         states = ['INIT', 'LOOK4PERSON', 'ASK4SHOES', 'ASK4DRINK', 'GO2NEXT']
         
         # Initialization of the task module
-        self.tm = tm(perception = True,speech=True, navigation=False, pytoolkit=True, manipulation=True)
+        self.tm = tm(perception = True,speech=True, navigation=True, pytoolkit=True, manipulation=True)
         self.tm.initialize_node(self.task_name)
         self.tm.vision_model = "gpt-4o"
         
@@ -64,8 +64,8 @@ class STICKLER_RULES(object):
         self.forbidden = "office"
         
         # List of places to check
-        self.list_places = ["hallway", "living_room", "office", "kitchen"]
-        self.places_names = ["hallway", "living room", "office", "kitchen"]
+        self.list_places = ["living_room", "hallway", "office", "kitchen"]
+        self.places_names = ["living room","hallway",  "office", "kitchen"]
         
         # List of checked places
         self.checked_places = []
@@ -84,9 +84,8 @@ class STICKLER_RULES(object):
         
         self.tm.turn_camera("bottom_camera","custom",1,15)
         self.tm.turn_camera("depth_camera","custom",1,15)
-        self.tm.toggle_filter_by_distance(True,2,["person"])
-        self.tm.show_topic("/perception_utilities/yolo_publisher")
         
+        self.tm.toggle_filter_by_distance(True,3,["person"])
         self.tm.set_current_place(self.initial_place)
         self.checked_places.append(self.initial_place)
         self.last_place = self.initial_place
@@ -255,9 +254,16 @@ class STICKLER_RULES(object):
         for place_num in range(len(self.list_places)):
             
             place = self.list_places[place_num]
-            
+            if place == "kitchen":
+                self.tm.toggle_filter_by_distance(True,5,["person"])
+            elif place == "lviing_room":
+                self.tm.toggle_filter_by_distance(True,5,["person"])
+            elif place == "office":
+                self.tm.toggle_filter_by_distance(True,3,["person"])
+            elif place == "hallway":
+                self.tm.toggle_filter_by_distance(True,3,["person"])
+
             if place not in self.checked_places:
-                
                 self.tm.talk("I'm gonna check " + self.places_names[place_num],"English", wait=False)
                 self.tm.setRPosture_srv("stand")
                 self.tm.go_to_place(place)
