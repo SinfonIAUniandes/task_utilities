@@ -73,8 +73,8 @@ class Evento(object):
         req_stiffnesses.stiffnesses = 1
         self.motion_set_stiffnesses_client(req_stiffnesses)
         self.set_arms_security = rospy.ServiceProxy("pytoolkit/ALMotion/set_arms_security_srv", SetBool)
-        self.set_arms_security(False)
-        self.headSensorSubscriber = rospy.Subscriber("/touch", touch_msg, self.callback_head_sensor_subscriber)
+        self.set_arms_security(True)
+        self.armsSensorSubscriber = rospy.Subscriber("/touch", touch_msg, self.callback_arms_sensor_subscriber)
         rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
         self.beggining()
 
@@ -83,8 +83,8 @@ class Evento(object):
         anim_msg = self.gen_anim_msg("Gestures/BowShort_3")
         self.animationPublisher.publish(anim_msg)
         self.hearing = False
-        self.tm.talk("Bienvenido, soy Nova, es un gusto conocerte","Spanish",animated=False)
-        self.tm.talk("Di Hey Nova cuando quieras decirme algo, y chao cuando no quieras seguir hablando","Spanish",animated=True)
+        #self.tm.talk("Bienvenido, soy Nova, es un gusto conocerte","Spanish",animated=False)
+        #self.tm.talk("Di Hey Nova cuando quieras decirme algo, y chao cuando no quieras seguir hablando","Spanish",animated=True)
         rospy.sleep(0.9)
         self.tm.start_tracker_proxy()
         self.hearing = True
@@ -195,14 +195,17 @@ class Evento(object):
                 hora = fecha_actual.hour
                 minuto = fecha_actual.minute
                 answer="Son las: {} y {} minutos".format(hora, minuto)
-            elif "baila" in text.lower() or "baile" in text.lower():
-                answer = "Me encanta bailar!"
+            elif "baila" in text.lower() or " baile" in text.lower():
+                self.tm.talk("Me encanta bailar!","Spanish",animated=True, wait=True)
+                answer = ""
                 word_msg = speech_recognition_status_msg()
                 options = ["baile", "asereje"]
                 word_msg.status = random.choice(options)
                 self.callback_hot_word(word_msg)
             elif "darme la mano" in text.lower() or "dame la mano" in text.lower() or "da la mano" in text.lower():
                 answer = "Claro que si, toma cualquier mano y aprieta suavemente la parte de afuera!"
+            elif "sigue" in text.lower() or "siga" in text.lower() or "sígueme" in text.lower():
+                answer = ""
             else:
                 answer=self.tm.answer_question(request, save_conversation=True) 
             self.tm.talk(answer,"Spanish",animated=True, wait=True)
@@ -226,6 +229,17 @@ class Evento(object):
                 word_msg = speech_recognition_status_msg()
                 word_msg.status = "guitarra"
                 self.callback_hot_word(word_msg)
+            elif "sigue" in text.lower() or "siga" in text.lower() or "sígueme" in text.lower():
+                self.tm.talk("Solo te puedo seguir si me dan permiso, para esto deben decirme la contraseña","Spanish",animated=True, wait=True)
+                text = self.tm.speech2text_srv(seconds=0,lang="esp")
+                if "tobi" in text.lower() or "tovi" in text.lower() or "tobbi" in text.lower() or "tovvi" in text.lower() or "tobey" in text.lower()  or "toby" in text.lower() or "tovy" in text.lower()  or "tove" in text.lower() or "tobe" in text.lower() or "toy" in text.lower() or "toi" in text.lower():
+                    self.tm.talk("ding! ding! ding! Contraseña correcta, voy a seguir a la persona que tenga en frente hasta que me toquen la cabeza, por favor tengan cuidado conmigo.","Spanish",animated=True, wait=True)
+                    self.tm.start_follow_face_proxy()
+                    self.tm.wait_for_head_touch(timeout=1000000,message="")
+                    self.tm.talk("Ya pare de seguirte","Spanish",animated=True, wait=True)
+                    self.tm.stop_tracker_proxy()
+                else:
+                    self.tm.talk("Contraseña incorrecta!","Spanish",animated=True, wait=True)
         else:
             self.tm.talk("Disculpa, no te entendi, puedes hablar cuando mis ojos esten azules. Por favor habla mas lento","Spanish",animated=True)
         self.set_hot_words()
@@ -233,10 +247,10 @@ class Evento(object):
     def set_hot_words(self):
         if self.hearing:
             #self.tm.hot_word(["chao","detente","hey nova","baile","asereje","pose","musculos" ,"besos","foto","guitarra","cumpleaños","corazon","llama","helicoptero","zombi","carro","gracias"],thresholds=[0.45, 0.4, 0.398, 0.43, 0.43, 0.39, 0.4, 0.4, 0.5, 0.4, 0.4, 0.4, 0.41, 0.4, 0.4, 0.43, 0.4])
-            self.tm.hot_word(["hey nova", "chao"],thresholds=[0.375, 0.47])
+            self.tm.hot_word(["hey nova", "chao", "detente"],thresholds=[0.375, 0.47,0.38])
             
 
-    def callback_head_sensor_subscriber(self, msg: touch_msg):
+    def callback_arms_sensor_subscriber(self, msg: touch_msg):
         self.tm.hot_word([])
         req_stiffnesses = set_stiffnesses_srvRequest()
         if "hand_left_back" in msg.name:
@@ -245,9 +259,9 @@ class Evento(object):
             req_stiffnesses.names = "RArm"
         req_stiffnesses.stiffnesses = 0 if msg.state else 1
         self.motion_set_stiffnesses_client(req_stiffnesses)
-        if msg.state:
+        if msg.state and not "head" in msg.name:
             self.tm.talk("Sosten firmemente ahi para mover mi brazo", language="Spanish", wait=True)
-        else:
+        elif not "head" in msg.name:
             self.tm.talk("Soltaste mi mano", language="Spanish", wait=True)
         self.tm.hot_word(["hey nova", "chao"],thresholds=[0.375, 0.47])
 
@@ -286,6 +300,8 @@ class Evento(object):
         print(word, "listened")
         if word=="detente":
             self.tm.setRPosture_srv("stand")
+            print("se detuvo al robot")
+            rospy.sleep(2)
             self.haciendo_animacion = False
             
         if not self.haciendo_animacion:
@@ -346,7 +362,8 @@ class Evento(object):
             elif word == "gracias":
                 anim_msg = self.gen_anim_msg("Gestures/BowShort_3")
                 self.animationPublisher.publish(anim_msg)
-            self.haciendo_animacion = False
+            if word!="baile" and word!="asereje":
+                self.haciendo_animacion = False
     
 # Crear una instancia de la maquina de estados
 if __name__ == "__main__":

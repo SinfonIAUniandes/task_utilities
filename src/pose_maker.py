@@ -10,7 +10,7 @@ from transitions import Machine
 from task_module import Task_module as tm
 
 from std_srvs.srv import SetBool
-from robot_toolkit_msgs.srv import set_stiffnesses_srv, set_stiffnesses_srvRequest
+from robot_toolkit_msgs.srv import set_stiffnesses_srv, set_stiffnesses_srvRequest, set_open_close_hand_srv, set_open_close_hand_srvRequest
 from robot_toolkit_msgs.msg import leds_parameters_msg, touch_msg
 
 # --------------- MESSAGES AND SERVICES IMPORTS ---------------
@@ -96,6 +96,17 @@ class CARRY_MY_LUGGAGE(object):
         self.tm.show_words_proxy()
         rospy.sleep(3)
         print(self.consoleFormatter.format("INIT", "HEADER"))
+        request = set_open_close_hand_srvRequest()
+        request.hand = "All"
+        request.state = "False"
+        rospy.wait_for_service("/pytoolkit/ALAutonomousBlinking/toggle_blinking_srv")
+        self.toggle_blinking = rospy.ServiceProxy("/pytoolkit/ALAutonomousBlinking/toggle_blinking_srv", SetBool)
+        self.toggle_blinking(False)
+        self.toggle_blinking(False)
+        rospy.wait_for_service("/pytoolkit/ALMotion/toggle_breathing_srv")
+        toggle_breathing_proxy = rospy.ServiceProxy("/pytoolkit/ALMotion/toggle_breathing_srv", set_open_close_hand_srv)
+        toggle_breathing_proxy(request)
+        self.tm.stop_tracker_proxy()
         self.motion_set_stiffnesses_client = rospy.ServiceProxy("pytoolkit/ALMotion/set_stiffnesses_srv", set_stiffnesses_srv)
         req_stiffnesses = set_stiffnesses_srvRequest()
         req_stiffnesses.names = "Body"
