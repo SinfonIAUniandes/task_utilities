@@ -50,7 +50,6 @@ class Evento(object):
         ############################# GLOBAL VARIABLES #############################
 
     def on_enter_INIT(self):
-        self.tm.talk("Iniciando modo de Demostración","Spanish")
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
         self.tm.initialize_pepper()
         subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
@@ -78,13 +77,7 @@ class Evento(object):
 
     def on_enter_TALK(self):
         print(self.consoleFormatter.format("TALK", "HEADER"))
-        anim_msg = self.gen_anim_msg("Gestures/BowShort_3")
-        self.animationPublisher.publish(anim_msg)
-        self.hearing = False
-        self.tm.talk("Bienvenido, soy Nova, es un gusto conocerte","Spanish",animated=False)
-        self.tm.talk("Di Hey Nova cuando quieras decirme algo, y chao cuando no quieras seguir hablando","Spanish",animated=True)
         rospy.sleep(0.9)
-        self.tm.start_tracker_proxy()
         self.hearing = True
         while not self.is_done:
             if self.hey_pepper:
@@ -100,8 +93,7 @@ class Evento(object):
         self.is_done=False
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
         self.tm.setRPosture_srv("stand")
-        self.tm.setMoveHead_srv.call("up")
-        self.tm.stop_tracker_proxy()
+        self.tm.set_angles_srv(["HeadYaw","HeadPitch"],[0,0.6],0.05)
         self.person_arrived()
 
     def check_rospy(self):
@@ -174,86 +166,22 @@ class Evento(object):
     
     def hey_pepper_function(self):
         self.tm.hot_word([])
-        self.tm.talk("Dímelo manzana","Spanish",animated=True,wait=False)
+        self.tm.talk("Escuchando","Spanish",animated=True,wait=False)
         rospy.sleep(1)
         text = self.tm.speech2text_srv(seconds=0,lang="esp")
         anim_msg = self.gen_anim_msg("Waiting/Think_3")
         self.animationPublisher.publish(anim_msg)
         if not ("None" in text):
-            request = f"""La persona dijo: {text}. Si hay palabras en otro idioma en tu respuesta escribelas como se pronunicarian en español porque en este momento solo puedes hablar español y ningun otro idioma, por ejemplo si en tu respuesta esta Python, responde Paiton. No añadas contenido complejo a tu respuesta como codigo, solo explica lo que sea necesario."""
-            if "hoy" in text or "día" in text:
-                fecha_actual = datetime.now()
-                print(datetime.now())
-                dia = fecha_actual.day
-                mes = fecha_actual.month
-                m = ['nan','enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
-                answer="Hoy es: {} de {}".format(dia, m[mes])
-            elif "hora" in text or "horas" in text:
-                fecha_actual = datetime.now()
-                hora = fecha_actual.hour
-                minuto = fecha_actual.minute
-                answer="Son las: {} y {} minutos".format(hora, minuto)
-            elif "baila" in text.lower() or " baile" in text.lower():
-                self.tm.talk("Me encanta bailar!","Spanish",animated=True, wait=True)
-                answer = ""
-                word_msg = speech_recognition_status_msg()
-                options = ["baile", "asereje"]
-                word_msg.status = random.choice(options)
-                self.callback_hot_word(word_msg)
-            elif "darme la mano" in text.lower() or "dame la mano" in text.lower() or "da la mano" in text.lower():
-                answer = "Claro que si, toma cualquier mano y aprieta suavemente la parte de afuera!"
-            elif "tómame una foto" in text.lower() or "tomame una foto" in text.lower():
-                answer = "fotito!"
-                word_msg = speech_recognition_status_msg()
-                word_msg.status = "foto"
-                self.callback_hot_word(word_msg)
-            elif "sigue" in text.lower() or "siga" in text.lower() or "sígueme" in text.lower() or "seguirme" in text.lower():
-                answer = ""
-            else:
-                answer=self.tm.answer_question(request, save_conversation=True) 
-            self.tm.talk(answer,"Spanish",animated=True, wait=True)
-            if "beso" in text.lower():
-                word_msg = speech_recognition_status_msg()
-                word_msg.status = "beso"
-                self.callback_hot_word(word_msg)
-            elif "gracias" in text.lower():
-                word_msg = speech_recognition_status_msg()
-                word_msg.status = "gracias"
-                self.callback_hot_word(word_msg)
-            elif "pose" in text.lower():
-                word_msg = speech_recognition_status_msg()
-                word_msg.status = "pose"
-                self.callback_hot_word(word_msg)
-            elif "musculo" in text.lower():
-                word_msg = speech_recognition_status_msg()
-                word_msg.status = "musculos"
-                self.callback_hot_word(word_msg)
-            elif "zombi" in text.lower():
-                word_msg = speech_recognition_status_msg()
-                word_msg.status = "zombi"
-                self.callback_hot_word(word_msg)
-            elif "guitarra" in text.lower():
-                word_msg = speech_recognition_status_msg()
-                word_msg.status = "guitarra"
-                self.callback_hot_word(word_msg)
-            elif "sigue" in text.lower() or "siga" in text.lower() or "sígueme" in text.lower() or "seguirme" in text.lower():
-                self.tm.talk("Solo te puedo seguir si me dan permiso, para esto deben decirme la contraseña","Spanish",animated=True, wait=True)
-                text = self.tm.speech2text_srv(seconds=0,lang="esp")
-                if "tobi" in text.lower() or "tovi" in text.lower() or "tobbi" in text.lower() or "tovvi" in text.lower() or "tobey" in text.lower()  or "toby" in text.lower() or "tovy" in text.lower()  or "tove" in text.lower() or "tobe" in text.lower() or "toy" in text.lower() or "toi" in text.lower():
-                    self.tm.talk("ding! ding! ding! Contraseña correcta, voy a seguir a la persona que tenga en frente hasta que me toquen la cabeza, por favor tengan cuidado conmigo.","Spanish",animated=True, wait=True)
-                    self.tm.start_follow_face_proxy()
-                    self.tm.wait_for_head_touch(timeout=1000000,message="")
-                    self.tm.talk("Ya pare de seguirte","Spanish",animated=True, wait=True)
-                    self.tm.stop_tracker_proxy()
-                else:
-                    self.tm.talk("Contraseña incorrecta!","Spanish",animated=True, wait=True)
+            request = f"""Nova dijo: {text}. Justo ahora estas hablando con el robot Pepper Nova de la Universidad de los Andes. Responde brevemente. Si hay palabras en otro idioma en tu respuesta escribelas como se pronunicarian en español porque en este momento solo puedes hablar español y ningun otro idioma, por ejemplo si en tu respuesta esta Python, responde Paiton. No añadas contenido complejo a tu respuesta como codigo, solo explica lo que sea necesario."""
+            answer=self.tm.answer_question(request, save_conversation=True) 
+            self.tm.talk("Hey Nova \\pau=4000\\"+answer,"Spanish",animated=True, wait=True, speed="90")
         else:
-            self.tm.talk("Disculpa, no te entendi, puedes hablar cuando mis ojos esten azules. Por favor habla mas lento","Spanish",animated=True)
+            self.tm.talk("Hey Nova \\pau=4000\\"+"Disculpa, no te entendi, puedes hablar cuando mis ojos esten azules. Por favor habla mas lento","Spanish",animated=True, speed="90")
         self.set_hot_words()
 
     def set_hot_words(self):
         if self.hearing:
-            self.tm.hot_word(["hey nova", "chao", "detente"],thresholds=[0.36, 0.47,0.38])
+            self.tm.hot_word(["hey opera"],thresholds=[0.25])
             
 
     def callback_arms_sensor_subscriber(self, msg: touch_msg):
@@ -317,7 +245,7 @@ class Evento(object):
             if word == "chao":
                 self.is_done = True
                 self.tm.answer_question("", save_conversation=False) 
-            elif word == "hey nova":
+            elif word == "hey opera":
                 self.hey_pepper = True
             elif word == "guitarra":
                 anim_msg = self.gen_anim_msg("Waiting/AirGuitar_1")
