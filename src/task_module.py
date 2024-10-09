@@ -14,8 +14,8 @@ from threading import Thread
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv, tablet_service_srvRequest, navigate_to_srv, navigate_to_srvRequest, set_angle_srv, set_angle_srvRequest
-from robot_toolkit_msgs.msg import touch_msg, speech_recognition_status_msg, set_angles_msg
+from robot_toolkit_msgs.srv import set_output_volume_srv, set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv, tablet_service_srvRequest, navigate_to_srv, navigate_to_srvRequest, set_angle_srv, set_angle_srvRequest
+from robot_toolkit_msgs.msg import touch_msg, speech_recognition_status_msg, set_angles_msg, animation_msg, motion_tools_msg
 
 from manipulation_msgs.srv import go_to_pose, move_head
 
@@ -454,11 +454,39 @@ class Task_module:
 
         self.pytoolkit = pytoolkit
         if pytoolkit:
+            
+
+            print(self.consoleFormatter.format("Waiting for pytoolkit/ALAudioDevice/set_output_volume_srv...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALAudioDevice/set_output_volume_srv")
+            self.set_volume = rospy.ServiceProxy("/pytoolkit/ALAudioDevice/set_output_volume_srv", set_output_volume_srv)
+            
             print(
                 self.consoleFormatter.format(
                     "Waiting for PYTOOLKIT services...", "WARNING"
                 )
             )
+            
+            print(
+                self.consoleFormatter.format(
+                    "Waiting for /pytoolkit/ALTabletService/show_web_view_srv...",
+                    "WARNING",
+                )
+            )
+            rospy.wait_for_service("/pytoolkit/ALTabletService/show_web_view_srv")
+            self.show_web_proxy = rospy.ServiceProxy(
+                "/pytoolkit/ALTabletService/show_web_view_srv", tablet_service_srv
+            )
+            
+            
+            
+            print(
+                self.consoleFormatter.format(
+                    "Waiting for /pytoolkit/ALSpeechRecognition/set_hot_word_language_srv...",
+                    "WARNING",
+                )
+            )
+            rospy.wait_for_service('/pytoolkit/ALSpeechRecognition/set_hot_word_language_srv')
+            self.hot_word_language_srv = rospy.ServiceProxy("/pytoolkit/ALSpeechRecognition/set_hot_word_language_srv", tablet_service_srv)
 
             self.setMoveHead_srv = rospy.ServiceProxy(
                 "/pytoolkit/ALMotion/move_head_srv",
@@ -561,6 +589,8 @@ class Task_module:
             self.start_follow_face_proxy = rospy.ServiceProxy("/pytoolkit/ALTracker/start_follow_face",battery_service_srv)
             
             self.move_publisher = rospy.Publisher('/pytoolkit/ALMotion/move', Twist, queue_size=10)
+            
+            self.animationPublisher = rospy.Publisher('/animations', animation_msg, queue_size=10)
             
             self.subscriber_angles = rospy.Subscriber("/pytoolkit/ALMotion/get_angles",set_angles_msg,self.callback_get_angles)
             
@@ -1362,7 +1392,7 @@ class Task_module:
             print("speech as false")
             return False
         
-    def hot_word(self, words: list, noise = False, eyes = False, thresholds = None):
+    def hot_word(self, words: list, noise = False, eyes = False, thresholds = None, language="English"):
         """
         Input:
         words -> list of words to detect
@@ -1373,6 +1403,7 @@ class Task_module:
         ----------
         Allows the robot to detect hot words
         """
+        self.hot_word_language_srv(language)
         if thresholds == None:
             thresholds = [0.4 for _ in range(len(words))]
         else:
@@ -2197,6 +2228,21 @@ class Task_module:
         else:
             print("manipulation as false")
             return False
+        
+    def motion_tools_service(self):
+        """
+        Enables the motion Tools service from the toolkit of the robot.
+        """
+        request = motion_tools_msg()
+        request.command = "enable_all"
+        print("Waiting for motion tools service")
+        rospy.wait_for_service('/robot_toolkit/motion_tools_srv')
+        try:
+            motion = rospy.ServiceProxy('/robot_toolkit/motion_tools_srv', motion_tools_srv)
+            motion(request)
+            print("Motion tools service connected!")
+        except rospy.ServiceException as e:
+            print("Service call failed")
     
     def head_srv_thread(self, head_position="default") -> None:
         """
@@ -2339,6 +2385,29 @@ class Task_module:
             print("pytoolkit as false")
             return False
 
+    def show_web_view(self, web_url: str) -> bool:
+        """
+        Input: web_url for a website
+        Output: True if the service was called correctly, False if not
+        ----------
+        Displays a website on the screen of the robot
+        """
+        if self.pytoolkit:
+            try:
+                request = tablet_service_srvRequest()
+                request.url = web_url
+                approved = self.show_web_proxy(request)
+                if approved == "OK":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("pytoolkit as false")
+            return False
+
     def set_awareness(self, state: bool) -> bool:
         """
         Input: True turn on || False turn off
@@ -2359,6 +2428,12 @@ class Task_module:
         else:
             print("pytoolkit as false")
             return False
+        
+    def play_animation(self, animation_name):
+        anim_msg = animation_msg()
+        anim_msg.family = "animations"
+        anim_msg.animation_name = animation_name
+        self.animationPublisher.publish(anim_msg)
 
     def set_angles_srv(self, joints: list, angles:list, speed:float) -> bool:
         """
