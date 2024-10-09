@@ -121,13 +121,16 @@ class CARRY_MY_LUGGAGE(object):
         self.set_arms_security = rospy.ServiceProxy("pytoolkit/ALMotion/set_arms_security_srv", SetBool)
         self.set_arms_security(False)
         self.grabando = False
+        self.subscriber_angles = rospy.Subscriber("/pytoolkit/ALMotion/get_angles",set_angles_msg,self.callback_get_angles)
         self.headSensorSubscriber = rospy.Subscriber("/touch", touch_msg, self.callback_head_sensor_subscriber)
+        subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
         hot_word_language_srv = rospy.ServiceProxy("/pytoolkit/ALSpeechRecognition/set_hot_word_language_srv", tablet_service_srv)
         hot_word_language_srv("Spanish")
+        self.tm.hot_word(["graba", "detente", "repite","abre","cierra"],thresholds=[0.4, 0.4,0.38,0.4,0.4])
         self.setLedsColor(165,165,0)
         self.setLedsColor(165,165,0)
         self.setLedsColor(165,165,0)
-        self.tm.talk("Generador de poses activado!",language="Spanish")
+        self.tm.talk("Ya!",language="Spanish")
         #self.tm.talk("Generador de poses activado. Cuando mis ojos esten naranjas mis extremidades estan fijas, cuando estan verdes mis extremidades se pueden mover, para empezar a mover mi cabeza toca el sensor en la mitad de mi cabeza y cuando acabes vuelve a tocarlo.", language="Spanish", wait=True)
         #self.tm.talk("Para mover uno de mis brazos toca el sensor exterior y mueve el brazo con cuidado, una vez sueltes el sensor mi brazo se quedara fijo", language="Spanish", wait=True)    
             
@@ -166,29 +169,83 @@ class CARRY_MY_LUGGAGE(object):
             else:
                 self.tm.talk("Brazo izquierdo fijo", language="Spanish", wait=False)
                 self.setLedsColor(165,165,0)
+                print(self.angles)
             req_stiffnesses = set_stiffnesses_srvRequest()
             req_stiffnesses.names = "LArm"
             req_stiffnesses.stiffnesses = 0 if msg.state else 1
-            self.motion_set_stiffnesses_client(req_stiffnesses)
-            req_stiffnesses = set_stiffnesses_srvRequest()
-            req_stiffnesses.names = "LHand"
-            req_stiffnesses.stiffnesses = 1
             self.motion_set_stiffnesses_client(req_stiffnesses)
         elif "hand_right_back" in msg.name:  
             if msg.state:
                 self.tm.talk("Brazo derecho suelto", language="Spanish", wait=False)
                 self.setLedsColor(0,255,0)
             else:
-                self.tm.talk("Brazo derecho fijo", language="Spanish", wait=False)
+                self.tm.talk("Brazo izquierdo fijo", language="Spanish", wait=False)
                 self.setLedsColor(165,165,0)
+                print(self.angles)
             req_stiffnesses = set_stiffnesses_srvRequest()
             req_stiffnesses.names = "RArm"
             req_stiffnesses.stiffnesses = 0 if msg.state else 1
+            self.motion_set_stiffnesses_client(req_stiffnesses)
+
+    def callback_hot_word(self,data):
+        word = data.status
+        print(word, "listened")
+        if word=="graba":
+            self.grabando = True
+            self.angles = []
+            toggle_msg =  set_angle_srvRequest()
+            toggle_msg.name = ["Body"]
+            toggle_msg.angle = []
+            toggle_msg.speed = 0
+            self.tm.toggle_get_angles_topic_srv(toggle_msg)
+        elif word=="para":
+            self.grabando = False
+            toggle_msg =  set_angle_srvRequest()
+            toggle_msg.name = ["None"]
+            toggle_msg.angle = []
+            toggle_msg.speed = 0
+            self.tm.toggle_get_angles_topic_srv(toggle_msg)
+        elif word=="repite":
+            self.grabando = False
+            self.tm.set_angles_srv(joints=["Body"], angles= self.angles.pop(0), speed= 0.1)
+            rospy.sleep(3)
+            for angle_idx in range(0, len(self.angles), 3):
+                angle = self.angles[angle_idx]
+                self.tm.set_angles_srv(joints=["Body"], angles=angle, speed=0.1)
+        elif word=="cierra":
+            req_stiffnesses = set_stiffnesses_srvRequest()
+            req_stiffnesses.names = "LHand"
+            req_stiffnesses.stiffnesses = 1
             self.motion_set_stiffnesses_client(req_stiffnesses)
             req_stiffnesses = set_stiffnesses_srvRequest()
             req_stiffnesses.names = "RHand"
             req_stiffnesses.stiffnesses = 1
             self.motion_set_stiffnesses_client(req_stiffnesses)
+            request = set_open_close_hand_srvRequest()
+            request.hand = "both"
+            request.state = "close"
+            self.open_close_hand_proxy(request)
+        elif word=="abre":
+            req_stiffnesses = set_stiffnesses_srvRequest()
+            req_stiffnesses.names = "LHand"
+            req_stiffnesses.stiffnesses = 1
+            self.motion_set_stiffnesses_client(req_stiffnesses)
+            req_stiffnesses = set_stiffnesses_srvRequest()
+            req_stiffnesses.names = "RHand"
+            req_stiffnesses.stiffnesses = 1
+            self.motion_set_stiffnesses_client(req_stiffnesses)
+            request = set_open_close_hand_srvRequest()
+            request.hand = "both"
+            request.state = "open"
+            self.open_close_hand_proxy(request)
+  
+    def callback_get_angles(self, msg):
+        if self.grabando:
+            if len(self.angles)>0:
+                if self.angles[-1] != msg.angles:
+                    self.angles.append(msg.angles)
+            else:
+                self.angles.append(msg.angles)
   
     # --------------- MACHINE INITIALIZATION FUNCTION ---------------            
     def run(self):
