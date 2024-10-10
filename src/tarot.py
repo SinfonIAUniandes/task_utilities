@@ -1,62 +1,42 @@
 #!/usr/bin/env python3
 from transitions import Machine
 from task_module import Task_module as tm
-from datetime import datetime
 import ConsoleFormatter
 import threading
-import pandas as pd
 import rospy
-import random
 import os
-import csv
+import json
+import random
 
 from std_srvs.srv import SetBool
-from robot_toolkit_msgs.msg import speech_recognition_status_msg, animation_msg, motion_tools_msg, leds_parameters_msg, touch_msg
-from robot_toolkit_msgs.srv import tablet_service_srv,  set_open_close_hand_srv, set_open_close_hand_srvRequest, motion_tools_srv, battery_service_srv, set_output_volume_srv, tablet_service_srvRequest, set_stiffnesses_srv, set_stiffnesses_srvRequest
+from robot_toolkit_msgs.msg import animation_msg, leds_parameters_msg
+from robot_toolkit_msgs.srv import set_stiffnesses_srv, set_stiffnesses_srvRequest
+
+from perception_msgs.srv import read_qr_srvRequest, read_qr_srv
 
 class Tarot(object):
     def __init__(self):
-        # TODO
-        """
-        - Revisar si se meten los servicios de interface o del pytoolkit directamente (ojala nodo de interface)
-        - Falta meter todos los servicios del pytoolkit al modulo para que se puedan llamar facilmente desde la maquina de estados.
-        - Falta crear behaviours como el spin_until_object que es usado varias veces en varios tasks.
-        - Falta revisar todos los angulos de navegacion al hacer look_4_something y la velocidad de giro 
-        - Poner una redundancia para cuando el robot asigna un nuevo a id a una misma persona para que no la presente (lista con los nombres de los que ya presento, incluyendo el actual)
-        """
 
         self.consoleFormatter=ConsoleFormatter.ConsoleFormatter()
         # Definir los estados posibles del semáforo
-        self.task_name = "Event"
-        self.hearing = True
-        self.is_done = False
-        self.hey_pepper=False
-        self.haciendo_animacion = False
-        states = ['INIT', 'WAIT4GUEST', 'TALK', 'WAIT4GUEST', 'Q_A', 'MOVE_CARD', 'ASK4QR', 'ANSWER_TAROT', 'GIVE_CARD']
-        self.tm = tm(perception = False,speech=True, pytoolkit=True)
+        self.task_name = "Tarot"
+        states = ['INIT', 'TALK', 'WAIT4GUEST', 'Q_A', 'MOVE_CARD', 'ASK4QR', 'ANSWER_TAROT', 'GIVE_CARD']
+        self.tm = tm(perception = False,speech=True, pytoolkit=True, manipulation=True)
         self.tm.initialize_node(self.task_name)
+        
+        self.signo = ""
 
         transitions = [
             {'trigger': 'beggining', 'source': 'INIT', 'dest': 'WAIT4GUEST'},
             {'trigger': 'person_found', 'source': 'WAIT4GUEST', 'dest': 'Q_A'},
             {'trigger': 'q_answered', 'source': 'Q_A', 'dest': 'MOVE_CARD'},
             {'trigger': 'card_in_place', 'source': 'MOVE_CARD', 'dest': 'ASK4QR'},
-            {'trigger': 'card_recognized', 'source': 'ASK4QR', 'dest': 'ANSWER_TAROT'},
-            {'trigger': 'end_tarot', 'source': 'ANSWER_TAROT', 'dest': 'GIVE_CARD'},
+            {'trigger': 'card_recognized', 'source': 'ASK4QR', 'dest': 'GIVE_CARD'},
             {'trigger': 'restart', 'source': 'GIVE_CARD', 'dest': 'WAIT4GUEST'}
         ]
         
-        # Crear la máquina de estados
-        self.machine = Machine(model=self, states=states, transitions=transitions, initial='INIT')
-        rospy_check = threading.Thread(target=self.check_rospy)
-        rospy_check.start()
-        ############################# GLOBAL VARIABLES #############################
-
-    def on_enter_INIT(self):
-        self.tm.talk("Iniciando modo de Demostración","Spanish")
-        print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
+        self.qr_node_service = rospy.ServiceProxy("/vision_utilities/read_qr_srv", read_qr_srv)
         self.tm.initialize_pepper()
-        subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
         self.motion_set_stiffnesses_client = rospy.ServiceProxy("pytoolkit/ALMotion/set_stiffnesses_srv", set_stiffnesses_srv)
         req_stiffnesses = set_stiffnesses_srvRequest()
         req_stiffnesses.names = "Body"
@@ -64,46 +44,86 @@ class Tarot(object):
         self.motion_set_stiffnesses_client(req_stiffnesses)
         self.set_arms_security = rospy.ServiceProxy("pytoolkit/ALMotion/set_arms_security_srv", SetBool)
         self.set_arms_security(True)
-        self.armsSensorSubscriber = rospy.Subscriber("/touch", touch_msg, self.callback_arms_sensor_subscriber)
-        rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
-        self.beggining()
+        self.diccionario_signos= {
+            "Aries": 0, 
+            "Tauro": 1, 
+            "Géminis": 2, 
+            "Cáncer": 3, 
+            "Leo": 4, 
+            "Virgo": 5, 
+            "Libra": 6, 
+            "Escorpio": 7, 
+            "Sagitario": 8, 
+            "Capricornio": 9, 
+            "Acuario": 10, 
+            "Piscis": 11
+        }
 
+
+        self.diccionario_cartas = {
+            "0": "El Loco", 
+            "1": "El Mago", 
+            "2": "La Sacerdotisa", 
+            "3": "La Emperatriz", 
+            "4": "El Emperador", 
+            "5": "El Hierofante", 
+            "6": "El Enamorado", 
+            "7": "El Carro", 
+            "8": "La Fuerza", 
+            "9": "El Ermitaño", 
+            "10": "La Rueda de la Fortuna", 
+            "11": "La Justicia", 
+            "12": "El Colgado"
+        }        
+        with open('src/task_utilities/src/another.json', 'r') as file:
+            self.cartas = json.load(file)
+        # Crear la máquina de estados
+        self.machine = Machine(model=self, states=states, transitions=transitions, initial='INIT')
+        rospy_check = threading.Thread(target=self.check_rospy)
+        rospy_check.start()
+        ############################# GLOBAL VARIABLES #############################
+
+    def on_enter_INIT(self):
+        print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
+        
+                    
+            
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
-        self.hearing = False
-        rospy.sleep(0.9)
-        self.hearing = True
-        while not self.is_done:
-            if self.hey_pepper:
-                self.tm.show_words_proxy()
-                self.person_found()
-                self.hey_pepper=False
-            rospy.sleep(0.1)
+        self.tm.go_to_pose("tarotist",velocity=0.1)
+        self.tm.wait_for_arm_touch()
+        self.person_found()
 
     def on_enter_Q_A(self):
         print(self.consoleFormatter.format("Q_A", "HEADER"))
-        self.hearing = False
-        nombre = self.tm.q_a('name')
-        self.TALK_done()
+        self.tm.talk(text="Por favor dime tu nombre", language="Spanish", wait=True, animated=False)
+        nombre = self.tm.speech2text_srv(0,lang="esp")
+        self.tm.talk(text="Por favor dime tu fecha de nacimiento", language="Spanish", wait=True, animated=False)
+        fecha = self.tm.speech2text_srv(0,lang="esp")
+        self.signo = self.tm.answer_question(f"Cual es el signo zodiacal de una persona con esta fecha de nacimiento? {fecha}. Responde en una sola palabra")
+        self.q_answered()
 
     def on_enter_MOVE_CARD(self): 
         print(self.consoleFormatter.format("MOVE_CARD", "HEADER"))
-        #TODO: Estado para que mueva la cartita
         self.card_in_place()
 
     def on_enter_ASK4QR(self): 
         print(self.consoleFormatter.format("ASK4QR", "HEADER"))
-        #TODO: Estado para que reconozca la carta
+        self.tm.talk("Por favor toma la carta que te acerque y muestrame el codigo QR",language="Spanish", wait=True, animated=False)
+        read_qr_message = read_qr_srvRequest()
+        read_qr_message.timeout = 20
+        card_number = int(self.qr_node_service(read_qr_message).text)
+        print(card_number)
+        self.signo ="Acuario"
+        signo_numero = self.diccionario_signos[self.signo]
+        respuesta = random.choice(self.cartas[card_number][signo_numero])
+        self.tm.talk(respuesta,language="Spanish",wait=True)
         self.card_recognized()
-
-    def on_enter_ANSWER_TAROT(self): 
-        print(self.consoleFormatter.format("ANSWER_TAROT", "HEADER"))
-        #TODO: Estado para que responda lo que sea que vaya a responder
-        self.end_tarot()
 
     def on_enter_GIVE_CARD(self): 
         print(self.consoleFormatter.format("GIVE_CARD", "HEADER"))
-        #TODO: Estado para que señale la carta que la persona tiene que llevarse y despedirse :)
+        #Estado para que señale la carta que la persona tiene que llevarse y despedirse :)
+        self.tm.talk(text="Gracias por participar, toma una tarjeta y un sticker de la mesa", language="Spanish")
         self.restart()
 
     def check_rospy(self):
@@ -116,123 +136,7 @@ class Tarot(object):
     def run(self):
         while not rospy.is_shutdown():
             self.beggining()
-    
-    def enable_hot_word_service(self):
-        """
-        Enables hotwords detection from the toolkit of the robot.
-        """
-        print("Waiting for hot word service")
-        rospy.wait_for_service('/pytoolkit/ALSpeechRecognition/set_hot_word_language_srv')
-        try:
-            hot_word_language_srv = rospy.ServiceProxy("/pytoolkit/ALSpeechRecognition/set_hot_word_language_srv", tablet_service_srv)
-            hot_word_language_srv("Spanish")
-            self.set_hot_words()
-            print("Hot word service connected!")
-        except rospy.ServiceException as e:
-            print("Service call failed")
-    
-    def enable_breathing_service(self):
-        """
-        Enables the breathing animations of the robot.
-        """
-        request = set_open_close_hand_srvRequest()
-        request.hand = "All"
-        request.state = "True"
-        print("Waiting for breathing service")
-        rospy.wait_for_service("/pytoolkit/ALMotion/toggle_breathing_srv")
-        try:
-            toggle_breathing_proxy = rospy.ServiceProxy("/pytoolkit/ALMotion/toggle_breathing_srv", set_open_close_hand_srv)
-            toggle_breathing_proxy(request)
-            print("Breathing service connected!")
-        except rospy.ServiceException as e:
-            print("Service call failed")
-        request = set_open_close_hand_srvRequest()
-        request.hand = "Head"
-        request.state = "False"
-        print("Waiting for breathing service")
-        rospy.wait_for_service("/pytoolkit/ALMotion/toggle_breathing_srv")
-        try:
-            toggle_breathing_proxy = rospy.ServiceProxy("/pytoolkit/ALMotion/toggle_breathing_srv", set_open_close_hand_srv)
-            toggle_breathing_proxy(request)
-            print("Breathing service connected!")
-        except rospy.ServiceException as e:
-            print("Service call failed")
-    
-    def motion_tools_service(self):
-        """
-        Enables the motion Tools service from the toolkit of the robot.
-        """
-        request = motion_tools_msg()
-        request.command = "enable_all"
-        print("Waiting for motion tools service")
-        rospy.wait_for_service('/robot_toolkit/motion_tools_srv')
-        try:
-            motion = rospy.ServiceProxy('/robot_toolkit/motion_tools_srv', motion_tools_srv)
-            motion(request)
-            print("Motion tools service connected!")
-        except rospy.ServiceException as e:
-            print("Service call failed")
-    
-    def hey_pepper_function(self):
-        self.tm.hot_word([])
-        self.tm.talk("Dímelo manzana","Spanish",animated=True,wait=False) #TODO: Cambiar mensaje por algo más tematico
-        rospy.sleep(1)
-        text = self.tm.speech2text_srv(seconds=0,lang="esp")
-        anim_msg = self.gen_anim_msg("Waiting/Think_3")
-        self.animationPublisher.publish(anim_msg)
-        if not ("None" in text):
-            request = f"""La persona dijo: {text}. Si hay palabras en otro idioma en tu respuesta escribelas como se pronunicarian en español porque en este momento solo puedes hablar español y ningun otro idioma, por ejemplo si en tu respuesta esta Python, responde Paiton. No añadas contenido complejo a tu respuesta como codigo, solo explica lo que sea necesario."""
-            answer=self.tm.answer_question(request, save_conversation=True) 
-            self.tm.talk(answer,"Spanish",animated=True, wait=True)
-        else:
-            self.tm.talk("Disculpa, no te entendi, puedes hablar cuando mis ojos esten azules. Por favor habla mas lento","Spanish",animated=True)
-        self.set_hot_words()
 
-    def set_hot_words(self):
-        if self.hearing:
-            self.tm.hot_word(["hey nova", "chao", "detente"],thresholds=[0.36, 0.47,0.38]) #TODO: Aqui van las hotwords
-            
-
-    def callback_arms_sensor_subscriber(self, msg: touch_msg):
-        req_stiffnesses = set_stiffnesses_srvRequest()
-        if "hand_left_back" in msg.name:
-            req_stiffnesses.names = "LArm"
-        elif "hand_right_back" in msg.name:  
-            req_stiffnesses.names = "RArm"
-        req_stiffnesses.stiffnesses = 0 if msg.state else 1
-        self.motion_set_stiffnesses_client(req_stiffnesses)
-        if msg.state and not "head" in msg.name:
-            self.tm.hot_word([])
-            self.tm.talk("Sosten firmemente ahi para mover mi brazo", language="Spanish", wait=True)
-            self.set_hot_words()
-        elif not "head" in msg.name:
-            self.tm.hot_word([])
-            self.tm.talk("Soltaste mi mano", language="Spanish", wait=True)
-            self.set_hot_words()
-
-    def gen_anim_msg(self, animation):
-        anim_msg = animation_msg()
-        anim_msg.family = "animations"
-        anim_msg.animation_name = animation
-        return anim_msg
-    
-    def setLedsColor(self, r,g,b):
-        """
-        Function for setting the colors of the eyes of the robot.
-        Args:
-        r,g,b numbers
-            r for red
-            g for green
-            b for blue
-        """
-        ledsPublisher = rospy.Publisher('/leds', leds_parameters_msg, queue_size=10)
-        ledsMessage = leds_parameters_msg()
-        ledsMessage.name = "FaceLeds"
-        ledsMessage.red = r
-        ledsMessage.green = g
-        ledsMessage.blue = b
-        ledsMessage.time = 0
-        ledsPublisher.publish(ledsMessage)  #Inicio(aguamarina), Pepper esta ALSpeechRecognitionStatusPublisherlista para escuchar
     
 # Crear una instancia de la maquina de estados
 if __name__ == "__main__":

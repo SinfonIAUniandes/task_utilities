@@ -18,7 +18,7 @@ class Akinator(object):
         self.answer = ""
         self.question_number = 1
 
-        states = states = ["AKINATOR", "INIT", "WAIT4GUEST", "ASK"]
+        states =  ["AKINATOR", "INIT", "WAIT4GUEST", "ASK"]
         self.tm = tm(perception = False,speech=True, pytoolkit=True)
         self.tm.initialize_node(self.task_name)
         

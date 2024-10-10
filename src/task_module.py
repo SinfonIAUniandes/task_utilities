@@ -14,8 +14,8 @@ from threading import Thread
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import set_open_close_hand_srv, set_open_close_hand_srvRequest, motion_tools_srv, set_output_volume_srv, set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv, tablet_service_srvRequest, navigate_to_srv, navigate_to_srvRequest, set_angle_srv, set_angle_srvRequest
-from robot_toolkit_msgs.msg import touch_msg, speech_recognition_status_msg, set_angles_msg, animation_msg, motion_tools_msg
+from robot_toolkit_msgs.srv import set_stiffnesses_srv, set_stiffnesses_srvRequest, set_open_close_hand_srv, set_open_close_hand_srvRequest, motion_tools_srv, set_output_volume_srv, set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv, tablet_service_srvRequest, navigate_to_srv, navigate_to_srvRequest, set_angle_srv, set_angle_srvRequest
+from robot_toolkit_msgs.msg import touch_msg, speech_recognition_status_msg, set_angles_msg, animation_msg, motion_tools_msg, leds_parameters_msg
 
 from manipulation_msgs.srv import go_to_pose, move_head
 
@@ -81,6 +81,7 @@ class Task_module:
         self.perception = perception
         self.waiting_touch = False
         self.head_touched = False
+        self.hand_touched = False
         if perception:
             print(
                 self.consoleFormatter.format(
@@ -454,6 +455,11 @@ class Task_module:
 
         self.pytoolkit = pytoolkit
         if pytoolkit:
+            
+            print(self.consoleFormatter.format("Waiting for pytoolkit/ALMotion/set_stiffnesses_srv...", "WARNING"))
+            rospy.wait_for_service("pytoolkit/ALMotion/set_stiffnesses_srv")
+            self.motion_set_stiffnesses_srv = rospy.ServiceProxy("pytoolkit/ALMotion/set_stiffnesses_srv", set_stiffnesses_srv)
+            
 
             print(self.consoleFormatter.format("Waiting for pytoolkit/ALAudioDevice/set_output_volume_srv...", "WARNING"))
             rospy.wait_for_service("/pytoolkit/ALAudioDevice/set_output_volume_srv")
@@ -591,9 +597,11 @@ class Task_module:
             
             self.animationPublisher = rospy.Publisher('/animations', animation_msg, queue_size=10)
             
+            self.ledsPublisher = rospy.Publisher('/leds', leds_parameters_msg, queue_size=10)
+            
             self.subscriber_angles = rospy.Subscriber("/pytoolkit/ALMotion/get_angles",set_angles_msg,self.callback_get_angles)
             
-            self.headSensorSubscriber = rospy.Subscriber("/touch", touch_msg, self.callback_head_sensor_subscriber)
+            self.SensorSubscriber = rospy.Subscriber("/touch", touch_msg, self.callback_sensor_subscriber)
 
             print(self.consoleFormatter.format("PYTOOLKIT services enabled", "OKGREEN"))
 
@@ -867,6 +875,32 @@ class Task_module:
             if first_time:
                 first_time = False
         result = self.head_touched
+        self.waiting_touch = False
+        return result
+
+    def wait_for_arm_touch(self, timeout = 15, message = "", message_interval = 5):
+        """
+        Input:
+        timeout: The time until the robot stops waiting
+        message: The message the robot should repeat every x seconds
+        message_interval: The time the robot should wait between talks
+        Output: True if the robot head was touched, False if timeout
+        ----------
+        Waits until the robots arm is touched or a timeout
+        """
+        first_time = True
+        self.hand_touched = False
+        self.waiting_touch = True
+        start_time = rospy.get_time()
+        last_talk_time = rospy.get_time()
+        while (not self.hand_touched) and rospy.get_time() - start_time < timeout:
+            rospy.sleep(0.1)
+            if rospy.get_time()-last_talk_time > message_interval and not first_time:
+                self.talk(message,"English",wait=True)
+                last_talk_time = rospy.get_time()
+            if first_time:
+                first_time = False
+        result = self.hand_touched
         self.waiting_touch = False
         return result
 
@@ -2548,14 +2582,43 @@ class Task_module:
     def callback_simple_feedback_subscriber(self, msg):
         self.navigation_status = msg.navigation_status
 
-    def callback_head_sensor_subscriber(self, msg: touch_msg):
+    def callback_sensor_subscriber(self, msg: touch_msg):
         if "head" in msg.name:
             if self.waiting_touch:
                 if msg.state:
                     self.head_touched = msg.state
             else:
                 self.head_touched = msg.state
+        elif "hand_left_back" in msg.name:
+            if self.waiting_touch:
+                if msg.state:
+                    self.hand_touched = msg.state
+            else:
+                self.hand_touched = msg.state
+        elif "hand_right_back" in msg.name:  
+            if self.waiting_touch:
+                if msg.state:
+                    self.hand_touched = msg.state
+            else:
+                self.hand_touched = msg.state
                 
+    def setLedsColor(self,r,g,b):
+        """
+        Function for setting the colors of the eyes of the robot.
+        Args:
+        r,g,b numbers
+            r for red
+            g for green
+            b for blue
+        """
+        ledsMessage = leds_parameters_msg()
+        ledsMessage.name = "FaceLeds"
+        ledsMessage.red = r
+        ledsMessage.green = g
+        ledsMessage.blue = b
+        ledsMessage.time = 0
+        self.ledsPublisher.publish(ledsMessage)
+        rospy.sleep(0.2)
 
     def callback_move_failed(self, msg):
         if not self.avoiding_obstacle:
