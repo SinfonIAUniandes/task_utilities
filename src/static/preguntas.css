@@ -1,0 +1,123 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: linear-gradient(90deg, rgb(255, 255, 255) 0%, rgba(176,223,243,1) 100%);
+  font-family: 'Poppins', sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 90vh;
+}
+
+.container {
+  width: 70%;
+  background-color: #ffffff;
+  border-radius: 20px;
+  padding: 30px;
+  margin: 0px;
+  box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.question-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  position: relative;
+}
+
+.question-number-box {
+  position: absolute;
+  left: 0px;
+  margin-top: 25px;
+  background-color: #0a74b2;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+}
+
+.question-text {
+  color: #0a74b2;
+  font-weight: bold;
+  font-size: 24px;
+  margin-bottom: 5px;
+}
+
+.lamp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); 
+  margin-top: 25px;
+  grid-gap: 35px;
+  justify-items: left;
+}
+
+.lamp-grid-dos {
+  display: grid;
+  margin-left: 85px;
+  grid-gap: 45px;
+  grid-template-columns: repeat(3, 1fr); 
+  justify-items: left;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.lamp-option {
+  position: relative;
+  display: inline-block;
+  width: 120px;
+}
+
+.lamp {
+  width: 56%;
+  cursor: pointer;
+  display: block;
+}
+
+.lamp-video {
+  width: 56%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: none; 
+}
+
+.option-text {
+  background-color: #0a74b2;
+  font-family: 'Poppins', sans-serif;
+  width: 120px;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 8px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.3s ease, background-color 0.3s ease;
+  z-index: 2;
+}
+
+.option-text:hover {
+  background-color: #004d7d;
+  transform: scale(1.1);
+  z-index: 2;
+}
+
+.lamp-option.disabled .lamp {
+  opacity: 0.5;
+  pointer-events: none; 
+}

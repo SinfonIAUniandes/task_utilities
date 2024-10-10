@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cuestionario Interactivo</title>
+  <link rel="stylesheet" href="/static/preguntas.css">
+</head>
+
+<body>
+  <div class="container">
+    <div class="question-panel">
+      <div class="question-number-box">
+        <span class="question-number" id="question-number"></span>
+      </div>
+      <p class="question-text" id="question-text"></p>
+    </div>
+
+    <div class="lamp-grid">
+      <div class="lamp-option">
+        <img src="/static/assets/lampara.png" class="lamp" id="lamp1">
+        <video id="video1" class="lamp-video" src="/static/assets/lamparaAnimacion.mp4" style="display:none"
+          onended="showNextItem()"></video>
+        <form action="/action" method="post">
+          <input type="hidden" name="action" value="si">
+          <button type="submit" class="option-text">Sí</button>
+        </form>
+      </div>
+
+      <div class="lamp-option">
+        <img src="/static/assets/lampara.png" class="lamp" id="lamp2">
+        <video id="video2" class="lamp-video" src="/static/assets/lamparaAnimacion.mp4" style="display:none"
+          onended="showNextItem()"></video>
+        <form action="/action" method="post">
+          <input type="hidden" name="action" value="no">
+          <button type="submit" class="option-text">No</button>
+        </form>
+      </div>
+
+      <div class="lamp-option">
+        <img src="/static/assets/lampara.png" class="lamp" id="lamp3">
+        <video id="video3" class="lamp-video" src="/static/assets/lamparaAnimacion.mp4" style="display:none"
+          onended="showNextItem()"></video>
+        <form action="/action" method="post">
+          <input type="hidden" name="action" value="ni idea">
+          <button type="submit" class="option-text">Ni idea</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="lamp-grid-dos">
+      <div class="lamp-option centered">
+        <img src="/static/assets/lampara.png" class="lamp" id="lamp4">
+        <video id="video4" class="lamp-video" src="/static/assets/lamparaAnimacion.mp4" style="display:none"
+          onended="showNextItem()"></video>
+        <form action="/action" method="post">
+          <input type="hidden" name="action" value="probablemente">
+          <button type="submit" class="option-text">Probablemente</button>
+        </form>
+      </div>
+
+      <div class="lamp-option centered">
+        <img src="/static/assets/lampara.png" class="lamp" id="lamp5">
+        <video id="video5" class="lamp-video" src="/static/assets/lamparaAnimacion.mp4" style="display:none"
+          onended="showNextItem()"></video>
+        <form action="/action" method="post">
+          <input type="hidden" name="action" value="probablemente no">
+          <button type="submit" class="option-text">Probablemente no</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script>
+    function getQueryParams(param) {
+      var queryString = window.location.search.substring(1);
+      var params = queryString.split("&");
+      for (var i = 0; i < params.length; i++) {
+        var pair = params[i].split("=");
+        if (pair[0] === param) {
+          // Decodificar el valor para mostrar los caracteres correctamente
+          return decodeURIComponent(pair[1]);
+        }
+      }
+      return null;
+    }
+
+    // Obtener el valor de los parámetros 'pregunta' y 'numero'
+    var pregunta = getQueryParams('pregunta');
+    var numero = getQueryParams('numero');
+
+    // Mostrar los valores de los parámetros
+    document.getElementById('question-text').textContent = pregunta ? pregunta : "";
+    document.getElementById('question-number').textContent = numero ? numero : "";
+</script>
+
+
+</body>
+
+</html>

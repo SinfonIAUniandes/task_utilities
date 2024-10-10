@@ -14,7 +14,7 @@ from threading import Thread
 
 # All imports from tools
 
-from robot_toolkit_msgs.srv import set_output_volume_srv, set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv, tablet_service_srvRequest, navigate_to_srv, navigate_to_srvRequest, set_angle_srv, set_angle_srvRequest
+from robot_toolkit_msgs.srv import set_open_close_hand_srv, set_open_close_hand_srvRequest, motion_tools_srv, set_output_volume_srv, set_move_arms_enabled_srv,  misc_tools_srv, misc_tools_srvRequest, tablet_service_srv, battery_service_srv , set_security_distance_srv, move_head_srv, go_to_posture_srv, set_security_distance_srv,set_speechrecognition_srv,speech_recognition_srv, tablet_service_srvRequest, navigate_to_srv, navigate_to_srvRequest, set_angle_srv, set_angle_srvRequest
 from robot_toolkit_msgs.msg import touch_msg, speech_recognition_status_msg, set_angles_msg, animation_msg, motion_tools_msg
 
 from manipulation_msgs.srv import go_to_pose, move_head
@@ -454,7 +454,6 @@ class Task_module:
 
         self.pytoolkit = pytoolkit
         if pytoolkit:
-            
 
             print(self.consoleFormatter.format("Waiting for pytoolkit/ALAudioDevice/set_output_volume_srv...", "WARNING"))
             rospy.wait_for_service("/pytoolkit/ALAudioDevice/set_output_volume_srv")
@@ -2241,6 +2240,34 @@ class Task_module:
             motion = rospy.ServiceProxy('/robot_toolkit/motion_tools_srv', motion_tools_srv)
             motion(request)
             print("Motion tools service connected!")
+        except rospy.ServiceException as e:
+            print("Service call failed")
+            
+    
+    def enable_breathing_service(self):
+        """
+        Enables the breathing animations of the robot.
+        """
+        request = set_open_close_hand_srvRequest()
+        request.hand = "All"
+        request.state = "True"
+        print("Waiting for breathing service")
+        rospy.wait_for_service("/pytoolkit/ALMotion/toggle_breathing_srv")
+        try:
+            toggle_breathing_proxy = rospy.ServiceProxy("/pytoolkit/ALMotion/toggle_breathing_srv", set_open_close_hand_srv)
+            toggle_breathing_proxy(request)
+            print("Breathing service connected!")
+        except rospy.ServiceException as e:
+            print("Service call failed")
+        request = set_open_close_hand_srvRequest()
+        request.hand = "Head"
+        request.state = "False"
+        print("Waiting for breathing service")
+        rospy.wait_for_service("/pytoolkit/ALMotion/toggle_breathing_srv")
+        try:
+            toggle_breathing_proxy = rospy.ServiceProxy("/pytoolkit/ALMotion/toggle_breathing_srv", set_open_close_hand_srv)
+            toggle_breathing_proxy(request)
+            print("Breathing service connected!")
         except rospy.ServiceException as e:
             print("Service call failed")
     

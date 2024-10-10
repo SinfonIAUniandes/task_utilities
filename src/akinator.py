@@ -40,16 +40,22 @@ class Akinator(object):
         self.tm.initialize_pepper()
         self.tm.hot_word(["jugar"], thresholds=[0.4],language="Spanish")
         subscriber = rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
+        self.tm.motion_tools_service()
+        self.tm.enable_breathing_service()
         self.begin()
 
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
-        self.tm.show_web_view(web_url= "http://192.168.0.208/apps/robot-page/AkinatorSinfonia/boton.html")
+        self.tm.show_web_view(web_url= "http://192.168.0.229:8000/")
         while not self.new_game:
             rospy.sleep(0.1)
         self.tm.play_animation(animation_name="Waiting/Think_3")
+        rospy.sleep(1)
+        self.tm.talk("Dejame pensar mi primera pregunta", language="Spanish", wait=False)
+        print("pre aki")
         self.aki = akipy.Akinator()
         self.aki.start_game("es")
+        print("post aki")
         self.tm.talk("Ya estoy lista para jugar!", "Spanish", wait=True)
         #Agregar imprimir en la tablet
         self.new_game_start()
@@ -57,18 +63,14 @@ class Akinator(object):
     def on_enter_AKINATOR(self):
         print(self.consoleFormatter.format("AKINATOR", "HEADER"))
         while not self.aki.win:
-            print(self.consoleFormatter.format("Pregunta del Akinator: ", "OKGREEN"))
-            # Hacer animacion mientras "Piensa" la pregunta
-            self.tm.play_animation(animation_name="Waiting/Think_3")
             question = self.aki.question
             animation = self.convert_akitude_animation(self.aki.akitude)
-            question_formatted = self.aki.question.replace(" ","%20")
+            print(self.consoleFormatter.format("Pregunta del Akinator: ", "OKGREEN"))
+            print(self.aki.question)
             
-            
-            print(f"http://192.168.0.208/apps/robot-page/AkinatorSinfonia/preguntas.html?pregunta={question_formatted}&numero={self.question_number}")
-            self.tm.show_web_view(web_url= f"http://192.168.0.208/apps/robot-page/AkinatorSinfonia/preguntas.html?pregunta={question_formatted}&numero={self.question_number}")
+            self.tm.show_web_view(web_url= f"http://192.168.0.229:8000/static/preguntas.html?pregunta={question}&numero={self.question_number}")
             self.question_number+=1
-            self.tm.talk(question, "Spanish",animated=True, wait=True)
+            self.tm.talk(question, "Spanish",animated=False, wait=True)
             self.answer=""
             self.tm.play_animation(animation_name=animation)
             speech2text_thread = threading.Thread(target=self.speech2text_function)
@@ -76,8 +78,9 @@ class Akinator(object):
             
             while self.answer == "":
                 rospy.sleep(0.1)
-            self.set_volume(70)
+            self.tm.set_volume(70)
             
+            speech2text_thread.join(20)
             
             if "si" in self.answer.lower() or "sí" in self.answer.lower():
                 self.aki.answer("yes")
@@ -92,11 +95,16 @@ class Akinator(object):
             
             
             if self.aki.win:
-                self.tm.talk("Adivine!", "Spanish")
-                #Pose de celebracion
-                self.tm.play_animation(animation_name="Emotions/Positive/Winner_2")
-                self.finish()
+                self.tm.talk(f"Tu personaje es:{self.aki.name_proposition}?", "Spanish")
+                text = self.tm.speech2text_srv(seconds=0,lang="esp")
+                if "si" in text.lower() or "sí" in text.lower():
+                    self.tm.show_words_proxy()
+                    rospy.sleep(1)
+                    self.tm.talk("Gane!",animated=False)
+                    #Pose de celebracion
+                    self.tm.play_animation(animation_name="Emotions/Positive/Winner_2")
                 self.new_game = False
+                self.finish()
         
         #Revisar que pasa cuando despues de mucho tiempo no es capaz de adivinar
         if not self.aki.win:
@@ -143,15 +151,15 @@ class Akinator(object):
             self.new_game = True
         if self.answer=="":
             if word=="si":
-                self.answer = "yes"
+                self.answer = "si"
             elif word=="probablemente no":
-                self.answer = "probably not"
+                self.answer = "probablemente no"
             elif word=="no":
                 self.answer = "no"
             elif word=="ni idea":
-                self.answer = "idk"
+                self.answer = "ni idea"
             elif word=="probablemente":
-                self.answer = "probably"
+                self.answer = "probablemente"
     
     def speech2text_function(self):
         temporal = self.tm.speech2text_srv(seconds=0,lang="esp")
@@ -159,7 +167,7 @@ class Akinator(object):
             if not ("None" in temporal):
                 self.answer=temporal
             else:
-                self.tm.talk(text="Disculpa, no te entendi. Puedes Repetir tu respuesta? ",language="Spanish", wait=True, animated=False)
+                self.tm.talk(text="Disculpa, no te entendi. Por favor repite tu respuesta ",language="Spanish", wait=True, animated=False)
                 temporal = self.tm.speech2text_srv(seconds=0,lang="esp")
                 if self.answer=="":
                     if not ("None" in temporal):
