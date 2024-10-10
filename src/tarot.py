@@ -44,7 +44,9 @@ class Tarot(object):
         self.motion_set_stiffnesses_client(req_stiffnesses)
         self.set_arms_security = rospy.ServiceProxy("pytoolkit/ALMotion/set_arms_security_srv", SetBool)
         self.set_arms_security(True)
-        
+        rospy.wait_for_service("/pytoolkit/ALMotion/toggle_smart_stiffness_srv")
+        self.toggle_smart_stiffness = rospy.ServiceProxy("/pytoolkit/ALMotion/toggle_smart_stiffness_srv", SetBool)
+        self.toggle_smart_stiffness(False)
         
         ############################# GLOBAL VARIABLES #############################
         self.cartas_pose = ["der4", "der3", "izq2", "izq1"]
@@ -100,6 +102,9 @@ class Tarot(object):
             "11": "La Justicia", 
             "12": "El Colgado"
         }        
+        
+        self.tm.hand_touched = False
+        
         with open('src/task_utilities/src/another.json', 'r') as file:
             self.cartas = json.load(file)
             
