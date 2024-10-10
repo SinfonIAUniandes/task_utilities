@@ -168,6 +168,15 @@ class Tarot(object):
             self.tm.go_to_pose(self.poses[card][0])
             
             self.tm.go_to_pose("tarotist")
+
+            req_stiffnesses = set_stiffnesses_srvRequest()
+            req_stiffnesses.names = "LArm"
+            req_stiffnesses.stiffnesses = 0
+            self.motion_set_stiffnesses_client(req_stiffnesses)
+            
+            req_stiffnesses.names = "RArm"
+            req_stiffnesses.stiffnesses = 0
+            self.motion_set_stiffnesses_client(req_stiffnesses)
             
         self.card_in_place()
 
@@ -186,7 +195,6 @@ class Tarot(object):
 
     def on_enter_GIVE_CARD(self): 
         print(self.consoleFormatter.format("GIVE_CARD", "HEADER"))
-        #Estado para que señale la carta que la persona tiene que llevarse y despedirse :)
         self.tm.talk(text="Gracias por participar, toma una tarjeta y un sticker de la mesa", language="Spanish")
         self.restart()
 
