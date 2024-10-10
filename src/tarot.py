@@ -25,6 +25,10 @@ class Tarot(object):
         self.tm.initialize_node(self.task_name)
         
         self.signo = ""
+        # Hotword parameters
+        self.hearing = True
+        self.is_done = False
+        self.hey_pepper=False
 
         transitions = [
             {'trigger': 'beggining', 'source': 'INIT', 'dest': 'WAIT4GUEST'},
@@ -43,14 +47,12 @@ class Tarot(object):
         req_stiffnesses.stiffnesses = 1
         self.motion_set_stiffnesses_client(req_stiffnesses)
         self.set_arms_security = rospy.ServiceProxy("pytoolkit/ALMotion/set_arms_security_srv", SetBool)
-        self.set_arms_security(True)
+        self.set_arms_security(False)
         rospy.wait_for_service("/pytoolkit/ALMotion/toggle_smart_stiffness_srv")
         self.toggle_smart_stiffness = rospy.ServiceProxy("/pytoolkit/ALMotion/toggle_smart_stiffness_srv", SetBool)
         self.toggle_smart_stiffness(False)
-        # Hotword parameters
-        self.hearing = True
-        self.is_done = False
-        self.hey_pepper=False
+        rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
+        self.enable_hot_word_service()
         
         ############################# GLOBAL VARIABLES #############################
         self.cartas_pose = ["der4", "der3", "izq2", "izq1"]
@@ -88,24 +90,7 @@ class Tarot(object):
             "Capricornio": 9, 
             "Acuario": 10, 
             "Piscis": 11
-        }
-
-
-        self.diccionario_cartas = {
-            "0": "El Loco", 
-            "1": "El Mago", 
-            "2": "La Sacerdotisa", 
-            "3": "La Emperatriz", 
-            "4": "El Emperador", 
-            "5": "El Hierofante", 
-            "6": "El Enamorado", 
-            "7": "El Carro", 
-            "8": "La Fuerza", 
-            "9": "El Ermitaño", 
-            "10": "La Rueda de la Fortuna", 
-            "11": "La Justicia", 
-            "12": "El Colgado"
-        }        
+        } 
         
         self.tm.hand_touched = False
         
@@ -117,18 +102,11 @@ class Tarot(object):
         self.machine = Machine(model=self, states=states, transitions=transitions, initial='INIT')
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
-
-
-    def on_enter_INIT(self):
-        print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        # Inicializar todo (Hotword)
-        self.tm.initialize_pepper()
-        rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
-        self.enable_hot_word_service()
             
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
         self.tm.go_to_pose("tarotist",velocity=0.1)
+        rospy.sleep(10)
         #Apagar el stiffness para no sobrecalentar al robot
         req_stiffnesses = set_stiffnesses_srvRequest()
         req_stiffnesses.names = "LArm"
@@ -138,7 +116,7 @@ class Tarot(object):
         req_stiffnesses.names = "RArm"
         req_stiffnesses.stiffnesses = 0
         self.motion_set_stiffnesses_client(req_stiffnesses)
-
+        self.tm.talk("Por favor di astros para iniciar", language="Spanish", wait=True)
         # Hotword
         self.hearing = True
         while not self.is_done:
@@ -147,7 +125,7 @@ class Tarot(object):
                 self.person_found()
             rospy.sleep(0.1)
         
-        self.tm.wait_for_arm_touch()
+        #self.tm.wait_for_arm_touch()
         self.person_found()
 
     def on_enter_Q_A(self):
@@ -163,6 +141,8 @@ class Tarot(object):
         print(self.consoleFormatter.format("MOVE_CARD", "HEADER"))
         
         self.tm.talk("Cierra los ojos y siente la energía, con esa energía eligiré la carta para tí", "Spanish", wait=False)
+        #self.tm.talk("Cierra los ojos y elige una carta", "Spanish", wait=False)
+        
         
         req_stiffnesses = set_stiffnesses_srvRequest()
         req_stiffnesses.names = "LArm"
@@ -172,41 +152,52 @@ class Tarot(object):
         req_stiffnesses.names = "RArm"
         req_stiffnesses.stiffnesses = 1
         self.motion_set_stiffnesses_client(req_stiffnesses)
+        rospy.sleep(10)
         
+        self.tm.go_to_pose("tarotist")
         card = random.choice(self.cartas_pose)
-        if card in self.poses:
-            self.tm.go_to_pose(self.poses[card][0])
-            self.tm.go_to_pose(self.poses[card][1])
-            self.tm.go_to_pose(self.poses[card][2])
+        print(card)
+        print(self.poses[card][0])
+        print(self.poses[card][1])
+        print(self.poses[card][2])
+        self.tm.go_to_pose(self.poses[card][0])
+        rospy.sleep(5)
+        self.tm.go_to_pose(self.poses[card][1])
+        rospy.sleep(5)
+        self.tm.go_to_pose(self.poses[card][2])
+        rospy.sleep(5)
 
-            txt = random.choice(self.random_card_text)
-            self.tm.talk(txt, "Spanish", wait=False)
-            
-            self.tm.go_to_pose(self.poses[card][2])
-            self.tm.go_to_pose(self.poses[card][1])
-            self.tm.go_to_pose(self.poses[card][0])
-            
-            self.tm.go_to_pose("tarotist")
+        txt = random.choice(self.random_card_text)
+        self.tm.talk(txt, "Spanish", wait=False)
+        
+        self.tm.go_to_pose(self.poses[card][2])
+        rospy.sleep(5)
+        self.tm.go_to_pose(self.poses[card][1])
+        rospy.sleep(5)
+        self.tm.go_to_pose(self.poses[card][0])
+        rospy.sleep(10)
+        
+        self.tm.go_to_pose("tarotist")
+        rospy.sleep(10)
 
-            req_stiffnesses = set_stiffnesses_srvRequest()
-            req_stiffnesses.names = "LArm"
-            req_stiffnesses.stiffnesses = 0
-            self.motion_set_stiffnesses_client(req_stiffnesses)
-            
-            req_stiffnesses.names = "RArm"
-            req_stiffnesses.stiffnesses = 0
-            self.motion_set_stiffnesses_client(req_stiffnesses)
-            
+        req_stiffnesses = set_stiffnesses_srvRequest()
+        req_stiffnesses.names = "LArm"
+        req_stiffnesses.stiffnesses = 0
+        self.motion_set_stiffnesses_client(req_stiffnesses)
+        
+        req_stiffnesses.names = "RArm"
+        req_stiffnesses.stiffnesses = 0
+        self.motion_set_stiffnesses_client(req_stiffnesses)
         self.card_in_place()
 
     def on_enter_ASK4QR(self): 
         print(self.consoleFormatter.format("ASK4QR", "HEADER"))
-        self.tm.talk("Por favor toma la carta que te acerque y muestrame el codigo QR",language="Spanish", wait=True, animated=False)
+        #self.tm.talk("Por favor toma la carta que te acerque y muestrame el codigo QR",language="Spanish", wait=True, animated=False)
+        self.tm.talk("Por favor toma la carta que elegiste y muestrame el codigo QR",language="Spanish", wait=True, animated=False)
         read_qr_message = read_qr_srvRequest()
         read_qr_message.timeout = 20
         card_number = int(self.qr_node_service(read_qr_message).text)
         print(card_number)
-        # self.signo ="Acuario"
         signo_numero = self.diccionario_signos[self.signo]
         respuesta = random.choice(self.cartas[card_number][signo_numero])
         self.tm.talk(respuesta,language="Spanish",wait=True)
@@ -232,12 +223,12 @@ class Tarot(object):
     def callback_hot_word(self,data):
         word = data.status
         print(word, "listened")
-        if word == "hey nova":
+        if word == "astros":
             self.hey_pepper = True
 
     def set_hot_words(self):
         if self.hearing:
-            self.tm.hot_word(["hey nova", "chao", "detente"],thresholds=[0.36, 0.47,0.38])
+            self.tm.hot_word(["astros"],thresholds=[0.4])
 
     def enable_hot_word_service(self):
         """
