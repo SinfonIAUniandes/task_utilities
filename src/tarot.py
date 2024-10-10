@@ -44,6 +44,31 @@ class Tarot(object):
         self.motion_set_stiffnesses_client(req_stiffnesses)
         self.set_arms_security = rospy.ServiceProxy("pytoolkit/ALMotion/set_arms_security_srv", SetBool)
         self.set_arms_security(True)
+        
+        
+        ############################# GLOBAL VARIABLES #############################
+        self.cartas_pose = ["der4", "der3", "izq2", "izq1"]
+        
+        self.poses = {
+            "izq1": ["tarot_l_initial", "tarot_l_1_2", "tarot_l_final"],
+            "izq2": ["tarot_l_initial", "tarot_l_2_2", "tarot_l_final"],
+            "der3": ["tarot_r_initial", "tarot_r_3_2", "tarot_r_final"],
+            "der4": ["tarot_r_initial", "tarot_r_4_2", "tarot_r_final"]
+            }
+        
+        self.random_card_text = [
+            "En el aire flota un secreto... Recibe tu carta y descubre tu destino.",
+            "Un destino aguardando ser revelado... ¿te atreves a tomar tu carta?",
+            "La magia está en tus manos... recoge la carta y desvela tu futuro.",
+            "Como un mago en la noche, te invito a que recibas tu carta misteriosa.",
+            "Los astros han alineado este momento... recibe tu carta y descúbrelo.",
+            "En la penumbra, una carta te llama... ¿la tomarás?",
+            "Siente la energía a tu alrededor... recibe tu carta y sorpréndete.",
+            "Con un susurro del universo, recibe la carta que te hable.",
+            "Un enigma aguarda... ¿ será esta la carta que revelará tu camino?",
+            "Cada carta es un paso hacia lo desconocido... ¡recibe la tuya con valentía!"
+        ]
+            
         self.diccionario_signos= {
             "Aries": 0, 
             "Tauro": 1, 
@@ -77,11 +102,13 @@ class Tarot(object):
         }        
         with open('src/task_utilities/src/another.json', 'r') as file:
             self.cartas = json.load(file)
+            
+            
         # Crear la máquina de estados
         self.machine = Machine(model=self, states=states, transitions=transitions, initial='INIT')
         rospy_check = threading.Thread(target=self.check_rospy)
         rospy_check.start()
-        ############################# GLOBAL VARIABLES #############################
+
 
     def on_enter_INIT(self):
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
@@ -91,6 +118,16 @@ class Tarot(object):
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
         self.tm.go_to_pose("tarotist",velocity=0.1)
+        #Apagar el stiffness para no sobrecalentar al robot
+        req_stiffnesses = set_stiffnesses_srvRequest()
+        req_stiffnesses.names = "LArm"
+        req_stiffnesses.stiffnesses = 0
+        self.motion_set_stiffnesses_client(req_stiffnesses)
+        
+        req_stiffnesses.names = "RArm"
+        req_stiffnesses.stiffnesses = 0
+        self.motion_set_stiffnesses_client(req_stiffnesses)
+        
         self.tm.wait_for_arm_touch()
         self.person_found()
 
@@ -105,6 +142,33 @@ class Tarot(object):
 
     def on_enter_MOVE_CARD(self): 
         print(self.consoleFormatter.format("MOVE_CARD", "HEADER"))
+        
+        self.tm.talk("Cierra los ojos y siente la energía, con esa energía eligiré la carta para tí", "Spanish", wait=False)
+        
+        req_stiffnesses = set_stiffnesses_srvRequest()
+        req_stiffnesses.names = "LArm"
+        req_stiffnesses.stiffnesses = 1
+        self.motion_set_stiffnesses_client(req_stiffnesses)
+        
+        req_stiffnesses.names = "RArm"
+        req_stiffnesses.stiffnesses = 1
+        self.motion_set_stiffnesses_client(req_stiffnesses)
+        
+        card = random.choice(self.cartas_pose)
+        if card in self.poses:
+            self.tm.go_to_pose(self.poses[card][0])
+            self.tm.go_to_pose(self.poses[card][1])
+            self.tm.go_to_pose(self.poses[card][2])
+
+            txt = random.choice(self.random_card_text)
+            self.tm.talk(txt, "Spanish", wait=False)
+            
+            self.tm.go_to_pose(self.poses[card][2])
+            self.tm.go_to_pose(self.poses[card][1])
+            self.tm.go_to_pose(self.poses[card][0])
+            
+            self.tm.go_to_pose("tarotist")
+            
         self.card_in_place()
 
     def on_enter_ASK4QR(self): 
