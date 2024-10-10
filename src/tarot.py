@@ -9,8 +9,8 @@ import json
 import random
 
 from std_srvs.srv import SetBool
-from robot_toolkit_msgs.msg import animation_msg, leds_parameters_msg
-from robot_toolkit_msgs.srv import set_stiffnesses_srv, set_stiffnesses_srvRequest
+from robot_toolkit_msgs.msg import animation_msg, leds_parameters_msg, speech_recognition_status_msg
+from robot_toolkit_msgs.srv import set_stiffnesses_srv, set_stiffnesses_srvRequest, tablet_service_srv
 
 from perception_msgs.srv import read_qr_srvRequest, read_qr_srv
 
@@ -47,6 +47,10 @@ class Tarot(object):
         rospy.wait_for_service("/pytoolkit/ALMotion/toggle_smart_stiffness_srv")
         self.toggle_smart_stiffness = rospy.ServiceProxy("/pytoolkit/ALMotion/toggle_smart_stiffness_srv", SetBool)
         self.toggle_smart_stiffness(False)
+        # Hotword parameters
+        self.hearing = True
+        self.is_done = False
+        self.hey_pepper=False
         
         ############################# GLOBAL VARIABLES #############################
         self.cartas_pose = ["der4", "der3", "izq2", "izq1"]
@@ -117,8 +121,10 @@ class Tarot(object):
 
     def on_enter_INIT(self):
         print(self.consoleFormatter.format("Inicializacion del task: "+self.task_name, "HEADER"))
-        
-                    
+        # Inicializar todo (Hotword)
+        self.tm.initialize_pepper()
+        rospy.Subscriber("/pytoolkit/ALSpeechRecognition/status",speech_recognition_status_msg,self.callback_hot_word)
+        self.enable_hot_word_service()
             
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
@@ -132,6 +138,14 @@ class Tarot(object):
         req_stiffnesses.names = "RArm"
         req_stiffnesses.stiffnesses = 0
         self.motion_set_stiffnesses_client(req_stiffnesses)
+
+        # Hotword
+        self.hearing = True
+        while not self.is_done:
+            if self.hey_pepper:
+                self.hey_pepper=False
+                self.person_found()
+            rospy.sleep(0.1)
         
         self.tm.wait_for_arm_touch()
         self.person_found()
@@ -142,7 +156,7 @@ class Tarot(object):
         nombre = self.tm.speech2text_srv(0,lang="esp")
         self.tm.talk(text="Por favor dime tu fecha de nacimiento", language="Spanish", wait=True, animated=False)
         fecha = self.tm.speech2text_srv(0,lang="esp")
-        self.signo = self.tm.answer_question(f"Cual es el signo zodiacal de una persona con esta fecha de nacimiento? {fecha}. Responde en una sola palabra")
+        self.signo = self.tm.answer_question(f"Cual es el signo zodiacal de una persona con esta fecha de nacimiento? {fecha}. Responde en una sola palabra").capitalize()
         self.q_answered()
 
     def on_enter_MOVE_CARD(self): 
@@ -192,7 +206,7 @@ class Tarot(object):
         read_qr_message.timeout = 20
         card_number = int(self.qr_node_service(read_qr_message).text)
         print(card_number)
-        self.signo ="Acuario"
+        # self.signo ="Acuario"
         signo_numero = self.diccionario_signos[self.signo]
         respuesta = random.choice(self.cartas[card_number][signo_numero])
         self.tm.talk(respuesta,language="Spanish",wait=True)
@@ -214,6 +228,30 @@ class Tarot(object):
         while not rospy.is_shutdown():
             self.beggining()
 
+# Hotword
+    def callback_hot_word(self,data):
+        word = data.status
+        print(word, "listened")
+        if word == "hey nova":
+            self.hey_pepper = True
+
+    def set_hot_words(self):
+        if self.hearing:
+            self.tm.hot_word(["hey nova", "chao", "detente"],thresholds=[0.36, 0.47,0.38])
+
+    def enable_hot_word_service(self):
+        """
+        Enables hotwords detection from the toolkit of the robot.
+        """
+        print("Waiting for hot word service")
+        rospy.wait_for_service('/pytoolkit/ALSpeechRecognition/set_hot_word_language_srv')
+        try:
+            hot_word_language_srv = rospy.ServiceProxy("/pytoolkit/ALSpeechRecognition/set_hot_word_language_srv", tablet_service_srv)
+            hot_word_language_srv("Spanish")
+            self.set_hot_words()
+            print("Hot word service connected!")
+        except rospy.ServiceException as e:
+            print("Service call failed")
     
 # Crear una instancia de la maquina de estados
 if __name__ == "__main__":
