@@ -101,16 +101,13 @@ class Akinator(object):
                     self.tm.show_words_proxy()
                     rospy.sleep(1)
                     self.tm.talk("Gane!",animated=False)
-                    #Pose de celebracion
                     self.tm.play_animation(animation_name="Emotions/Positive/Winner_2")
+                else:
+                    self.tm.talk("Perdi", "Spanish")
+                    self.tm.play_animation(animation_name="Emotions/Negative/Sad_1")
+                    
                 self.new_game = False
                 self.finish()
-        
-        #Revisar que pasa cuando despues de mucho tiempo no es capaz de adivinar
-        if not self.aki.win:
-            self.tm.talk("Perdi", "Spanish")
-            self.tm.play_animation(animation_name="Emotions/Negative/Sad_1")
-            self.finish()
     
     def convert_akitude_animation(self,akitude):
         if not akitude == "None":
@@ -162,16 +159,13 @@ class Akinator(object):
                 self.answer = "probablemente"
     
     def speech2text_function(self):
-        temporal = self.tm.speech2text_srv(seconds=0,lang="esp")
-        if self.answer=="":
+        while self.answer=="":
+            temporal = self.tm.speech2text_srv(seconds=0,lang="esp")
             if not ("None" in temporal):
                 self.answer=temporal
             else:
                 self.tm.talk(text="Disculpa, no te entendi. Por favor repite tu respuesta ",language="Spanish", wait=True, animated=False)
-                temporal = self.tm.speech2text_srv(seconds=0,lang="esp")
-                if self.answer=="":
-                    if not ("None" in temporal):
-                        self.answer=temporal
+                
                 
 
     def check_rospy(self):

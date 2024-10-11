@@ -124,8 +124,6 @@ class Tarot(object):
                 self.hey_pepper=False
                 self.person_found()
             rospy.sleep(0.1)
-        
-        #self.tm.wait_for_arm_touch()
         self.person_found()
 
     def on_enter_Q_A(self):
@@ -141,8 +139,6 @@ class Tarot(object):
         print(self.consoleFormatter.format("MOVE_CARD", "HEADER"))
         
         self.tm.talk("Cierra los ojos y siente la energía, con esa energía eligiré la carta para tí", "Spanish", wait=False)
-        #self.tm.talk("Cierra los ojos y elige una carta", "Spanish", wait=False)
-        
         
         req_stiffnesses = set_stiffnesses_srvRequest()
         req_stiffnesses.names = "LArm"
@@ -192,8 +188,7 @@ class Tarot(object):
 
     def on_enter_ASK4QR(self): 
         print(self.consoleFormatter.format("ASK4QR", "HEADER"))
-        #self.tm.talk("Por favor toma la carta que te acerque y muestrame el codigo QR",language="Spanish", wait=True, animated=False)
-        self.tm.talk("Por favor toma la carta que elegiste y muestrame el codigo QR",language="Spanish", wait=True, animated=False)
+        self.tm.talk("Por favor toma la carta que te acerque y muestrame el codigo QR",language="Spanish", wait=True, animated=False)
         read_qr_message = read_qr_srvRequest()
         read_qr_message.timeout = 20
         card_number = int(self.qr_node_service(read_qr_message).text)
