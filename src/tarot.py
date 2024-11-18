@@ -105,17 +105,6 @@ class Tarot(object):
             
     def on_enter_WAIT4GUEST(self):
         print(self.consoleFormatter.format("WAIT4GUEST", "HEADER"))
-        self.tm.go_to_pose("tarotist",velocity=0.1)
-        rospy.sleep(10)
-        #Apagar el stiffness para no sobrecalentar al robot
-        req_stiffnesses = set_stiffnesses_srvRequest()
-        req_stiffnesses.names = "LArm"
-        req_stiffnesses.stiffnesses = 0
-        self.motion_set_stiffnesses_client(req_stiffnesses)
-        
-        req_stiffnesses.names = "RArm"
-        req_stiffnesses.stiffnesses = 0
-        self.motion_set_stiffnesses_client(req_stiffnesses)
         self.tm.talk("Por favor di astros para iniciar", language="Spanish", wait=True)
         # Hotword
         self.hearing = True
@@ -128,67 +117,22 @@ class Tarot(object):
 
     def on_enter_Q_A(self):
         print(self.consoleFormatter.format("Q_A", "HEADER"))
-        self.tm.talk(text="Por favor dime tu nombre", language="Spanish", wait=True, animated=False)
+        self.tm.talk(text="Por favor dime tu nombre cuando mis ojos esten azules.", language="Spanish", wait=True, animated=False)
         nombre = self.tm.speech2text_srv(0,lang="esp")
-        self.tm.talk(text="Por favor dime tu fecha de nacimiento", language="Spanish", wait=True, animated=False)
+        self.tm.talk(text="Por favor dime tu fecha de nacimiento cuando mis ojos esten azules.", language="Spanish", wait=True, animated=False)
         fecha = self.tm.speech2text_srv(0,lang="esp")
-        self.signo = self.tm.answer_question(f"Cual es el signo zodiacal de una persona con esta fecha de nacimiento? {fecha}. Responde en una sola palabra").capitalize()
+        self.signo = self.tm.answer_question(f"Cual es el signo zodiacal de una persona con esta fecha de nacimiento? {fecha}. Responde en una sola palabra").capitalize().replace(".","")
         self.q_answered()
 
     def on_enter_MOVE_CARD(self): 
         print(self.consoleFormatter.format("MOVE_CARD", "HEADER"))
         
-        self.tm.talk("Cierra los ojos y siente la energía, con esa energía eligiré la carta para tí", "Spanish", wait=False)
-        
-        req_stiffnesses = set_stiffnesses_srvRequest()
-        req_stiffnesses.names = "LArm"
-        req_stiffnesses.stiffnesses = 1
-        self.motion_set_stiffnesses_client(req_stiffnesses)
-        
-        req_stiffnesses.names = "RArm"
-        req_stiffnesses.stiffnesses = 1
-        self.motion_set_stiffnesses_client(req_stiffnesses)
-        rospy.sleep(10)
-        
-        self.tm.go_to_pose("tarotist")
-        card = random.choice(self.cartas_pose)
-        print(card)
-        print(self.poses[card][0])
-        print(self.poses[card][1])
-        print(self.poses[card][2])
-        self.tm.go_to_pose(self.poses[card][0])
-        rospy.sleep(5)
-        self.tm.go_to_pose(self.poses[card][1])
-        rospy.sleep(5)
-        self.tm.go_to_pose(self.poses[card][2])
-        rospy.sleep(5)
-
-        txt = random.choice(self.random_card_text)
-        self.tm.talk(txt, "Spanish", wait=False)
-        
-        self.tm.go_to_pose(self.poses[card][2])
-        rospy.sleep(5)
-        self.tm.go_to_pose(self.poses[card][1])
-        rospy.sleep(5)
-        self.tm.go_to_pose(self.poses[card][0])
-        rospy.sleep(10)
-        
-        self.tm.go_to_pose("tarotist")
-        rospy.sleep(10)
-
-        req_stiffnesses = set_stiffnesses_srvRequest()
-        req_stiffnesses.names = "LArm"
-        req_stiffnesses.stiffnesses = 0
-        self.motion_set_stiffnesses_client(req_stiffnesses)
-        
-        req_stiffnesses.names = "RArm"
-        req_stiffnesses.stiffnesses = 0
-        self.motion_set_stiffnesses_client(req_stiffnesses)
+        self.tm.talk("Cierra los ojos y siente la energía, con esa energía elige tu carta para tí", "Spanish", wait=False)
         self.card_in_place()
 
     def on_enter_ASK4QR(self): 
         print(self.consoleFormatter.format("ASK4QR", "HEADER"))
-        self.tm.talk("Por favor toma la carta que te acerque y muestrame el codigo QR",language="Spanish", wait=True, animated=False)
+        self.tm.talk("Por favor elige una carta y muestrame el codigo QR",language="Spanish", wait=True, animated=False)
         read_qr_message = read_qr_srvRequest()
         read_qr_message.timeout = 20
         card_number = int(self.qr_node_service(read_qr_message).text)

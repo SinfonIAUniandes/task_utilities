@@ -81,8 +81,8 @@ class Evento(object):
         anim_msg = self.gen_anim_msg("Gestures/BowShort_3")
         self.animationPublisher.publish(anim_msg)
         self.hearing = False
-        self.tm.talk("Bienvenido, soy opera, es un gusto conocerte","Spanish",animated=False)
-        self.tm.talk("Di Hey opera cuando quieras decirme algo, y chao cuando no quieras seguir hablando","Spanish",animated=True)
+        self.tm.talk("Bienvenido, soy nova, es un gusto conocerte","Spanish",animated=False)
+        self.tm.talk("Di Hey nova cuando quieras decirme algo, y chao cuando no quieras seguir hablando","Spanish",animated=True)
         rospy.sleep(0.9)
         self.tm.start_tracker_proxy()
         self.hearing = True
@@ -178,6 +178,7 @@ class Evento(object):
         rospy.sleep(1)
         text = self.tm.speech2text_srv(seconds=0,lang="esp")
         anim_msg = self.gen_anim_msg("Waiting/Think_3")
+        self.setLedsColor(255,255,255)
         self.animationPublisher.publish(anim_msg)
         if not ("None" in text):
             request = f"""La persona dijo: {text}. Si hay palabras en otro idioma en tu respuesta escribelas como se pronunicarian en español porque en este momento solo puedes hablar español y ningun otro idioma, por ejemplo si en tu respuesta esta Python, responde Paiton. No añadas contenido complejo a tu respuesta como codigo, solo explica lo que sea necesario."""
@@ -253,7 +254,7 @@ class Evento(object):
 
     def set_hot_words(self):
         if self.hearing:
-            self.tm.hot_word(["hey opera", "chao", "detente"],thresholds=[0.3, 0.47,0.38])
+            self.tm.hot_word(["hey nova", "chao", "detente"],thresholds=[0.3, 0.47,0.38])
             
 
     def callback_arms_sensor_subscriber(self, msg: touch_msg):
@@ -317,7 +318,7 @@ class Evento(object):
             if word == "chao":
                 self.is_done = True
                 self.tm.answer_question("", save_conversation=False) 
-            elif word == "hey opera":
+            elif word == "hey nova":
                 self.hey_pepper = True
             elif word == "guitarra":
                 anim_msg = self.gen_anim_msg("Waiting/AirGuitar_1")
