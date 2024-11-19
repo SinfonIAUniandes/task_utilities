@@ -568,6 +568,15 @@ class Task_module:
             self.show_image_proxy = rospy.ServiceProxy(
                 "/pytoolkit/ALTabletService/show_image_srv", tablet_service_srv
             )
+            
+            
+            print(self.consoleFormatter.format("Waiting for /pytoolkit/ALTabletService/hide_srv...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALTabletService/hide_srv")
+            self.hide_proxy = rospy.ServiceProxy("/pytoolkit/ALTabletService/hide_srv",battery_service_srv)
+            
+            print(self.consoleFormatter.format("Waiting for /pytoolkit/ALTabletService/play_video_srv...", "WARNING"))
+            rospy.wait_for_service("/pytoolkit/ALTabletService/play_video_srv")
+            self.show_video_proxy = rospy.ServiceProxy("/pytoolkit/ALTabletService/play_video_srv",tablet_service_srv)
 
             print(self.consoleFormatter.format("Waiting for pytoolkit/show_topic...", "WARNING"))
             rospy.wait_for_service("/pytoolkit/ALTabletService/show_topic_srv")
@@ -2435,6 +2444,49 @@ class Task_module:
                 request = tablet_service_srvRequest()
                 request.url = image_path
                 approved = self.show_image_proxy(request)
+                if approved == "OK":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("pytoolkit as false")
+            return False
+
+    def show_video(self, video_url: str) -> bool:
+        """
+        Input: video_url url to a video in .mp4 format options -> ("sinfonia")
+        Output: True if the service was called correctly, False if not
+        ----------
+        Displays the video on the screen of the robot
+        """
+        if self.pytoolkit:
+            try:
+                request = tablet_service_srvRequest()
+                request.url = video_url
+                approved = self.show_video_proxy(request)
+                if approved == "OK":
+                    return True
+                else:
+                    return False
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return False
+        else:
+            print("pytoolkit as false")
+            return False
+
+    def hide_tablet(self) -> bool:
+        """
+        Output: True if the service was called correctly, False if not
+        ----------
+        Hdes whatever is on the tablet
+        """
+        if self.pytoolkit:
+            try:
+                approved = self.hide_proxy()
                 if approved == "OK":
                     return True
                 else:
