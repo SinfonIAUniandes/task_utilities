@@ -143,7 +143,7 @@ class Evento(object):
         self.hearing = True
         self.tm.hide_tablet()
         rospy.sleep(1)
-        self.tm.show_video("https://sinfofiles.s3.us-east-2.amazonaws.com/videoPrueba.mp4")
+        self.tm.show_video("https://sinfofiles.s3.us-east-2.amazonaws.com/b260b563-00a7-4cab-8ca0-470199c2bcf1.mp4")
         self.tm.talk("Hola! Bienvenido a ideas que transforman. \\pau=300\\ Sabías que Bogotá está construyendo un Campus de Ciencia, Tecnología e Innovación? Te gustaría saber cómo el Campus de Ciencia, Tecnología e Innovación transformará a Bogotá? \\pau=300\\ Puedes preguntarme qué es el Campus, dónde estará ubicado, cuándo estará en funcionamiento o quiénes están promoviendo este proyecto? \\pau=300\\ Además,  te mostraré dónde estará ubicado y cómo se verá la primera sede! \\pau=300\\ Qué quieres saber?","Spanish",animated=True,wait=True)
         rospy.sleep(1)
         text = self.tm.speech2text_srv(seconds=0,lang="esp")
