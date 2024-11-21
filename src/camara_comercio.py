@@ -143,7 +143,7 @@ class Evento(object):
         self.hearing = True
         self.tm.hide_tablet()
         rospy.sleep(1)
-        self.tm.show_video("https://sinfofiles.s3.us-east-2.amazonaws.com/b260b563-00a7-4cab-8ca0-470199c2bcf1.mp4")
+        self.tm.show_video("https://sinfofiles.s3.us-east-2.amazonaws.com/Videos/principal.mp4")
         self.tm.talk("Hola! Bienvenido a ideas que transforman. \\pau=300\\ Sabías que Bogotá está construyendo un Campus de Ciencia, Tecnología e Innovación? Te gustaría saber cómo el Campus de Ciencia, Tecnología e Innovación transformará a Bogotá? \\pau=300\\ Puedes preguntarme qué es el Campus, dónde estará ubicado, cuándo estará en funcionamiento o quiénes están promoviendo este proyecto? \\pau=300\\ Además,  te mostraré dónde estará ubicado y cómo se verá la primera sede! \\pau=300\\ Qué quieres saber?","Spanish",animated=True,wait=True)
         rospy.sleep(1)
         text = self.tm.speech2text_srv(seconds=0,lang="esp")
@@ -151,15 +151,27 @@ class Evento(object):
         if not ("None" in text):
             answer = ""
             if "que" in text.lower() or "qué" in text.lower():
+                self.tm.hide_tablet()
+                rospy.sleep(1)
+                self.tm.show_video("https://sinfofiles.s3.us-east-2.amazonaws.com/Videos/part1.mp4")
                 answer = "Me gusta tu pregunta! \\pau=300\\ El Campus será un generador de conocimiento y lugar de encuentro de sociedad, academia, sector público y privado para crear soluciones innovadoras que realmente ayuden a resolver problemas de ciudad y de las empresas. \\pau=300\\ Te interesa ver dónde estará ubicado y cómo ver cómo será la primera sede? ¡Vamos!"
                 
             elif "donde" in text.lower() or "dónde" in text.lower():
+                self.tm.hide_tablet()
+                rospy.sleep(1)
+                self.tm.show_video("https://sinfofiles.s3.us-east-2.amazonaws.com/Videos/parte2.mp4")
                 answer = "Que bueno que preguntas! \\pau=300\\  Imagina un espacio de 247 hectáreas  y un edificio de 44mil metros cuadrados y 23 pisos que serán el epicentro de la innovación en Bogotá. \\pau=300\\  Esa es la futura casa del Campus y es muy cerca de aquí. \\pau=300\\  Un lugar pensado para intercambiar ideas y transformar a Bogotá. \\pau=300\\ Quieres ver exactamente dónde estará y cómo será la primera sede? \\pau=300\\ Vamos!"
             
             elif "cuando" in text.lower() or "cuándo" in text.lower():
+                self.tm.hide_tablet()
+                rospy.sleep(1)
+                self.tm.show_video("https://sinfofiles.s3.us-east-2.amazonaws.com/Videos/part3.mp4")
                 answer = "Gran pregunta!  \\pau=300\\ La construcción de la primera sede, un edificio de 44mil metros cuadrados empieza el próximo año, y abrirá sus puertas en dos años y medio.  \\pau=300\\ No falta mucho para ver este sueño de ciudad convertido en una realidad. \\pau=300\\ Quieres ver esa primera sede? \\pau=300\\ Vamos!"
             
             elif "quienes" in text.lower() or "quiénes" in text.lower():
+                self.tm.hide_tablet()
+                rospy.sleep(1)
+                self.tm.show_video("https://sinfofiles.s3.us-east-2.amazonaws.com/Videos/parte4.mp4")
                 answer = "Gracias por preguntar!  \\pau=300\\ Esta es una iniciativa liderada por la Cámara de Comercio de Bogotá, en asocio con la Alcaldía Mayor a través de la secretaría de desarrollo económico y Atenea, con Corferias, y  con las tres principales cajas de compensación: Cafam, Compensar y Colsubsidio, además del SENA.  \\pau=300\\ Te gustaría ver la ubicación y el diseño de la sede inicial?  \\pau=300\\ Acércate y te lo enseño!"
             self.tm.talk(answer,"Spanish",animated=True, wait=True)
         else:
