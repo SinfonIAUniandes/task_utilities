@@ -879,7 +879,7 @@ class Task_module:
         while (not self.head_touched) and rospy.get_time() - start_time < timeout:
             rospy.sleep(0.1)
             if rospy.get_time()-last_talk_time > message_interval and not first_time:
-                self.talk(message,"English",wait=True)
+                self.talk(message,"Spanish",wait=True)
                 last_talk_time = rospy.get_time()
             if first_time:
                 first_time = False

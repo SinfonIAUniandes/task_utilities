@@ -82,15 +82,15 @@ class Evento(object):
         self.animationPublisher.publish(anim_msg)
         self.hearing = False
         self.tm.talk("Bienvenido, soy nova, es un gusto conocerte","Spanish",animated=False)
-        self.tm.talk("Di Hey nova cuando quieras decirme algo, y chao cuando no quieras seguir hablando","Spanish",animated=True)
+        self.tm.talk("toca mi cabeza cuando  quieras decirme algo","Spanish",animated=True)
         rospy.sleep(0.9)
         self.tm.start_tracker_proxy()
         self.hearing = True
         while not self.is_done:
-            if self.hey_pepper:
-                self.tm.show_words_proxy()
-                self.hey_pepper_function()
-                self.hey_pepper=False
+            self.tm.wait_for_head_touch(timeout=10000000,message="Toca mi cabeza para hablar",message_interval=35)
+            self.tm.show_words_proxy()
+            self.hey_pepper_function()
+            self.hey_pepper=False
             rospy.sleep(0.1)
         self.tm.talk("Adios","Spanish",animated=True)
         self.TALK_done()
