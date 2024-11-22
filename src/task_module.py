@@ -861,7 +861,7 @@ class Task_module:
             print("perception or manipulation as false")
             return "None"
 
-    def wait_for_head_touch(self, timeout = 15, message = "", message_interval = 5):
+    def wait_for_head_touch(self, timeout = 15, message = "", message_interval = 5,language="English"):
         """
         Input:
         timeout: The time until the robot stops waiting
@@ -879,7 +879,7 @@ class Task_module:
         while (not self.head_touched) and rospy.get_time() - start_time < timeout:
             rospy.sleep(0.1)
             if rospy.get_time()-last_talk_time > message_interval and not first_time:
-                self.talk(message,"Spanish",wait=True)
+                self.talk(message,language,wait=True)
                 last_talk_time = rospy.get_time()
             if first_time:
                 first_time = False

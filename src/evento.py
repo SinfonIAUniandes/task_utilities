@@ -59,9 +59,6 @@ class Evento(object):
         self.enable_hot_word_service()
         print(self.consoleFormatter.format("Waiting for pytoolkit/ALTabletService/show_picture_srv...", "WARNING"))
         rospy.wait_for_service('pytoolkit/ALTabletService/show_picture_srv')
-        print(self.consoleFormatter.format("Waiting for /pytoolkit/ALTabletService/show_image_srv...", "WARNING"))
-        rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
-        self.show_image_srv = rospy.ServiceProxy("/pytoolkit/ALTabletService/show_image_srv",tablet_service_srv)
         self.show_picture_proxy = rospy.ServiceProxy('pytoolkit/ALTabletService/show_picture_srv', battery_service_srv)
         self.play_dance_srv = rospy.ServiceProxy("/pytoolkit/ALMotion/play_dance_srv", set_output_volume_srv)
         self.animationPublisher = rospy.Publisher('/animations', animation_msg, queue_size=10)
@@ -73,7 +70,6 @@ class Evento(object):
         self.set_arms_security = rospy.ServiceProxy("pytoolkit/ALMotion/set_arms_security_srv", SetBool)
         self.set_arms_security(True)
         self.armsSensorSubscriber = rospy.Subscriber("/touch", touch_msg, self.callback_arms_sensor_subscriber)
-        rospy.wait_for_service("/pytoolkit/ALTabletService/show_image_srv")
         self.beggining()
 
     def on_enter_TALK(self):
@@ -82,12 +78,12 @@ class Evento(object):
         self.animationPublisher.publish(anim_msg)
         self.hearing = False
         self.tm.talk("Bienvenido, soy nova, es un gusto conocerte","Spanish",animated=False)
-        self.tm.talk("toca mi cabeza cuando  quieras decirme algo","Spanish",animated=True)
+        self.tm.talk("Toca mi cabeza cuando  quieras decirme algo","Spanish",animated=True)
         rospy.sleep(0.9)
         self.tm.start_tracker_proxy()
         self.hearing = True
         while not self.is_done:
-            self.tm.wait_for_head_touch(timeout=10000000,message="Toca mi cabeza para hablar",message_interval=35)
+            self.tm.wait_for_head_touch(timeout=10000000,message="Toca mi cabeza para hablar",message_interval=40,language="Spanish")
             self.tm.show_words_proxy()
             self.hey_pepper_function()
             self.hey_pepper=False
@@ -124,7 +120,6 @@ class Evento(object):
         try:
             hot_word_language_srv = rospy.ServiceProxy("/pytoolkit/ALSpeechRecognition/set_hot_word_language_srv", tablet_service_srv)
             hot_word_language_srv("Spanish")
-            self.set_hot_words()
             print("Hot word service connected!")
         except rospy.ServiceException as e:
             print("Service call failed")
@@ -173,7 +168,6 @@ class Evento(object):
             
     
     def hey_pepper_function(self):
-        self.tm.hot_word([])
         self.tm.talk("Dímelo manzana","Spanish",animated=True,wait=False)
         rospy.sleep(1)
         text = self.tm.speech2text_srv(seconds=0,lang="esp")
@@ -211,8 +205,8 @@ class Evento(object):
             elif "sigue" in text.lower() or "siga" in text.lower() or "sígueme" in text.lower() or "seguirme" in text.lower():
                 answer = ""
             else:
-                answer=self.tm.answer_question(request, save_conversation=True) 
-            self.tm.talk(answer,"Spanish",animated=True, wait=True)
+                answer=self.tm.answer_question(request, save_conversation=True)
+            self.tm.talk(answer,"Spanish",animated=True, wait=True,speed="50")
             if "beso" in text.lower():
                 word_msg = speech_recognition_status_msg()
                 word_msg.status = "beso"
@@ -250,11 +244,6 @@ class Evento(object):
                     self.tm.talk("Contraseña incorrecta!","Spanish",animated=True, wait=True)
         else:
             self.tm.talk("Disculpa, no te entendi, puedes hablar cuando mis ojos esten azules. Por favor habla mas lento","Spanish",animated=True)
-        self.set_hot_words()
-
-    def set_hot_words(self):
-        if self.hearing:
-            self.tm.hot_word(["hey nova", "chao", "detente"],thresholds=[0.3, 0.47,0.38])
             
 
     def callback_arms_sensor_subscriber(self, msg: touch_msg):
@@ -268,11 +257,9 @@ class Evento(object):
         if msg.state and not "head" in msg.name:
             self.tm.hot_word([])
             self.tm.talk("Sosten firmemente ahi para mover mi brazo", language="Spanish", wait=True)
-            self.set_hot_words()
         elif not "head" in msg.name:
             self.tm.hot_word([])
             self.tm.talk("Soltaste mi mano", language="Spanish", wait=True)
-            self.set_hot_words()
 
     def gen_anim_msg(self, animation):
         anim_msg = animation_msg()
@@ -318,8 +305,6 @@ class Evento(object):
             if word == "chao":
                 self.is_done = True
                 self.tm.answer_question("", save_conversation=False) 
-            elif word == "hey nova":
-                self.hey_pepper = True
             elif word == "guitarra":
                 anim_msg = self.gen_anim_msg("Waiting/AirGuitar_1")
                 self.animationPublisher.publish(anim_msg)
