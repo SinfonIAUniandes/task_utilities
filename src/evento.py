@@ -206,7 +206,7 @@ class Evento(object):
                 answer = ""
             else:
                 answer=self.tm.answer_question(request, save_conversation=True)
-            self.tm.talk(answer,"Spanish",animated=True, wait=True,speed="50")
+            self.tm.talk(answer,"Spanish",animated=True, wait=True,speed="100")
             if "beso" in text.lower():
                 word_msg = speech_recognition_status_msg()
                 word_msg.status = "beso"
